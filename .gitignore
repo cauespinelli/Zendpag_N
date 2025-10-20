@@ -178,3 +178,5 @@ k8s/*-secret.yaml
 # Local development files
 docker-compose.override.yml
 docker-compose.local.yml
+# Claude Code - Local settings with sensitive data
+.claude/settings.local.json

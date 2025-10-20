@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(make lint:*)",
+      "Bash(make:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "mcpServers": {
+    "digitalocean": {
+      "command": "npx",
+      "args": [
+        "@digitalocean/mcp",
+        "--services",
+        "apps,databases,droplets,volumes,kubernetes,registries,load-balancers,firewalls,domains,images,ssh-keys,snapshots,tags"
+      ],
+      "env": {
+        "DIGITALOCEAN_API_TOKEN": "YOUR_DIGITAL_OCEAN_API_TOKEN_HERE"
+      }
+    }
+  }
+}
