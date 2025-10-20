@@ -1,0 +1,91 @@
+{
+  "short_name": "Zendapag",
+  "name": "Zendapag Dashboard",
+  "description": "Plataforma de pagamentos PIX para lojistas",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#1890ff",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "pt-BR",
+  "categories": ["finance", "business"],
+  "screenshots": [
+    {
+      "src": "screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard principal do Zendapag"
+    },
+    {
+      "src": "screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Lista de pagamentos"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Novo Pagamento",
+      "short_name": "Pagamento",
+      "description": "Criar um novo pagamento PIX",
+      "url": "/payments/new",
+      "icons": [
+        {
+          "src": "shortcut-payment.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "short_name": "Analytics",
+      "description": "Ver métricas e relatórios",
+      "url": "/analytics",
+      "icons": [
+        {
+          "src": "shortcut-analytics.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Perfil",
+      "short_name": "Perfil",
+      "description": "Configurações do merchant",
+      "url": "/profile",
+      "icons": [
+        {
+          "src": "shortcut-profile.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 480
+  }
+}

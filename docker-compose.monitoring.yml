@@ -1,0 +1,310 @@
+version: '3.8'
+
+services:
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    hostname: prometheus
+    container_name: zendapag-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - zendapag-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:10.0.3
+    hostname: grafana
+    container_name: zendapag-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: zendapag123
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
+      GF_FEATURE_TOGGLES_ENABLE: publicDashboards
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - zendapag-network
+
+  # Kafka Exporter for Kafka metrics
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    hostname: kafka-exporter
+    container_name: zendapag-kafka-exporter
+    ports:
+      - "9308:9308"
+    command:
+      - '--kafka.server=kafka1:29092'
+      - '--kafka.server=kafka2:29092'
+      - '--kafka.server=kafka3:29092'
+      - '--web.listen-address=0.0.0.0:9308'
+      - '--log.level=info'
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    networks:
+      - zendapag-network
+
+  # JMX Exporter for Kafka JMX metrics
+  kafka-jmx-exporter:
+    image: sscaling/jmx-prometheus-exporter:0.19.0
+    hostname: kafka-jmx-exporter
+    container_name: zendapag-kafka-jmx-exporter
+    ports:
+      - "5556:5556"
+    environment:
+      CONFIG_YML: |
+        startDelaySeconds: 0
+        ssl: false
+        lowercaseOutputName: false
+        lowercaseOutputLabelNames: false
+        rules:
+        - pattern: 'kafka.server<type=(.+), name=(.+)><>Value'
+          name: kafka_server_$1_$2
+        - pattern: 'kafka.network<type=(.+), name=(.+)><>Value'
+          name: kafka_network_$1_$2
+        - pattern: 'kafka.log<type=(.+), name=(.+)><>Value'
+          name: kafka_log_$1_$2
+        - pattern: 'kafka.controller<type=(.+), name=(.+)><>Value'
+          name: kafka_controller_$1_$2
+        - pattern: 'kafka.cluster<type=(.+), name=(.+)><>Value'
+          name: kafka_cluster_$1_$2
+    networks:
+      - zendapag-network
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    hostname: node-exporter
+    container_name: zendapag-node-exporter
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - zendapag-network
+
+  # cAdvisor for container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    hostname: cadvisor
+    container_name: zendapag-cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - zendapag-network
+
+  # AlertManager for alerting
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    hostname: alertmanager
+    container_name: zendapag-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    networks:
+      - zendapag-network
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.48
+    hostname: jaeger
+    container_name: zendapag-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "6831:6831/udp"  # UDP collector
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+      COLLECTOR_ZIPKIN_HOST_PORT: ':9411'
+    networks:
+      - zendapag-network
+
+  # Elasticsearch for log aggregation
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    hostname: elasticsearch
+    container_name: zendapag-elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: 'false'
+      xpack.security.enrollment.enabled: 'false'
+      ES_JAVA_OPTS: "-Xmx1g -Xms1g"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - zendapag-network
+
+  # Kibana for log visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.9.0
+    hostname: kibana
+    container_name: zendapag-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - zendapag-network
+
+  # Logstash for log processing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.9.0
+    hostname: logstash
+    container_name: zendapag-logstash
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx512m -Xms512m"
+    volumes:
+      - ./monitoring/logstash/config:/usr/share/logstash/config
+      - ./monitoring/logstash/pipeline:/usr/share/logstash/pipeline
+    depends_on:
+      - elasticsearch
+    networks:
+      - zendapag-network
+
+  # Kafka Lag Exporter for consumer lag monitoring
+  kafka-lag-exporter:
+    image: lightbend/kafka-lag-exporter:0.8.2
+    hostname: kafka-lag-exporter
+    container_name: zendapag-kafka-lag-exporter
+    ports:
+      - "9999:9999"
+    volumes:
+      - ./monitoring/kafka-lag-exporter:/opt/docker/conf
+    command: >
+      /opt/docker/bin/kafka-lag-exporter
+      -Dconfig.file=/opt/docker/conf/application.conf
+      -Dlogback.configurationFile=/opt/docker/conf/logback.xml
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    networks:
+      - zendapag-network
+
+  # Redis Exporter for Redis metrics
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.52.0
+    hostname: redis-exporter
+    container_name: zendapag-redis-exporter
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ""
+    depends_on:
+      - redis
+    networks:
+      - zendapag-network
+
+  # PostgreSQL Exporter for database metrics
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.13.2
+    hostname: postgres-exporter
+    container_name: zendapag-postgres-exporter
+    ports:
+      - "9187:9187"
+    environment:
+      DATA_SOURCE_NAME: "postgresql://zendapag:zendapag123@postgres:5432/zendapag?sslmode=disable"
+    depends_on:
+      - postgres
+    networks:
+      - zendapag-network
+
+  # Kafka Manager UI
+  kafka-manager:
+    image: hlebalbau/kafka-manager:stable
+    hostname: kafka-manager
+    container_name: zendapag-kafka-manager
+    ports:
+      - "9000:9000"
+    environment:
+      ZK_HOSTS: "zookeeper1:2181,zookeeper2:2181,zookeeper3:2181"
+      APPLICATION_SECRET: "zendapag-kafka-manager-secret"
+      KM_ARGS: -Djava.net.preferIPv4Stack=true
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+      - kafka1
+      - kafka2
+      - kafka3
+    networks:
+      - zendapag-network
+
+  # Kafka Connect UI
+  kafka-connect-ui:
+    image: landoop/kafka-connect-ui:0.9.7
+    hostname: kafka-connect-ui
+    container_name: zendapag-kafka-connect-ui
+    ports:
+      - "8001:8000"
+    environment:
+      CONNECT_URL: "http://kafka-connect:8083"
+      PROXY: 'true'
+    depends_on:
+      - kafka-connect
+    networks:
+      - zendapag-network
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+
+networks:
+  zendapag-network:
+    driver: bridge

@@ -1,0 +1,177 @@
+name: 🔒 Security Issue
+description: Report a security vulnerability (Private)
+title: "[Security]: "
+labels: ["security", "high-priority", "confidential"]
+assignees: ["security-team"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **SECURITY NOTICE** ⚠️
+
+        If this is a critical security vulnerability, please **DO NOT** submit it here.
+        Instead, please email us directly at security@zendapag.com with:
+        - A clear description of the vulnerability
+        - Steps to reproduce
+        - Potential impact assessment
+
+        For non-critical security issues, you may continue with this form.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity Level
+      description: How severe is this security issue?
+      options:
+        - Critical (Remote code execution, full system compromise)
+        - High (Privilege escalation, data breach potential)
+        - Medium (Information disclosure, limited access)
+        - Low (Security best practice, hardening)
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Security Issue Summary
+      description: A clear and concise description of the security issue.
+      placeholder: Describe the security vulnerability...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Vulnerability Category
+      description: What type of security issue is this?
+      options:
+        - Authentication bypass
+        - Authorization flaws
+        - Injection (SQL, NoSQL, Command, etc.)
+        - Cross-Site Scripting (XSS)
+        - Cross-Site Request Forgery (CSRF)
+        - Insecure Direct Object References
+        - Security misconfiguration
+        - Sensitive data exposure
+        - Missing function level access control
+        - Using components with known vulnerabilities
+        - Unvalidated redirects and forwards
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      description: Which component is affected?
+      options:
+        - API Authentication
+        - API Authorization
+        - PIX Integration
+        - Database
+        - JWT Tokens
+        - User Management
+        - Configuration
+        - Infrastructure
+        - Dependencies
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Potential Impact
+      description: |
+        Describe the potential impact of this security vulnerability.
+      placeholder: |
+        - What data could be compromised?
+        - What systems could be affected?
+        - What could an attacker achieve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        Provide detailed steps to reproduce the security issue.
+        **WARNING: Do not include actual exploits or harmful payloads**
+      placeholder: |
+        1. Go to...
+        2. Send request with...
+        3. Observe that...
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: |
+        Provide evidence of the vulnerability (sanitized logs, screenshots, etc.)
+        **REMOVE ANY SENSITIVE INFORMATION**
+
+  - type: input
+    id: cve
+    attributes:
+      label: Related CVE/Security Advisory
+      description: If this relates to a known CVE or security advisory, please provide it.
+      placeholder: e.g., CVE-2023-12345
+
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Suggested Mitigation
+      description: |
+        Do you have any suggestions for how to fix or mitigate this issue?
+
+  - type: input
+    id: reporter
+    attributes:
+      label: Security Researcher Credit
+      description: |
+        How would you like to be credited in our security acknowledgments?
+      placeholder: Your name or handle (optional)
+
+  - type: checkboxes
+    id: disclosure
+    attributes:
+      label: Responsible Disclosure
+      description: Disclosure agreement
+      options:
+        - label: I agree to responsible disclosure practices
+          required: true
+        - label: I will not publicly disclose this vulnerability until it's fixed
+          required: true
+        - label: I have not shared this vulnerability information with others
+          required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: |
+        Any additional information that would be helpful for our security team.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify the following before submitting
+      options:
+        - label: I have removed all sensitive information from this report
+          required: true
+        - label: This is not a critical vulnerability (if critical, I will email security@zendapag.com)
+          required: true
+        - label: I have provided sufficient detail to reproduce the issue
+          required: true
+        - label: I understand this issue will be handled confidentially
+          required: true

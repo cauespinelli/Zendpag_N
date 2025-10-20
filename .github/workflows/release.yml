@@ -1,0 +1,485 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.2.3)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY_URL }}
+
+permissions:
+  contents: write
+  packages: write
+  actions: read
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is-prerelease: ${{ steps.version.outputs.is-prerelease }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
+          else
+            VERSION="${{ github.ref_name }}"
+            # Check if it's a pre-release (contains alpha, beta, rc)
+            if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+              IS_PRERELEASE=true
+            else
+              IS_PRERELEASE=false
+            fi
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is-prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+          echo "Pre-release: $IS_PRERELEASE"
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-](alpha|beta|rc)[0-9]*)?$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: v1.2.3 or v1.2.3-alpha1, v1.2.3-beta1, v1.2.3-rc1"
+            exit 1
+          fi
+          echo "✅ Version format is valid: $VERSION"
+
+      - name: Check if tag already exists
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "❌ Tag $VERSION already exists"
+            exit 1
+          fi
+          echo "✅ Tag $VERSION is available"
+
+  test:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    needs: validate
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: zendapag_test
+          POSTGRES_USER: zendapag
+          POSTGRES_PASSWORD: zendapag123
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Run comprehensive tests
+        run: |
+          ./mvnw clean verify \
+            -Dspring.profiles.active=test \
+            -Dspring.datasource.url=jdbc:postgresql://localhost:5432/zendapag_test \
+            -Dspring.datasource.username=zendapag \
+            -Dspring.datasource.password=zendapag123 \
+            jacoco:report
+
+      - name: Generate test report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Test Results
+          path: '**/target/surefire-reports/**/*.xml'
+          reporter: java-junit
+          fail-on-error: true
+
+  build:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    needs: [validate, test]
+
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Update version in pom.xml
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          VERSION_NUMBER=${VERSION#v}  # Remove 'v' prefix
+          ./mvnw versions:set -DnewVersion=$VERSION_NUMBER
+          ./mvnw versions:commit
+
+      - name: Build release artifacts
+        run: |
+          ./mvnw clean package -DskipTests \
+            -Dspring.profiles.active=prod
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "changelog=Initial release" >> $GITHUB_OUTPUT
+          else
+            # Generate changelog from commits
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD | grep -v "Merge pull request" || echo "- Minor improvements and bug fixes")
+
+            # Format for GitHub
+            CHANGELOG=$(echo "$CHANGELOG" | head -20)  # Limit to 20 entries
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGELOG" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.validate.outputs.version }}
+          path: |
+            zendapag-api/target/*.jar
+            zendapag-worker/target/*.jar
+          retention-days: 30
+
+  docker:
+    name: Build Release Images
+    runs-on: ubuntu-latest
+    needs: [validate, build]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.validate.outputs.version }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./zendapag-api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/zendapag-api:${{ needs.validate.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/zendapag-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          provenance: true
+          sbom: true
+
+      - name: Build and push Worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./zendapag-worker/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/zendapag-worker:${{ needs.validate.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/zendapag-worker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          provenance: true
+          sbom: true
+
+      - name: Sign container images
+        run: |
+          # Install cosign
+          curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
+          sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+          sudo chmod +x /usr/local/bin/cosign
+
+          # Sign images
+          cosign sign --yes ${{ env.DOCKER_REGISTRY }}/zendapag-api:${{ needs.validate.outputs.version }}
+          cosign sign --yes ${{ env.DOCKER_REGISTRY }}/zendapag-worker:${{ needs.validate.outputs.version }}
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, build, docker]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts-${{ needs.validate.outputs.version }}
+          path: ./artifacts
+
+      - name: Create release notes
+        id: release-notes
+        run: |
+          cat > release-notes.md << EOF
+          # Zendapag ${{ needs.validate.outputs.version }}
+
+          ## What's Changed
+          ${{ needs.build.outputs.changelog }}
+
+          ## Docker Images
+          - \`${{ env.DOCKER_REGISTRY }}/zendapag-api:${{ needs.validate.outputs.version }}\`
+          - \`${{ env.DOCKER_REGISTRY }}/zendapag-worker:${{ needs.validate.outputs.version }}\`
+
+          ## Installation
+
+          ### Docker
+          \`\`\`bash
+          docker pull ${{ env.DOCKER_REGISTRY }}/zendapag-api:${{ needs.validate.outputs.version }}
+          docker pull ${{ env.DOCKER_REGISTRY }}/zendapag-worker:${{ needs.validate.outputs.version }}
+          \`\`\`
+
+          ### Helm Chart
+          \`\`\`bash
+          helm upgrade --install zendapag ./k8s/helm/zendapag \\
+            --set image.api.tag=${{ needs.validate.outputs.version }} \\
+            --set image.worker.tag=${{ needs.validate.outputs.version }}
+          \`\`\`
+
+          ## Verification
+          All release artifacts are signed with cosign and can be verified:
+          \`\`\`bash
+          cosign verify ${{ env.DOCKER_REGISTRY }}/zendapag-api:${{ needs.validate.outputs.version }}
+          \`\`\`
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.validate.outputs.version }}
+          name: Release ${{ needs.validate.outputs.version }}
+          body_path: release-notes.md
+          files: |
+            artifacts/*.jar
+          prerelease: ${{ needs.validate.outputs.is-prerelease == 'true' }}
+          draft: false
+          generate_release_notes: true
+
+  helm-package:
+    name: Package Helm Chart
+    runs-on: ubuntu-latest
+    needs: [validate, release]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Update Helm chart version
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          VERSION_NUMBER=${VERSION#v}  # Remove 'v' prefix
+
+          # Update Chart.yaml
+          sed -i "s/^version:.*/version: $VERSION_NUMBER/" k8s/helm/zendapag/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"$VERSION\"/" k8s/helm/zendapag/Chart.yaml
+
+      - name: Package Helm chart
+        run: |
+          helm package k8s/helm/zendapag --destination ./charts/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Upload Helm chart to S3
+        run: |
+          aws s3 cp ./charts/zendapag-*.tgz s3://zendapag-helm-charts/
+
+      - name: Update Helm repository index
+        run: |
+          # Download existing index
+          aws s3 cp s3://zendapag-helm-charts/index.yaml ./index.yaml || echo "apiVersion: v1" > index.yaml
+
+          # Update index
+          helm repo index ./charts --url https://charts.zendapag.com --merge index.yaml
+
+          # Upload updated index
+          aws s3 cp ./charts/index.yaml s3://zendapag-helm-charts/
+
+  notify:
+    name: Notify Teams
+    runs-on: ubuntu-latest
+    needs: [validate, release, helm-package]
+    if: always()
+
+    steps:
+      - name: Notify Slack on success
+        if: needs.release.result == 'success'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: 'releases'
+          SLACK_COLOR: good
+          SLACK_MESSAGE: |
+            🚀 **Zendapag ${{ needs.validate.outputs.version }} Released!**
+
+            **Release Type:** ${{ needs.validate.outputs.is-prerelease == 'true' && 'Pre-release' || 'Stable Release' }}
+            **Artifacts:**
+            • Docker Images: ${{ needs.validate.outputs.version }}
+            • Helm Chart: Available
+            • GitHub Release: Created
+
+            **Links:**
+            • [Release Notes](https://github.com/${{ github.repository }}/releases/tag/${{ needs.validate.outputs.version }})
+            • [Docker Hub](https://hub.docker.com/r/zendapag)
+            • [Helm Charts](https://charts.zendapag.com)
+
+            🎉 Ready for deployment!
+
+      - name: Notify Slack on failure
+        if: |
+          needs.validate.result == 'failure' ||
+          needs.test.result == 'failure' ||
+          needs.build.result == 'failure' ||
+          needs.docker.result == 'failure' ||
+          needs.release.result == 'failure'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: 'releases'
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: |
+            ❌ **Release ${{ needs.validate.outputs.version }} Failed**
+
+            **Failed Jobs:**
+            ${{ needs.validate.result == 'failure' && '• Validation' || '' }}
+            ${{ needs.test.result == 'failure' && '• Tests' || '' }}
+            ${{ needs.build.result == 'failure' && '• Build' || '' }}
+            ${{ needs.docker.result == 'failure' && '• Docker Build' || '' }}
+            ${{ needs.release.result == 'failure' && '• GitHub Release' || '' }}
+
+            🔍 Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release ${{ needs.validate.outputs.version }} failed`,
+              body: `The release workflow for version ${{ needs.validate.outputs.version }} has failed.
+
+              **Workflow Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+              Please investigate and retry the release when issues are resolved.
+              `,
+              labels: ['release', 'bug', 'high-priority']
+            });
+
+            console.log(`Created issue #${issue.number}`);
+
+  security-scan:
+    name: Final Security Check
+    runs-on: ubuntu-latest
+    needs: [docker]
+
+    steps:
+      - name: Run Trivy on release images
+        run: |
+          # Scan API image
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            ${{ env.DOCKER_REGISTRY }}/zendapag-api:${{ needs.validate.outputs.version }}
+
+          # Scan Worker image
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            ${{ env.DOCKER_REGISTRY }}/zendapag-worker:${{ needs.validate.outputs.version }}

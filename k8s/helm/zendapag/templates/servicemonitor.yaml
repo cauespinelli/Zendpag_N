@@ -1,0 +1,113 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.serviceMonitor.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "zendapag.fullname" . }}-api
+  labels:
+    {{- include "zendapag.api.labels" . | nindent 4 }}
+    monitoring: "true"
+  {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.monitoring.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.monitoring.serviceMonitor.jobLabel }}
+  jobLabel: {{ .Values.monitoring.serviceMonitor.jobLabel }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zendapag.api.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: management
+    path: {{ .Values.monitoring.serviceMonitor.path | default "/actuator/prometheus" }}
+    interval: {{ .Values.monitoring.serviceMonitor.interval | default "30s" }}
+    scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | default "10s" }}
+    honorLabels: {{ .Values.monitoring.serviceMonitor.honorLabels | default true }}
+    {{- if .Values.monitoring.serviceMonitor.metricRelabelings }}
+    metricRelabelings:
+      {{- range .Values.monitoring.serviceMonitor.metricRelabelings }}
+      - {{ toYaml . | nindent 8 }}
+      {{- end }}
+    {{- else }}
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'jvm_.*|system_.*|process_.*'
+      action: drop
+    {{- end }}
+    {{- if .Values.monitoring.serviceMonitor.relabelings }}
+    relabelings:
+      {{- range .Values.monitoring.serviceMonitor.relabelings }}
+      - {{ toYaml . | nindent 8 }}
+      {{- end }}
+    {{- else }}
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod_name
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: kubernetes_namespace
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: kubernetes_service_name
+    {{- end }}
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "zendapag.fullname" . }}-worker
+  labels:
+    {{- include "zendapag.worker.labels" . | nindent 4 }}
+    monitoring: "true"
+  {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.monitoring.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.monitoring.serviceMonitor.jobLabel }}
+  jobLabel: {{ .Values.monitoring.serviceMonitor.jobLabel }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zendapag.worker.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: management
+    path: {{ .Values.monitoring.serviceMonitor.path | default "/actuator/prometheus" }}
+    interval: {{ .Values.monitoring.serviceMonitor.interval | default "30s" }}
+    scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | default "10s" }}
+    honorLabels: {{ .Values.monitoring.serviceMonitor.honorLabels | default true }}
+    {{- if .Values.monitoring.serviceMonitor.metricRelabelings }}
+    metricRelabelings:
+      {{- range .Values.monitoring.serviceMonitor.metricRelabelings }}
+      - {{ toYaml . | nindent 8 }}
+      {{- end }}
+    {{- else }}
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'jvm_.*|system_.*|process_.*'
+      action: drop
+    {{- end }}
+    {{- if .Values.monitoring.serviceMonitor.relabelings }}
+    relabelings:
+      {{- range .Values.monitoring.serviceMonitor.relabelings }}
+      - {{ toYaml . | nindent 8 }}
+      {{- end }}
+    {{- else }}
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod_name
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: kubernetes_namespace
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: kubernetes_service_name
+    {{- end }}
+{{- end }}

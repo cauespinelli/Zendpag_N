@@ -1,0 +1,108 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zendapag-api
+  labels:
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/component: api
+  annotations:
+    # AWS Load Balancer Controller
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/load-balancer-name: zendapag-staging-alb
+    alb.ingress.kubernetes.io/group.name: zendapag-staging
+
+    # SSL
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:ACCOUNT_ID:certificate/CERT_ID
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+
+    # Health Check
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+
+    # Security
+    alb.ingress.kubernetes.io/security-groups: sg-staging-alb
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:ACCOUNT_ID:regional/webacl/zendapag-staging/WAF_ID
+
+    # Logging
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      access_logs.s3.enabled=true,
+      access_logs.s3.bucket=zendapag-alb-logs-staging,
+      access_logs.s3.prefix=staging
+
+spec:
+  rules:
+    - host: api-staging.zendapag.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: zendapag-api-internal
+                port:
+                  number: 8080
+    - host: staging.zendapag.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: zendapag-api-internal
+                port:
+                  number: 8080
+          - path: /actuator
+            pathType: Prefix
+            backend:
+              service:
+                name: zendapag-api-internal
+                port:
+                  number: 8081
+
+---
+# Internal Ingress for management endpoints
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zendapag-management
+  labels:
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/component: management
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/load-balancer-name: zendapag-staging-internal-alb
+    alb.ingress.kubernetes.io/group.name: zendapag-staging-internal
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/security-groups: sg-staging-internal-alb
+
+    # IP Whitelist for internal access
+    alb.ingress.kubernetes.io/inbound-cidrs: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+
+spec:
+  rules:
+    - host: management-staging.zendapag.internal
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: zendapag-api-internal
+                port:
+                  number: 8081
+          - path: /worker
+            pathType: Prefix
+            backend:
+              service:
+                name: zendapag-worker
+                port:
+                  number: 8081

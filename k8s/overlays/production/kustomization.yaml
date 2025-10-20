@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: zendapag-production
+
+namespace: zendapag-production
+
+resources:
+  - ../../base
+  - deployment-api.yaml
+  - deployment-worker.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - network-policy.yaml
+  - service-monitor.yaml
+  - cronjobs.yaml
+
+patchesStrategicMerge:
+  - configmap-patch.yaml
+
+configMapGenerator:
+  - name: zendapag-env-specific
+    literals:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DATABASE_NAME=zendapag_production
+      - KAFKA_CONSUMER_GROUP_ID=zendapag-production
+
+commonLabels:
+  app.kubernetes.io/instance: production
+  environment: production
+
+images:
+  - name: zendapag-api
+    newTag: latest
+  - name: zendapag-worker
+    newTag: latest
+
+replicas:
+  - name: zendapag-api
+    count: 3
+  - name: zendapag-worker
+    count: 3

@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: zendapag-base
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+
+commonLabels:
+  app.kubernetes.io/name: zendapag
+  app.kubernetes.io/managed-by: kustomize

@@ -1,0 +1,22 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: 📚 Documentation
+    url: https://docs.zendapag.com
+    about: Check our documentation for answers to common questions
+
+  - name: 💬 Community Discussions
+    url: https://github.com/zendapag/zendapag/discussions
+    about: Ask questions and discuss ideas with the community
+
+  - name: 🔒 Critical Security Issue
+    url: mailto:security@zendapag.com
+    about: Report critical security vulnerabilities privately via email
+
+  - name: 🆘 Enterprise Support
+    url: https://zendapag.com/support
+    about: Get professional support for enterprise customers
+
+  - name: 📊 Status Page
+    url: https://status.zendapag.com
+    about: Check system status and ongoing incidents

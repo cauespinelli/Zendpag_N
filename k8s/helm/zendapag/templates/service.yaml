@@ -1,0 +1,88 @@
+{{- if .Values.service.api.enabled | default true }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zendapag.fullname" . }}-api
+  labels:
+    {{- include "zendapag.api.labels" . | nindent 4 }}
+  {{- with .Values.service.api.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.api.type }}
+  ports:
+    - port: {{ .Values.service.api.port }}
+      targetPort: {{ .Values.service.api.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "zendapag.api.selectorLabels" . | nindent 4 }}
+{{- end }}
+
+{{- if .Values.service.worker.enabled | default true }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zendapag.fullname" . }}-worker
+  labels:
+    {{- include "zendapag.worker.labels" . | nindent 4 }}
+  {{- with .Values.service.worker.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.worker.type }}
+  ports:
+    - port: {{ .Values.service.worker.port }}
+      targetPort: {{ .Values.service.worker.targetPort }}
+      protocol: TCP
+      name: management
+  selector:
+    {{- include "zendapag.worker.selectorLabels" . | nindent 4 }}
+{{- end }}
+
+---
+# Internal service for API management endpoints
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zendapag.fullname" . }}-api-internal
+  labels:
+    {{- include "zendapag.api.labels" . | nindent 4 }}
+    service-type: internal
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 8081
+      targetPort: management
+      protocol: TCP
+      name: management
+  selector:
+    {{- include "zendapag.api.selectorLabels" . | nindent 4 }}
+
+---
+# Headless service for StatefulSet-like behavior if needed
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zendapag.fullname" . }}-api-headless
+  labels:
+    {{- include "zendapag.api.labels" . | nindent 4 }}
+    service-type: headless
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "zendapag.api.selectorLabels" . | nindent 4 }}

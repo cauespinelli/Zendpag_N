@@ -1,0 +1,144 @@
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "zendapag.fullname" . }}-api-hpa
+  labels:
+    {{- include "zendapag.api.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "zendapag.fullname" . }}-api
+  minReplicas: {{ .Values.autoscaling.api.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.api.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.api.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.api.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.api.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.api.targetMemoryUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.api.customMetrics }}
+    {{- with .Values.autoscaling.api.customMetrics }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- end }}
+  {{- if .Values.autoscaling.api.behavior }}
+  behavior:
+    {{- with .Values.autoscaling.api.behavior }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- else }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      selectPolicy: Min
+  {{- end }}
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "zendapag.fullname" . }}-worker-hpa
+  labels:
+    {{- include "zendapag.worker.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "zendapag.fullname" . }}-worker
+  minReplicas: {{ .Values.autoscaling.worker.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.worker.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.worker.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.worker.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.worker.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.worker.targetMemoryUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.worker.customMetrics }}
+    {{- with .Values.autoscaling.worker.customMetrics }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- else }}
+    # Default Kafka consumer lag metric for workers
+    - type: Object
+      object:
+        metric:
+          name: kafka_consumer_lag_sum
+        describedObject:
+          apiVersion: v1
+          kind: Service
+          name: kafka-metrics
+        target:
+          type: AverageValue
+          averageValue: "1000"
+    {{- end }}
+  {{- if .Values.autoscaling.worker.behavior }}
+  behavior:
+    {{- with .Values.autoscaling.worker.behavior }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- else }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Pods
+        value: 3
+        periodSeconds: 60
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+      - type: Percent
+        value: 20
+        periodSeconds: 120
+      selectPolicy: Min
+  {{- end }}
+{{- end }}

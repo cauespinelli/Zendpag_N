@@ -1,0 +1,134 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zendapag-api-netpol
+  labels:
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/component: api
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zendapag
+      app.kubernetes.io/component: api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    # Allow ALB to reach API pods
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: aws-load-balancer-controller
+    # Allow internal communication
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: zendapag
+    # Allow monitoring
+    - namespaceSelector:
+        matchLabels:
+          name: zendapag-monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 8081
+  egress:
+  - to:
+    # Allow communication to worker pods
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: zendapag
+          app.kubernetes.io/component: worker
+    ports:
+    - protocol: TCP
+      port: 8081
+  - to:
+    # Allow database access
+    - namespaceSelector:
+        matchLabels:
+          name: database
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to: []
+    # Allow external services (Redis, Kafka, etc.)
+    ports:
+    - protocol: TCP
+      port: 6379  # Redis
+    - protocol: TCP
+      port: 9092  # Kafka
+    - protocol: TCP
+      port: 443   # HTTPS
+    - protocol: TCP
+      port: 80    # HTTP
+    - protocol: UDP
+      port: 53    # DNS
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zendapag-worker-netpol
+  labels:
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/component: worker
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zendapag
+      app.kubernetes.io/component: worker
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    # Allow API pods to communicate with worker
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: zendapag
+          app.kubernetes.io/component: api
+    # Allow monitoring
+    - namespaceSelector:
+        matchLabels:
+          name: zendapag-monitoring
+    ports:
+    - protocol: TCP
+      port: 8081
+  egress:
+  - to:
+    # Allow database access
+    - namespaceSelector:
+        matchLabels:
+          name: database
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to: []
+    # Allow external services
+    ports:
+    - protocol: TCP
+      port: 6379  # Redis
+    - protocol: TCP
+      port: 9092  # Kafka
+    - protocol: TCP
+      port: 443   # HTTPS
+    - protocol: TCP
+      port: 80    # HTTP
+    - protocol: UDP
+      port: 53    # DNS
+
+---
+# Default deny all network policy for the namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  labels:
+    app.kubernetes.io/name: zendapag
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress

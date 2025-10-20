@@ -1,0 +1,105 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "zendapag.fullname" . -}}
+{{- $svcPort := .Values.service.api.port -}}
+{{- if and .Values.ingress.className (not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class")) }}
+  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-api
+  labels:
+    {{- include "zendapag.api.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}-{{ .service | default "api-internal" }}
+                port:
+                  number: {{ .port | default $svcPort }}
+              {{- else }}
+              serviceName: {{ $fullName }}-{{ .service | default "api-internal" }}
+              servicePort: {{ .port | default $svcPort }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+
+{{- if .Values.ingress.internal.enabled }}
+---
+# Internal Ingress for management endpoints
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-management
+  labels:
+    {{- include "zendapag.labels" . | nindent 4 }}
+    app.kubernetes.io/component: management
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingress.internal.className | default "alb" }}
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    {{- if .Values.ingress.internal.allowedCIDRs }}
+    alb.ingress.kubernetes.io/inbound-cidrs: {{ join "," .Values.ingress.internal.allowedCIDRs }}
+    {{- else }}
+    alb.ingress.kubernetes.io/inbound-cidrs: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    {{- end }}
+    {{- with .Values.ingress.internal.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if and .Values.ingress.internal.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.ingress.internal.className }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.internal.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ $fullName }}-{{ .service }}
+                port:
+                  number: {{ .port }}
+              {{- else }}
+              serviceName: {{ $fullName }}-{{ .service }}
+              servicePort: {{ .port }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}

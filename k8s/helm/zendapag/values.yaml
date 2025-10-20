@@ -1,0 +1,293 @@
+# Default values for zendapag
+# This is a YAML-formatted file
+
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "gp3"
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  api:
+    registry: ""
+    repository: zendapag-api
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  worker:
+    registry: ""
+    repository: zendapag-worker
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+# Environment configuration
+environment: production
+
+# Replica count for each service
+replicaCount:
+  api: 3
+  worker: 3
+
+# Resource limits and requests
+resources:
+  api:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  worker:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  api:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  worker:
+    minReplicas: 2
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Service configuration
+service:
+  api:
+    type: LoadBalancer
+    port: 80
+    targetPort: 8080
+    annotations: {}
+  worker:
+    type: ClusterIP
+    port: 8081
+    targetPort: 8081
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+  hosts:
+    - host: api.zendapag.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+          port: 80
+  tls:
+    - secretName: zendapag-tls
+      hosts:
+        - api.zendapag.com
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1001
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# RBAC
+rbac:
+  create: true
+
+# ConfigMap data
+config:
+  springProfiles: "kubernetes"
+  javaOpts: "-Xmx1g -Xms512m -XX:+UseG1GC -XX:+UseContainerSupport"
+  logLevel: INFO
+  kafkaTopics:
+    transactionEvents: "transaction-events"
+    pixWebhook: "pix-webhook"
+    notifications: "notification-events"
+
+# External services configuration
+externalServices:
+  database:
+    enabled: false  # Use external RDS
+    host: ""
+    port: 5432
+    database: "zendapag"
+    existingSecret: "zendapag-database"
+    secretKeys:
+      usernameKey: "username"
+      passwordKey: "password"
+
+  redis:
+    enabled: false  # Use external ElastiCache
+    host: ""
+    port: 6379
+    auth:
+      enabled: true
+      existingSecret: "zendapag-redis"
+
+  kafka:
+    enabled: false  # Use external MSK
+    bootstrapServers: ""
+    existingSecret: "zendapag-kafka"
+
+# Secrets
+secrets:
+  jwt:
+    secretName: "zendapag-jwt"
+    secretKey: "secret"
+
+  pixCerts:
+    secretName: "zendapag-pix-certs"
+    privateKeyKey: "private-key"
+    certificateKey: "certificate"
+    caCertificateKey: "ca-certificate"
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /actuator/prometheus
+  prometheusRule:
+    enabled: true
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+  egress:
+    enabled: true
+
+# Node selection
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    enabled: true
+    type: soft  # or hard
+
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: "topology.kubernetes.io/zone"
+
+# Persistence for logs and cache
+persistence:
+  enabled: false
+  storageClass: "gp3"
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8081"
+  prometheus.io/path: "/actuator/prometheus"
+
+# Deployment strategy
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 25%
+    maxSurge: 25%
+
+# Health checks
+healthChecks:
+  api:
+    livenessProbe:
+      enabled: true
+      path: /actuator/health/liveness
+      port: management
+      initialDelaySeconds: 180
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      enabled: true
+      path: /actuator/health/readiness
+      port: management
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startupProbe:
+      enabled: true
+      path: /actuator/health
+      port: management
+      initialDelaySeconds: 90
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 18
+
+  worker:
+    livenessProbe:
+      enabled: true
+      path: /actuator/health/liveness
+      port: management
+      initialDelaySeconds: 180
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      enabled: true
+      path: /actuator/health/readiness
+      port: management
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startupProbe:
+      enabled: true
+      path: /actuator/health
+      port: management
+      initialDelaySeconds: 90
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 12
+
+# Development dependencies (disabled in production)
+postgresql:
+  enabled: false
+
+redis:
+  enabled: false
+
+kafka:
+  enabled: false

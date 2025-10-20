@@ -1,0 +1,413 @@
+name: Deploy to Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy'
+        required: true
+        default: 'latest'
+      skip_tests:
+        description: 'Skip pre-deployment tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: us-west-2
+  EKS_CLUSTER_NAME: zendapag-production
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY_URL }}
+  NAMESPACE: zendapag-production
+
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment:
+      name: production-approval
+      url: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Manual approval required
+        run: |
+          echo "🚀 Production deployment approved by: ${{ github.actor }}"
+          echo "Version: ${{ github.event.inputs.version || github.event.release.tag_name }}"
+
+  pre-deployment-tests:
+    runs-on: ubuntu-latest
+    needs: approval
+    if: github.event.inputs.skip_tests != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Run full test suite
+        run: |
+          ./mvnw clean verify -Dspring.profiles.active=prod
+
+      - name: Security scan
+        run: |
+          ./mvnw org.owasp:dependency-check-maven:check
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: [approval, pre-deployment-tests]
+    if: always() && needs.approval.result == 'success' && (needs.pre-deployment-tests.result == 'success' || needs.pre-deployment-tests.result == 'skipped')
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
+            VERSION=${{ github.event.release.tag_name }}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build application
+        run: |
+          ./mvnw clean package -DskipTests \
+            -Dspring.profiles.active=prod
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./zendapag-api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/zendapag-api:${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/zendapag-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          provenance: true
+          sbom: true
+
+      - name: Build and push Worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./zendapag-worker/Dockerfile
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/zendapag-worker:${{ steps.version.outputs.version }}
+            ${{ env.DOCKER_REGISTRY }}/zendapag-worker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          provenance: true
+          sbom: true
+
+      - name: Sign container images
+        run: |
+          # Install cosign
+          curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
+          sudo mv cosign-linux-amd64 /usr/local/bin/cosign
+          sudo chmod +x /usr/local/bin/cosign
+
+          # Sign images (using keyless signing)
+          cosign sign --yes ${{ env.DOCKER_REGISTRY }}/zendapag-api:${{ steps.version.outputs.version }}
+          cosign sign --yes ${{ env.DOCKER_REGISTRY }}/zendapag-worker:${{ steps.version.outputs.version }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [approval, build-and-push]
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create production secrets
+        run: |
+          # Database secret
+          kubectl create secret generic database-secret \
+            --from-literal=url="${{ secrets.PROD_DATABASE_URL }}" \
+            --from-literal=username="${{ secrets.PROD_DATABASE_USERNAME }}" \
+            --from-literal=password="${{ secrets.PROD_DATABASE_PASSWORD }}" \
+            --namespace=${{ env.NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          # JWT secret
+          kubectl create secret generic jwt-secret \
+            --from-literal=secret="${{ secrets.JWT_SECRET }}" \
+            --namespace=${{ env.NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          # PIX certificates
+          kubectl create secret generic pix-certs \
+            --from-literal=private-key="${{ secrets.PIX_CERT_PRIVATE_KEY }}" \
+            --from-literal=certificate="${{ secrets.PIX_CERT_CERTIFICATE }}" \
+            --from-literal=ca-certificate="${{ secrets.PIX_CERT_CA }}" \
+            --namespace=${{ env.NAMESPACE }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create database backup
+        run: |
+          echo "🗄️ Creating database backup before deployment..."
+          # Add your backup script here
+          # kubectl exec -n ${{ env.NAMESPACE }} deployment/postgresql -- pg_dump -U postgres zendapag > backup-$(date +%Y%m%d-%H%M%S).sql
+
+      - name: Blue-Green Deployment
+        run: |
+          # Deploy to green environment first
+          helm upgrade --install zendapag-production-green ./k8s/helm/zendapag \
+            --namespace ${{ env.NAMESPACE }} \
+            --set image.api.repository=${{ env.DOCKER_REGISTRY }}/zendapag-api \
+            --set image.api.tag=${{ needs.build-and-push.outputs.version }} \
+            --set image.worker.repository=${{ env.DOCKER_REGISTRY }}/zendapag-worker \
+            --set image.worker.tag=${{ needs.build-and-push.outputs.version }} \
+            --set environment=production \
+            --set nameOverride=zendapag-green \
+            --set service.suffix=-green \
+            --set replicaCount.api=3 \
+            --set replicaCount.worker=3 \
+            --set resources.api.requests.cpu=500m \
+            --set resources.api.requests.memory=1Gi \
+            --set resources.api.limits.cpu=1000m \
+            --set resources.api.limits.memory=2Gi \
+            --set resources.worker.requests.cpu=500m \
+            --set resources.worker.requests.memory=1Gi \
+            --set resources.worker.limits.cpu=1000m \
+            --set resources.worker.limits.memory=2Gi \
+            --set autoscaling.enabled=true \
+            --set ingress.enabled=true \
+            --set monitoring.enabled=true \
+            --wait --timeout=15m
+
+      - name: Verify green deployment
+        run: |
+          kubectl rollout status deployment/zendapag-green-api --namespace=${{ env.NAMESPACE }} --timeout=600s
+          kubectl rollout status deployment/zendapag-green-worker --namespace=${{ env.NAMESPACE }} --timeout=600s
+
+          # Health checks
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=zendapag-green-api --namespace=${{ env.NAMESPACE }} --timeout=600s
+
+      - name: Run production smoke tests
+        run: |
+          # Get green service endpoint for testing
+          GREEN_ENDPOINT=$(kubectl get service zendapag-green-api --namespace=${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+          echo "🧪 Running production smoke tests against green deployment..."
+
+          # Health checks
+          for i in {1..10}; do
+            if curl -f http://$GREEN_ENDPOINT/actuator/health; then
+              echo "✅ Green deployment health check passed"
+              break
+            else
+              echo "⏳ Health check attempt $i failed, retrying..."
+              sleep 30
+            fi
+            if [ $i -eq 10 ]; then
+              echo "❌ Green deployment failed health checks"
+              exit 1
+            fi
+          done
+
+          # Additional production tests
+          curl -f http://$GREEN_ENDPOINT/actuator/info
+          curl -f http://$GREEN_ENDPOINT/actuator/metrics
+
+      - name: Switch traffic to green (Blue-Green switch)
+        run: |
+          echo "🔄 Switching traffic to green deployment..."
+
+          # Update main service to point to green deployment
+          kubectl patch service zendapag-api --namespace=${{ env.NAMESPACE }} -p '{"spec":{"selector":{"app.kubernetes.io/name":"zendapag-green-api"}}}'
+
+          # Wait for traffic switch
+          sleep 30
+
+          # Verify traffic is going to green
+          MAIN_ENDPOINT=$(kubectl get service zendapag-api --namespace=${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          curl -f http://$MAIN_ENDPOINT/actuator/health
+
+      - name: Cleanup old blue deployment
+        run: |
+          echo "🧹 Cleaning up old blue deployment..."
+          # Remove old blue deployment after successful switch
+          helm uninstall zendapag-production-blue --namespace=${{ env.NAMESPACE }} --ignore-not-found
+
+          # Rename green to main
+          helm upgrade zendapag-production ./k8s/helm/zendapag \
+            --namespace ${{ env.NAMESPACE }} \
+            --reuse-values \
+            --set nameOverride="" \
+            --set service.suffix="" \
+            --wait
+
+  post-deployment:
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Update monitoring dashboards
+        run: |
+          echo "📊 Updating monitoring dashboards..."
+          # Add commands to update Grafana dashboards, alerts, etc.
+
+      - name: Notify stakeholders
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: 'releases'
+          SLACK_COLOR: good
+          SLACK_MESSAGE: |
+            🚀 Production deployment successful!
+            Version: ${{ needs.build-and-push.outputs.version }}
+            Commit: ${{ github.sha }}
+            Deployed by: ${{ github.actor }}
+
+            🔗 Production URL: https://api.zendapag.com
+            📊 Monitoring: https://grafana.zendapag.com
+
+  rollback:
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [deploy]
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Emergency rollback
+        run: |
+          echo "🚨 Emergency rollback initiated!"
+
+          # Switch traffic back to blue (previous version)
+          kubectl patch service zendapag-api --namespace=${{ env.NAMESPACE }} -p '{"spec":{"selector":{"app.kubernetes.io/name":"zendapag-api"}}}'
+
+          # Or rollback to previous Helm release
+          helm rollback zendapag-production --namespace=${{ env.NAMESPACE }}
+
+          # Verify rollback
+          kubectl rollout status deployment/zendapag-api --namespace=${{ env.NAMESPACE }} --timeout=300s
+
+      - name: Notify on rollback
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: 'alerts'
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: |
+            🚨 PRODUCTION ROLLBACK EXECUTED
+
+            Version: ${{ needs.build-and-push.outputs.version }}
+            Reason: Deployment failure
+            Rolled back by: GitHub Actions
+
+            🔍 Please investigate immediately!
+            📋 Runbook: https://docs.zendapag.com/runbooks/rollback
+
+  health-monitor:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+
+    steps:
+      - name: Monitor post-deployment health
+        run: |
+          echo "🔍 Monitoring production health for 5 minutes..."
+
+          for i in {1..10}; do
+            # Check main metrics
+            curl -s https://api.zendapag.com/actuator/health | jq .
+            curl -s https://api.zendapag.com/actuator/metrics/http.server.requests | jq .
+
+            echo "Health check $i/10 completed"
+            sleep 30
+          done
+
+          echo "✅ Post-deployment monitoring completed successfully"

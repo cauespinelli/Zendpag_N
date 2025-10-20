@@ -1,0 +1,437 @@
+version: '3.8'
+
+services:
+  # Zookeeper Cluster
+  zookeeper1:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper1
+    container_name: zendapag-zookeeper1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888
+    volumes:
+      - zookeeper1-data:/var/lib/zookeeper/data
+      - zookeeper1-logs:/var/lib/zookeeper/log
+    networks:
+      - zendapag-network
+
+  zookeeper2:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper2
+    container_name: zendapag-zookeeper2
+    ports:
+      - "2182:2181"
+    environment:
+      ZOOKEEPER_SERVER_ID: 2
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888
+    volumes:
+      - zookeeper2-data:/var/lib/zookeeper/data
+      - zookeeper2-logs:/var/lib/zookeeper/log
+    networks:
+      - zendapag-network
+
+  zookeeper3:
+    image: confluentinc/cp-zookeeper:7.4.0
+    hostname: zookeeper3
+    container_name: zendapag-zookeeper3
+    ports:
+      - "2183:2181"
+    environment:
+      ZOOKEEPER_SERVER_ID: 3
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888
+    volumes:
+      - zookeeper3-data:/var/lib/zookeeper/data
+      - zookeeper3-logs:/var/lib/zookeeper/log
+    networks:
+      - zendapag-network
+
+  # Kafka Broker 1
+  kafka1:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka1
+    container_name: zendapag-kafka1
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_LISTENERS: INTERNAL://kafka1:29092,EXTERNAL://0.0.0.0:9092,SSL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:29092,EXTERNAL://localhost:9092,SSL://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,SSL:SSL
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_IN_SYNC_REPLICAS: 2
+      KAFKA_COMPRESSION_TYPE: gzip
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_LOG_RETENTION_MS: 604800000  # 7 days
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
+      KAFKA_LOG_RETENTION_BYTES: 53687091200  # 50GB per topic
+      # Security Configuration
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka1.keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: kafkastore
+      KAFKA_SSL_KEY_PASSWORD: kafkastore
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: kafkastore
+      KAFKA_SSL_CLIENT_AUTH: required
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+      # SASL Configuration
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: SCRAM-SHA-512
+      # Performance Tuning
+      KAFKA_NUM_NETWORK_THREADS: 8
+      KAFKA_NUM_IO_THREADS: 16
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      # JVM Settings
+      KAFKA_HEAP_OPTS: "-Xmx2G -Xms2G"
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true"
+    volumes:
+      - kafka1-data:/var/lib/kafka/data
+      - ./kafka/secrets:/etc/kafka/secrets
+      - ./kafka/config:/etc/kafka/config
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - zendapag-network
+
+  # Kafka Broker 2
+  kafka2:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka2
+    container_name: zendapag-kafka2
+    ports:
+      - "9094:9092"
+      - "9095:9093"
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_LISTENERS: INTERNAL://kafka2:29092,EXTERNAL://0.0.0.0:9092,SSL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka2:29092,EXTERNAL://localhost:9094,SSL://localhost:9095
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,SSL:SSL
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_IN_SYNC_REPLICAS: 2
+      KAFKA_COMPRESSION_TYPE: gzip
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_LOG_RETENTION_MS: 604800000
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_BYTES: 53687091200
+      # Security Configuration
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka2.keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: kafkastore
+      KAFKA_SSL_KEY_PASSWORD: kafkastore
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: kafkastore
+      KAFKA_SSL_CLIENT_AUTH: required
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+      # SASL Configuration
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: SCRAM-SHA-512
+      # Performance Tuning
+      KAFKA_NUM_NETWORK_THREADS: 8
+      KAFKA_NUM_IO_THREADS: 16
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      # JVM Settings
+      KAFKA_HEAP_OPTS: "-Xmx2G -Xms2G"
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true"
+    volumes:
+      - kafka2-data:/var/lib/kafka/data
+      - ./kafka/secrets:/etc/kafka/secrets
+      - ./kafka/config:/etc/kafka/config
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - zendapag-network
+
+  # Kafka Broker 3
+  kafka3:
+    image: confluentinc/cp-kafka:7.4.0
+    hostname: kafka3
+    container_name: zendapag-kafka3
+    ports:
+      - "9096:9092"
+      - "9097:9093"
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_LISTENERS: INTERNAL://kafka3:29092,EXTERNAL://0.0.0.0:9092,SSL://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka3:29092,EXTERNAL://localhost:9096,SSL://localhost:9097
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,SSL:SSL
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_IN_SYNC_REPLICAS: 2
+      KAFKA_COMPRESSION_TYPE: gzip
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_LOG_RETENTION_MS: 604800000
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_BYTES: 53687091200
+      # Security Configuration
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SSL
+      KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/kafka3.keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: kafkastore
+      KAFKA_SSL_KEY_PASSWORD: kafkastore
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /etc/kafka/secrets/kafka.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: kafkastore
+      KAFKA_SSL_CLIENT_AUTH: required
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+      # SASL Configuration
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: SCRAM-SHA-512
+      # Performance Tuning
+      KAFKA_NUM_NETWORK_THREADS: 8
+      KAFKA_NUM_IO_THREADS: 16
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+      # JVM Settings
+      KAFKA_HEAP_OPTS: "-Xmx2G -Xms2G"
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true"
+    volumes:
+      - kafka3-data:/var/lib/kafka/data
+      - ./kafka/secrets:/etc/kafka/secrets
+      - ./kafka/config:/etc/kafka/config
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - zendapag-network
+
+  # Schema Registry
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.4.0
+    hostname: schema-registry
+    container_name: zendapag-schema-registry
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_DEBUG: 'true'
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    networks:
+      - zendapag-network
+
+  # Kafka Connect
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.4.0
+    hostname: kafka-connect
+    container_name: zendapag-kafka-connect
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: compose-connect-group
+      CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
+      CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - schema-registry
+    networks:
+      - zendapag-network
+
+  # Kafka UI
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    hostname: kafka-ui
+    container_name: zendapag-kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: zendapag-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:29092,kafka2:29092,kafka3:29092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      AUTH_TYPE: "LOGIN_FORM"
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: zendapag123
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - schema-registry
+      - kafka-connect
+    networks:
+      - zendapag-network
+
+  # Kafka Topic Manager (Init Container)
+  kafka-topic-manager:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: zendapag-topic-manager
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    command: |
+      bash -c '
+        echo "Waiting for Kafka to be ready..."
+        sleep 30
+
+        echo "Creating topics..."
+
+        # Payment Events Topic
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka1:29092,kafka2:29092,kafka3:29092 \
+          --topic payment-events \
+          --partitions 12 \
+          --replication-factor 3 \
+          --config retention.ms=604800000 \
+          --config cleanup.policy=delete \
+          --config compression.type=gzip \
+          --config min.insync.replicas=2
+
+        # Webhook Events Topic
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka1:29092,kafka2:29092,kafka3:29092 \
+          --topic webhook-events \
+          --partitions 6 \
+          --replication-factor 3 \
+          --config retention.ms=259200000 \
+          --config cleanup.policy=delete \
+          --config compression.type=gzip \
+          --config min.insync.replicas=2
+
+        # Settlement Events Topic
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka1:29092,kafka2:29092,kafka3:29092 \
+          --topic settlement-events \
+          --partitions 3 \
+          --replication-factor 3 \
+          --config retention.ms=604800000 \
+          --config cleanup.policy=delete \
+          --config compression.type=gzip \
+          --config min.insync.replicas=2
+
+        # Dead Letter Queue Topic
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka1:29092,kafka2:29092,kafka3:29092 \
+          --topic dead-letter-queue \
+          --partitions 3 \
+          --replication-factor 3 \
+          --config retention.ms=2592000000 \
+          --config cleanup.policy=delete \
+          --config compression.type=gzip \
+          --config min.insync.replicas=2
+
+        # Risk Analysis Events Topic
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka1:29092,kafka2:29092,kafka3:29092 \
+          --topic risk-analysis-events \
+          --partitions 6 \
+          --replication-factor 3 \
+          --config retention.ms=604800000 \
+          --config cleanup.policy=delete \
+          --config compression.type=gzip \
+          --config min.insync.replicas=2
+
+        # Notification Events Topic
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka1:29092,kafka2:29092,kafka3:29092 \
+          --topic notification-events \
+          --partitions 6 \
+          --replication-factor 3 \
+          --config retention.ms=259200000 \
+          --config cleanup.policy=delete \
+          --config compression.type=gzip \
+          --config min.insync.replicas=2
+
+        echo "Topics created successfully!"
+
+        echo "Listing all topics:"
+        kafka-topics --list --bootstrap-server kafka1:29092,kafka2:29092,kafka3:29092
+      '
+    networks:
+      - zendapag-network
+
+volumes:
+  zookeeper1-data:
+    driver: local
+  zookeeper1-logs:
+    driver: local
+  zookeeper2-data:
+    driver: local
+  zookeeper2-logs:
+    driver: local
+  zookeeper3-data:
+    driver: local
+  zookeeper3-logs:
+    driver: local
+  kafka1-data:
+    driver: local
+  kafka2-data:
+    driver: local
+  kafka3-data:
+    driver: local
+
+networks:
+  zendapag-network:
+    driver: bridge

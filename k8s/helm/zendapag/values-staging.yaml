@@ -1,0 +1,164 @@
+# Staging environment values
+environment: staging
+
+# Reduced replica count for staging
+replicaCount:
+  api: 2
+  worker: 2
+
+# Reduced resources for staging
+resources:
+  api:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  worker:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+# Autoscaling for staging
+autoscaling:
+  enabled: true
+  api:
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  worker:
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Staging ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-west-2:ACCOUNT_ID:certificate/STAGING_CERT_ID"
+    alb.ingress.kubernetes.io/group.name: "zendapag-staging"
+  hosts:
+    - host: api-staging.zendapag.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+          port: 80
+    - host: staging.zendapag.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: api
+          port: 80
+
+# Configuration overrides for staging
+config:
+  springProfiles: "staging"
+  javaOpts: "-Xmx512m -Xms256m -XX:+UseG1GC -XX:+UseContainerSupport"
+  logLevel: DEBUG
+
+# External services for staging
+externalServices:
+  database:
+    enabled: false
+    host: "zendapag-staging.cluster-xyz.us-west-2.rds.amazonaws.com"
+    port: 5432
+    database: "zendapag_staging"
+    existingSecret: "zendapag-database-staging"
+
+  redis:
+    enabled: false
+    host: "zendapag-staging.abc123.cache.amazonaws.com"
+    port: 6379
+    auth:
+      enabled: true
+      existingSecret: "zendapag-redis-staging"
+
+  kafka:
+    enabled: false
+    bootstrapServers: "zendapag-staging.kafka.us-west-2.amazonaws.com:9092"
+    existingSecret: "zendapag-kafka-staging"
+
+# Enable development dependencies for staging
+postgresql:
+  enabled: false  # Still use RDS in staging
+
+redis:
+  enabled: false  # Still use ElastiCache in staging
+
+kafka:
+  enabled: false  # Still use MSK in staging
+
+# Staging specific annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8081"
+  prometheus.io/path: "/actuator/prometheus"
+  environment: "staging"
+
+# Relaxed health checks for staging
+healthChecks:
+  api:
+    livenessProbe:
+      enabled: true
+      path: /actuator/health/liveness
+      port: management
+      initialDelaySeconds: 120
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      enabled: true
+      path: /actuator/health/readiness
+      port: management
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startupProbe:
+      enabled: true
+      path: /actuator/health
+      port: management
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 12
+
+  worker:
+    livenessProbe:
+      enabled: true
+      path: /actuator/health/liveness
+      port: management
+      initialDelaySeconds: 120
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      enabled: true
+      path: /actuator/health/readiness
+      port: management
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startupProbe:
+      enabled: true
+      path: /actuator/health
+      port: management
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 12

@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zendapag.fullname" . }}-api
+  labels:
+    {{- include "zendapag.api.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount.api }}
+  {{- with .Values.deploymentStrategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zendapag.api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "zendapag.api.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "zendapag.serviceAccountName" . }}
+      securityContext:
+        {{- include "zendapag.securityContext" . | nindent 8 }}
+      containers:
+        - name: api
+          securityContext:
+            {{- include "zendapag.containerSecurityContext" . | nindent 12 }}
+          image: {{ include "zendapag.api.image" . }}
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 8081
+              protocol: TCP
+          env:
+            {{- include "zendapag.env" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources.api | nindent 12 }}
+          {{- if .Values.healthChecks.api.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthChecks.api.livenessProbe.path }}
+              port: {{ .Values.healthChecks.api.livenessProbe.port }}
+            initialDelaySeconds: {{ .Values.healthChecks.api.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthChecks.api.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthChecks.api.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthChecks.api.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.healthChecks.api.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthChecks.api.readinessProbe.path }}
+              port: {{ .Values.healthChecks.api.readinessProbe.port }}
+            initialDelaySeconds: {{ .Values.healthChecks.api.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthChecks.api.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthChecks.api.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthChecks.api.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.healthChecks.api.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.healthChecks.api.startupProbe.path }}
+              port: {{ .Values.healthChecks.api.startupProbe.port }}
+            initialDelaySeconds: {{ .Values.healthChecks.api.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthChecks.api.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthChecks.api.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthChecks.api.startupProbe.failureThreshold }}
+          {{- end }}
+          volumeMounts:
+            {{- include "zendapag.volumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "zendapag.volumes" . | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if or .Values.affinity.podAntiAffinity.enabled .Values.affinity.nodeAffinity }}
+      affinity:
+        {{- if .Values.affinity.podAntiAffinity.enabled }}
+        podAntiAffinity:
+          {{- $component := "api" }}
+          {{- include "zendapag.podAntiAffinity" (dict "Values" .Values "component" $component) | nindent 10 }}
+        {{- end }}
+        {{- with .Values.affinity.nodeAffinity }}
+        nodeAffinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+        {{- $component := "api" }}
+        {{- include "zendapag.topologySpreadConstraints" (dict "Values" .Values "component" $component "Template" .Template) | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: zendapag-staging
+
+namespace: zendapag-staging
+
+resources:
+  - ../../base
+  - deployment-api.yaml
+  - deployment-worker.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - network-policy.yaml
+  - service-monitor.yaml
+
+patchesStrategicMerge:
+  - configmap-patch.yaml
+
+configMapGenerator:
+  - name: zendapag-env-specific
+    literals:
+      - SPRING_PROFILES_ACTIVE=staging
+      - DATABASE_NAME=zendapag_staging
+      - KAFKA_CONSUMER_GROUP_ID=zendapag-staging
+      - LOGGING_LEVEL_COM_ZENDAPAG=DEBUG
+
+commonLabels:
+  app.kubernetes.io/instance: staging
+  environment: staging
+
+images:
+  - name: zendapag-api
+    newTag: staging-latest
+  - name: zendapag-worker
+    newTag: staging-latest
+
+replicas:
+  - name: zendapag-api
+    count: 2
+  - name: zendapag-worker
+    count: 2

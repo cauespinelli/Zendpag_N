@@ -1,0 +1,263 @@
+# Production environment values
+environment: production
+
+# Production replica count
+replicaCount:
+  api: 3
+  worker: 3
+
+# Production resources
+resources:
+  api:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  worker:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+# Production autoscaling
+autoscaling:
+  enabled: true
+  api:
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  worker:
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# Production ingress configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-west-2:ACCOUNT_ID:certificate/PROD_CERT_ID"
+    alb.ingress.kubernetes.io/group.name: "zendapag-production"
+    alb.ingress.kubernetes.io/security-groups: "sg-production-alb"
+    alb.ingress.kubernetes.io/wafv2-acl-arn: "arn:aws:wafv2:us-west-2:ACCOUNT_ID:regional/webacl/zendapag-production/WAF_ID"
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      access_logs.s3.enabled=true,
+      access_logs.s3.bucket=zendapag-alb-logs-production,
+      access_logs.s3.prefix=production,
+      deletion_protection.enabled=true
+  hosts:
+    - host: api.zendapag.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+          port: 80
+    - host: zendapag.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: api
+          port: 80
+
+# Production configuration
+config:
+  springProfiles: "prod"
+  javaOpts: "-Xmx2g -Xms1g -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+  logLevel: INFO
+
+# External services for production
+externalServices:
+  database:
+    enabled: false
+    host: "zendapag-prod.cluster-xyz.us-west-2.rds.amazonaws.com"
+    port: 5432
+    database: "zendapag_production"
+    existingSecret: "zendapag-database-production"
+
+  redis:
+    enabled: false
+    host: "zendapag-prod.abc123.cache.amazonaws.com"
+    port: 6379
+    auth:
+      enabled: true
+      existingSecret: "zendapag-redis-production"
+
+  kafka:
+    enabled: false
+    bootstrapServers: "zendapag-prod.kafka.us-west-2.amazonaws.com:9092"
+    existingSecret: "zendapag-kafka-production"
+
+# Production dependencies (all external)
+postgresql:
+  enabled: false
+
+redis:
+  enabled: false
+
+kafka:
+  enabled: false
+
+# Production specific annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8081"
+  prometheus.io/path: "/actuator/prometheus"
+  environment: "production"
+  config.alpha.linkerd.io/proxy-cpu-request: "100m"
+  config.alpha.linkerd.io/proxy-memory-request: "20Mi"
+
+# Enhanced affinity for production
+affinity:
+  podAntiAffinity:
+    enabled: true
+    type: hard  # Ensure pods are on different nodes
+  nodeAffinity:
+    enabled: true
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - matchExpressions:
+        - key: node-type
+          operator: In
+          values: ["application"]
+
+# Topology spread constraints for production
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: "topology.kubernetes.io/zone"
+  whenUnsatisfiable: DoNotSchedule
+
+# Production tolerations for dedicated nodes
+tolerations:
+  - key: "application-nodes"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+  - key: "dedicated"
+    operator: "Equal"
+    value: "zendapag"
+    effect: "NoSchedule"
+
+# Production node selector
+nodeSelector:
+  node-type: application
+  instance-type: t3.large
+
+# Enhanced health checks for production
+healthChecks:
+  api:
+    livenessProbe:
+      enabled: true
+      path: /actuator/health/liveness
+      port: management
+      initialDelaySeconds: 180
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      enabled: true
+      path: /actuator/health/readiness
+      port: management
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startupProbe:
+      enabled: true
+      path: /actuator/health
+      port: management
+      initialDelaySeconds: 90
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 18
+
+  worker:
+    livenessProbe:
+      enabled: true
+      path: /actuator/health/liveness
+      port: management
+      initialDelaySeconds: 180
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      enabled: true
+      path: /actuator/health/readiness
+      port: management
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startupProbe:
+      enabled: true
+      path: /actuator/health
+      port: management
+      initialDelaySeconds: 90
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 18
+
+# Production monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s  # More frequent monitoring in production
+    scrapeTimeout: 10s
+    path: /actuator/prometheus
+  prometheusRule:
+    enabled: true
+    additionalRules: true  # Enable additional production alerts
+
+# Enhanced security for production
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1001
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+# Production network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    enabled: true
+    allowExternal: false  # Only allow ALB
+  egress:
+    enabled: true
+    restrictOutbound: true  # Restrict outbound connections
+
+# Service account with production IAM role
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::ACCOUNT_ID:role/ZendapagProductionRole"
+  name: "zendapag-production"
+
+# RBAC for production
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["secrets", "configmaps"]
+      verbs: ["get", "list"]

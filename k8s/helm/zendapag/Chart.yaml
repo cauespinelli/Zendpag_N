@@ -1,0 +1,63 @@
+apiVersion: v2
+name: zendapag
+description: A Helm chart for Zendapag PIX Payment Platform
+
+# Chart type: application or library
+type: application
+
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+version: 1.0.0
+
+# This is the version number of the application being deployed.
+appVersion: "1.0.0"
+
+keywords:
+  - pix
+  - payment
+  - fintech
+  - spring-boot
+  - kafka
+
+home: https://zendapag.com
+sources:
+  - https://github.com/zendapag/zendapag-platform
+
+maintainers:
+  - name: Zendapag Team
+    email: devops@zendapag.com
+    url: https://zendapag.com
+
+icon: https://zendapag.com/logo.png
+
+# Dependencies
+dependencies:
+  - name: postgresql
+    version: "12.12.10"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+    tags:
+      - database
+
+  - name: redis
+    version: "18.4.0"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+    tags:
+      - cache
+
+  - name: kafka
+    version: "26.6.2"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: kafka.enabled
+    tags:
+      - messaging
+
+annotations:
+  category: Application
+  licenses: MIT
+  images: |
+    - name: zendapag-api
+      image: zendapag-api:1.0.0
+    - name: zendapag-worker
+      image: zendapag-worker:1.0.0

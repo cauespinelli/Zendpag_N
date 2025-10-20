@@ -1,0 +1,37 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zendapag-staging
+  labels:
+    name: zendapag-staging
+    environment: staging
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/instance: staging
+  annotations:
+    kubernetes.io/managed-by: "kustomize"
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zendapag-production
+  labels:
+    name: zendapag-production
+    environment: production
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/instance: production
+  annotations:
+    kubernetes.io/managed-by: "kustomize"
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: zendapag-monitoring
+  labels:
+    name: zendapag-monitoring
+    environment: shared
+    app.kubernetes.io/name: zendapag-monitoring
+  annotations:
+    kubernetes.io/managed-by: "kustomize"

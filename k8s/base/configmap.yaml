@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zendapag-config
+  labels:
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/component: config
+data:
+  # Application Configuration
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  JAVA_OPTS: "-Xmx1g -Xms512m -XX:+UseG1GC -XX:+UseContainerSupport"
+
+  # Kafka Configuration
+  KAFKA_CONSUMER_AUTO_OFFSET_RESET: "earliest"
+  KAFKA_CONSUMER_ENABLE_AUTO_COMMIT: "false"
+  KAFKA_PRODUCER_ACKS: "all"
+  KAFKA_PRODUCER_RETRIES: "3"
+
+  # Redis Configuration
+  REDIS_TIMEOUT: "2000ms"
+  REDIS_LETTUCE_POOL_MAX_ACTIVE: "8"
+  REDIS_LETTUCE_POOL_MAX_IDLE: "8"
+  REDIS_LETTUCE_POOL_MIN_IDLE: "0"
+
+  # Management Configuration
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "when-authorized"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+
+  # Logging Configuration
+  LOGGING_LEVEL_COM_ZENDAPAG: "INFO"
+  LOGGING_LEVEL_ROOT: "WARN"
+  LOGGING_PATTERN_CONSOLE: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","logger":"%logger","thread":"%thread","message":"%msg"}%n'
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zendapag-kafka-topics
+  labels:
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/component: config
+data:
+  topics.json: |
+    {
+      "topics": [
+        {
+          "name": "transaction-events",
+          "partitions": 6,
+          "replicationFactor": 3,
+          "config": {
+            "retention.ms": "604800000",
+            "cleanup.policy": "delete"
+          }
+        },
+        {
+          "name": "pix-webhook",
+          "partitions": 3,
+          "replicationFactor": 3,
+          "config": {
+            "retention.ms": "259200000",
+            "cleanup.policy": "delete"
+          }
+        },
+        {
+          "name": "notification-events",
+          "partitions": 3,
+          "replicationFactor": 3,
+          "config": {
+            "retention.ms": "86400000",
+            "cleanup.policy": "delete"
+          }
+        }
+      ]
+    }

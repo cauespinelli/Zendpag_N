@@ -1,0 +1,162 @@
+groups:
+  - name: kafka-alerts
+    rules:
+      # Kafka Broker Down
+      - alert: KafkaBrokerDown
+        expr: up{job="kafka-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: kafka
+        annotations:
+          summary: "Kafka broker is down"
+          description: "Kafka broker {{ $labels.instance }} has been down for more than 1 minute"
+
+      # High Consumer Lag
+      - alert: KafkaConsumerLagHigh
+        expr: kafka_consumer_lag_sum{topic!=""} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: kafka
+        annotations:
+          summary: "High Kafka consumer lag"
+          description: "Consumer group {{ $labels.group }} for topic {{ $labels.topic }} has high lag: {{ $value }}"
+
+      # Critical Consumer Lag
+      - alert: KafkaConsumerLagCritical
+        expr: kafka_consumer_lag_sum{topic!=""} > 10000
+        for: 2m
+        labels:
+          severity: critical
+          service: kafka
+        annotations:
+          summary: "Critical Kafka consumer lag"
+          description: "Consumer group {{ $labels.group }} for topic {{ $labels.topic }} has critical lag: {{ $value }}"
+
+      # Kafka Topic Partition Under Replicated
+      - alert: KafkaUnderReplicatedPartitions
+        expr: kafka_topic_partition_under_replicated_partition > 0
+        for: 2m
+        labels:
+          severity: critical
+          service: kafka
+        annotations:
+          summary: "Kafka under-replicated partitions detected"
+          description: "Topic {{ $labels.topic }} has {{ $value }} under-replicated partitions"
+
+      # Kafka ISR Shrinks
+      - alert: KafkaIsrShrinksHigh
+        expr: rate(kafka_server_ReplicaManager_IsrShrinks_total[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          service: kafka
+        annotations:
+          summary: "High ISR shrinks rate"
+          description: "ISR shrinks rate is {{ $value }} shrinks/sec on {{ $labels.instance }}"
+
+      # Kafka Request Queue Size
+      - alert: KafkaRequestQueueSizeHigh
+        expr: kafka_network_RequestChannel_RequestQueueSize > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: kafka
+        annotations:
+          summary: "High Kafka request queue size"
+          description: "Request queue size is {{ $value }} on {{ $labels.instance }}"
+
+      # Kafka Disk Usage High
+      - alert: KafkaDiskUsageHigh
+        expr: (kafka_log_size_bytes / kafka_log_size_limit_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: kafka
+        annotations:
+          summary: "High Kafka disk usage"
+          description: "Disk usage is {{ $value }}% on topic {{ $labels.topic }} partition {{ $labels.partition }}"
+
+      # Kafka Message Production Rate Low
+      - alert: KafkaProducerRateLow
+        expr: rate(kafka_server_BrokerTopicMetrics_MessagesInPerSec_total[5m]) < 1
+        for: 10m
+        labels:
+          severity: warning
+          service: kafka
+        annotations:
+          summary: "Low Kafka message production rate"
+          description: "Message production rate is {{ $value }} messages/sec, which is unusually low"
+
+      # Zookeeper Connection Issues
+      - alert: ZookeeperDown
+        expr: up{job="zookeeper"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: zookeeper
+        annotations:
+          summary: "Zookeeper is down"
+          description: "Zookeeper instance {{ $labels.instance }} has been down for more than 1 minute"
+
+      # Kafka Connect Down
+      - alert: KafkaConnectDown
+        expr: up{job="kafka-connect"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: kafka-connect
+        annotations:
+          summary: "Kafka Connect is down"
+          description: "Kafka Connect instance {{ $labels.instance }} has been down for more than 2 minutes"
+
+  - name: kafka-business-alerts
+    rules:
+      # Payment Events Processing Lag
+      - alert: PaymentEventsLagHigh
+        expr: kafka_consumer_lag_sum{topic="payment-events"} > 500
+        for: 3m
+        labels:
+          severity: warning
+          service: payments
+          business_impact: high
+        annotations:
+          summary: "High lag in payment events processing"
+          description: "Payment events consumer lag is {{ $value }}, may impact payment processing time"
+
+      # Webhook Events Processing Lag
+      - alert: WebhookEventsLagHigh
+        expr: kafka_consumer_lag_sum{topic="webhook-events"} > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: webhooks
+          business_impact: medium
+        annotations:
+          summary: "High lag in webhook events processing"
+          description: "Webhook events consumer lag is {{ $value }}, may delay webhook deliveries"
+
+      # Dead Letter Queue Growth
+      - alert: DeadLetterQueueGrowth
+        expr: increase(kafka_server_BrokerTopicMetrics_MessagesInPerSec_total{topic="dead-letter-queue"}[5m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+          service: dlq
+          business_impact: high
+        annotations:
+          summary: "Dead letter queue receiving many messages"
+          description: "Dead letter queue received {{ $value }} messages in the last 5 minutes, indicating processing issues"
+
+      # Settlement Events Lag
+      - alert: SettlementEventsLagHigh
+        expr: kafka_consumer_lag_sum{topic="settlement-events"} > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: settlements
+          business_impact: high
+        annotations:
+          summary: "High lag in settlement events processing"
+          description: "Settlement events consumer lag is {{ $value }}, may delay merchant payouts"

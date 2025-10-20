@@ -1,0 +1,133 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: zendapag-api
+  labels:
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/component: api
+    monitoring: "true"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zendapag
+      app.kubernetes.io/component: api
+  endpoints:
+  - port: management
+    path: /actuator/prometheus
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'jvm_.*|system_.*|process_.*'
+      action: drop
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod_name
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node_name
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: zendapag-worker
+  labels:
+    app.kubernetes.io/name: zendapag
+    app.kubernetes.io/component: worker
+    monitoring: "true"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zendapag
+      app.kubernetes.io/component: worker
+  endpoints:
+  - port: management
+    path: /actuator/prometheus
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'jvm_.*|system_.*|process_.*'
+      action: drop
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod_name
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node_name
+
+---
+# PrometheusRule for alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: zendapag-alerts
+  labels:
+    app.kubernetes.io/name: zendapag
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: zendapag.rules
+    rules:
+    - alert: ZendapagAPIDown
+      expr: up{job="zendapag-api"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: zendapag-api
+      annotations:
+        summary: "Zendapag API is down"
+        description: "Zendapag API has been down for more than 1 minute."
+
+    - alert: ZendapagWorkerDown
+      expr: up{job="zendapag-worker"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: zendapag-worker
+      annotations:
+        summary: "Zendapag Worker is down"
+        description: "Zendapag Worker has been down for more than 1 minute."
+
+    - alert: ZendapagHighErrorRate
+      expr: rate(http_server_requests_seconds_count{status=~"5.."}[5m]) / rate(http_server_requests_seconds_count[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+        service: zendapag-api
+      annotations:
+        summary: "High error rate in Zendapag API"
+        description: "Error rate is {{ $value | humanizePercentage }} for more than 5 minutes."
+
+    - alert: ZendapagHighLatency
+      expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 2
+      for: 5m
+      labels:
+        severity: warning
+        service: zendapag-api
+      annotations:
+        summary: "High latency in Zendapag API"
+        description: "95th percentile latency is {{ $value }}s for more than 5 minutes."
+
+    - alert: ZendapagDatabaseConnectionFailure
+      expr: hikaricp_connections_active == 0 and hikaricp_connections_total > 0
+      for: 2m
+      labels:
+        severity: critical
+        service: zendapag
+      annotations:
+        summary: "Database connection failure"
+        description: "No active database connections for more than 2 minutes."
+
+    - alert: ZendapagKafkaConsumerLag
+      expr: kafka_consumer_lag_sum > 10000
+      for: 5m
+      labels:
+        severity: warning
+        service: zendapag-worker
+      annotations:
+        summary: "High Kafka consumer lag"
+        description: "Kafka consumer lag is {{ $value }} messages for more than 5 minutes."

@@ -1,0 +1,146 @@
+name: 🐛 Bug Report
+description: Create a report to help us improve Zendapag
+title: "[Bug]: "
+labels: ["bug", "triage-required"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Bug Summary
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what happened!
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component is affected?
+      options:
+        - API
+        - Worker
+        - Database
+        - Authentication
+        - PIX Integration
+        - Infrastructure
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: In which environment did this occur?
+      options:
+        - Development
+        - Staging
+        - Production
+        - Local
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Please provide detailed steps to reproduce the behavior.
+      placeholder: |
+        1. Go to...
+        2. Click on...
+        3. Scroll down to...
+        4. See error
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: A clear and concise description of what actually happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs/Error Messages
+      description: |
+        Please copy and paste any relevant log output or error messages.
+        This will be automatically formatted into code, so no need for backticks.
+      render: shell
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - Critical (System down, data loss, security breach)
+        - High (Major functionality broken)
+        - Medium (Some functionality affected)
+        - Low (Minor issue, workaround available)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of Zendapag are you running?
+      placeholder: e.g., v1.2.3
+
+  - type: textarea
+    id: system-info
+    attributes:
+      label: System Information
+      description: |
+        Please provide relevant system information
+      placeholder: |
+        - OS: [e.g., Ubuntu 20.04]
+        - Java Version: [e.g., OpenJDK 17.0.2]
+        - Database: [e.g., PostgreSQL 15.1]
+        - Browser (if applicable): [e.g., Chrome 91.0]
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context about the problem here. Screenshots, configuration files, etc.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify the following before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided all requested information
+          required: true
+        - label: I have removed any sensitive information (passwords, tokens, etc.)
+          required: true
+        - label: I can reproduce this issue consistently
+          required: false

@@ -1,0 +1,179 @@
+name: ✨ Feature Request
+description: Suggest an idea for Zendapag
+title: "[Feature]: "
+labels: ["enhancement", "triage-required"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature for Zendapag!
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: A clear and concise description of the feature you'd like to see.
+      placeholder: Describe the feature you want...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which component would this feature affect?
+      options:
+        - API
+        - Worker
+        - Database
+        - Authentication
+        - PIX Integration
+        - UI/Frontend
+        - Infrastructure
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: |
+        Is your feature request related to a problem? Please describe the problem you're trying to solve.
+      placeholder: I'm always frustrated when...
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe the solution you'd like in detail. How should this feature work?
+      placeholder: I would like to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: |
+        Describe any alternative solutions or features you've considered.
+      placeholder: Alternatively, we could...
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Critical (Blocking current work)
+        - High (Important for business objectives)
+        - Medium (Would be nice to have)
+        - Low (Future enhancement)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: feature-type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - label: New functionality
+        - label: Enhancement to existing feature
+        - label: Performance improvement
+        - label: Security enhancement
+        - label: Developer experience improvement
+        - label: Documentation improvement
+
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User Story
+      description: |
+        Describe this feature as a user story (optional but helpful)
+      placeholder: |
+        As a [type of user],
+        I want to [perform some action]
+        So that [I can achieve some goal]
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: |
+        What are the specific requirements that must be met for this feature to be considered complete?
+      placeholder: |
+        - [ ] User can...
+        - [ ] System should...
+        - [ ] When X happens, Y should occur
+
+  - type: textarea
+    id: technical-requirements
+    attributes:
+      label: Technical Requirements
+      description: |
+        Any specific technical requirements, constraints, or considerations?
+      placeholder: |
+        - Database changes required
+        - New API endpoints needed
+        - Third-party integrations
+        - Performance requirements
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Examples
+      description: |
+        If applicable, add mockups, examples, or references to help explain your feature request.
+
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Estimated Effort
+      description: How much effort do you think this would require?
+      options:
+        - Small (few hours to 1 day)
+        - Medium (2-5 days)
+        - Large (1-2 weeks)
+        - Extra Large (2+ weeks)
+        - Unknown
+
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact Areas
+      description: Which areas might be impacted by this feature?
+      options:
+        - label: Breaking changes
+        - label: Database schema changes
+        - label: API changes
+        - label: Configuration changes
+        - label: Performance impact
+        - label: Security considerations
+        - label: Documentation updates needed
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: |
+        Add any other context, screenshots, or examples about the feature request here.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      description: Please verify the following before submitting
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided a clear description of the feature
+          required: true
+        - label: I have considered the impact and effort required
+          required: true
+        - label: This feature aligns with Zendapag's mission and goals
+          required: true

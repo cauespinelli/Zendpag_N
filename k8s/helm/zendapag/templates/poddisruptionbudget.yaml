@@ -1,0 +1,39 @@
+{{- if .Values.podDisruptionBudget.api.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "zendapag.fullname" . }}-api-pdb
+  labels:
+    {{- include "zendapag.api.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.podDisruptionBudget.api.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.api.minAvailable }}
+  {{- end }}
+  {{- if .Values.podDisruptionBudget.api.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.api.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zendapag.api.selectorLabels" . | nindent 6 }}
+{{- end }}
+
+{{- if .Values.podDisruptionBudget.worker.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "zendapag.fullname" . }}-worker-pdb
+  labels:
+    {{- include "zendapag.worker.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.podDisruptionBudget.worker.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.worker.minAvailable }}
+  {{- end }}
+  {{- if .Values.podDisruptionBudget.worker.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.worker.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zendapag.worker.selectorLabels" . | nindent 6 }}
+{{- end }}

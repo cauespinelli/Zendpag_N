@@ -1,0 +1,30 @@
+# Base Dockerfile for common dependencies
+FROM openjdk:17-jdk-slim
+
+WORKDIR /app
+
+# Install common tools
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy Maven wrapper
+COPY mvnw .
+COPY .mvn .mvn
+
+# Make mvnw executable
+RUN chmod +x mvnw
+
+# Download dependencies (this layer will be cached)
+COPY pom.xml .
+COPY zendapag-common/pom.xml ./zendapag-common/
+COPY zendapag-core/pom.xml ./zendapag-core/
+COPY zendapag-api/pom.xml ./zendapag-api/
+COPY zendapag-worker/pom.xml ./zendapag-worker/
+
+RUN ./mvnw dependency:go-offline -B
