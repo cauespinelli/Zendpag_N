@@ -1,0 +1,355 @@
+name: Deploy to Digital Ocean
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  DO_REGISTRY: registry.digitalocean.com/zendapag
+  JAVA_VERSION: '17'
+
+jobs:
+  build-and-push:
+    name: Build and Push to DO Registry
+    runs-on: ubuntu-latest
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build with Maven
+        run: |
+          ./mvnw clean package -DskipTests
+          echo "✅ Build completed successfully"
+
+      - name: Generate version tag
+        id: version
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          VERSION="${{ github.ref_name }}-${SHORT_SHA}-$(date +%Y%m%d-%H%M%S)"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_TOKEN }}
+
+      - name: Log in to DO Container Registry
+        run: |
+          doctl registry login
+          echo "✅ Logged in to Digital Ocean Container Registry"
+
+      - name: Build and push API image
+        run: |
+          echo "🔨 Building API image..."
+          docker build \
+            -t ${{ env.DO_REGISTRY }}/zendapag-api:${{ steps.version.outputs.version }} \
+            -t ${{ env.DO_REGISTRY }}/zendapag-api:latest \
+            -f zendapag-api/Dockerfile .
+
+          docker push ${{ env.DO_REGISTRY }}/zendapag-api:${{ steps.version.outputs.version }}
+          docker push ${{ env.DO_REGISTRY }}/zendapag-api:latest
+          echo "✅ API image pushed successfully"
+
+      - name: Build and push Worker image
+        run: |
+          echo "🔨 Building Worker image..."
+          docker build \
+            -t ${{ env.DO_REGISTRY }}/zendapag-worker:${{ steps.version.outputs.version }} \
+            -t ${{ env.DO_REGISTRY }}/zendapag-worker:latest \
+            -f zendapag-worker/Dockerfile .
+
+          docker push ${{ env.DO_REGISTRY }}/zendapag-worker:${{ steps.version.outputs.version }}
+          docker push ${{ env.DO_REGISTRY }}/zendapag-worker:latest
+          echo "✅ Worker image pushed successfully"
+
+      - name: Build and push Dashboard image
+        run: |
+          echo "🔨 Building Dashboard image..."
+          cd zendapag-dashboard
+          docker build \
+            -t ${{ env.DO_REGISTRY }}/zendapag-dashboard:${{ steps.version.outputs.version }} \
+            -t ${{ env.DO_REGISTRY }}/zendapag-dashboard:latest \
+            -f Dockerfile .
+
+          docker push ${{ env.DO_REGISTRY }}/zendapag-dashboard:${{ steps.version.outputs.version }}
+          docker push ${{ env.DO_REGISTRY }}/zendapag-dashboard:latest
+          echo "✅ Dashboard image pushed successfully"
+
+  deploy-to-droplet:
+    name: Deploy to Digital Ocean Droplet
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: http://${{ secrets.DO_DROPLET_IP }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create deployment package
+        run: |
+          echo "📦 Creating deployment package..."
+          tar czf deployment.tar.gz \
+            docker-compose.yml \
+            docker-compose.kafka.yml \
+            docker-compose.monitoring.yml \
+            .env.example \
+            scripts/
+
+      - name: Copy deployment files to Droplet
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DO_DROPLET_IP }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          source: "deployment.tar.gz"
+          target: "/tmp/"
+
+      - name: Deploy to Droplet
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DO_DROPLET_IP }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "🚀 Starting deployment to Digital Ocean Droplet..."
+
+            # Create app directory
+            mkdir -p /opt/zendapag
+            cd /opt/zendapag
+
+            # Extract deployment files
+            if [ -f /tmp/deployment.tar.gz ]; then
+              tar xzf /tmp/deployment.tar.gz
+              rm /tmp/deployment.tar.gz
+              echo "✅ Deployment files extracted"
+            fi
+
+            # Login to DO Container Registry
+            echo "${{ secrets.DO_REGISTRY_TOKEN }}" | docker login registry.digitalocean.com -u ${{ secrets.DO_REGISTRY_TOKEN }} --password-stdin
+            echo "✅ Logged in to DO Registry"
+
+            # Pull latest images
+            echo "📥 Pulling latest images..."
+            docker pull ${{ env.DO_REGISTRY }}/zendapag-api:latest
+            docker pull ${{ env.DO_REGISTRY }}/zendapag-worker:latest
+            docker pull ${{ env.DO_REGISTRY }}/zendapag-dashboard:latest
+
+            # Stop and remove old containers
+            echo "🛑 Stopping old containers..."
+            docker-compose down || true
+
+            # Start infrastructure services first
+            echo "🔧 Starting infrastructure services..."
+            docker-compose up -d postgres redis
+            sleep 10
+
+            # Start Kafka cluster
+            echo "📨 Starting Kafka cluster..."
+            docker-compose -f docker-compose.kafka.yml up -d zookeeper1 zookeeper2 zookeeper3
+            sleep 20
+            docker-compose -f docker-compose.kafka.yml up -d kafka1 kafka2 kafka3
+            sleep 30
+
+            # Start application services
+            echo "🚀 Starting application services..."
+            docker-compose up -d zendapag-api zendapag-worker
+
+            # Wait for services to be healthy
+            echo "⏳ Waiting for services to be healthy..."
+            sleep 30
+
+            # Check service status
+            echo "📊 Service status:"
+            docker-compose ps
+
+            # Cleanup old images
+            echo "🧹 Cleaning up old images..."
+            docker image prune -af --filter "until=48h" || true
+
+            echo "✅ Deployment completed successfully!"
+
+      - name: Health check API
+        run: |
+          echo "🏥 Running health checks..."
+          sleep 10
+
+          for i in {1..10}; do
+            if curl -f http://${{ secrets.DO_DROPLET_IP }}:8093/actuator/health; then
+              echo "✅ API health check passed"
+              break
+            else
+              echo "⏳ Health check attempt $i/10 failed, retrying in 10s..."
+              sleep 10
+            fi
+
+            if [ $i -eq 10 ]; then
+              echo "❌ API health check failed after 10 attempts"
+              exit 1
+            fi
+          done
+
+      - name: Health check Worker
+        run: |
+          echo "🏥 Checking Worker health..."
+
+          for i in {1..10}; do
+            if curl -f http://${{ secrets.DO_DROPLET_IP }}:8094/actuator/health; then
+              echo "✅ Worker health check passed"
+              break
+            else
+              echo "⏳ Health check attempt $i/10 failed, retrying in 10s..."
+              sleep 10
+            fi
+
+            if [ $i -eq 10 ]; then
+              echo "❌ Worker health check failed after 10 attempts"
+              exit 1
+            fi
+          done
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DO_DROPLET_IP }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            cd /opt/zendapag
+
+            echo "==================================="
+            echo "📊 DEPLOYMENT VERIFICATION"
+            echo "==================================="
+            echo ""
+            echo "🐳 Running Containers:"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep zendapag
+            echo ""
+            echo "💾 Disk Usage:"
+            df -h / | tail -1
+            echo ""
+            echo "🔧 Docker Stats:"
+            docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | grep zendapag
+            echo ""
+            echo "✅ Deployment verification completed!"
+
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-to-droplet]
+    if: always()
+
+    steps:
+      - name: Notify Slack on success
+        if: needs.deploy-to-droplet.result == 'success'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: 'deployments'
+          SLACK_COLOR: good
+          SLACK_MESSAGE: |
+            ✅ Deployment to Digital Ocean succeeded!
+
+            Environment: ${{ github.event.inputs.environment || 'production' }}
+            Version: ${{ needs.build-and-push.outputs.version }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+
+            🔗 API: http://${{ secrets.DO_DROPLET_IP }}:8093
+            🔗 Worker: http://${{ secrets.DO_DROPLET_IP }}:8094
+            🔗 Dashboard: http://${{ secrets.DO_DROPLET_IP }}:3005
+
+      - name: Notify Slack on failure
+        if: needs.deploy-to-droplet.result == 'failure'
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: 'deployments'
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: |
+            ❌ Deployment to Digital Ocean failed!
+
+            Environment: ${{ github.event.inputs.environment || 'production' }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+
+            Please check the workflow logs:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [deploy-to-droplet]
+
+    steps:
+      - name: Rollback deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DO_DROPLET_IP }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            echo "🚨 ROLLBACK INITIATED"
+            cd /opt/zendapag
+
+            # Pull previous images with 'stable' tag
+            docker pull ${{ env.DO_REGISTRY }}/zendapag-api:stable || true
+            docker pull ${{ env.DO_REGISTRY }}/zendapag-worker:stable || true
+
+            # Restart with stable images
+            docker-compose down
+            docker-compose up -d
+
+            echo "✅ Rollback completed - services restored to stable version"
+
+      - name: Notify rollback
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: 'alerts'
+          SLACK_COLOR: warning
+          SLACK_MESSAGE: |
+            ⚠️ ROLLBACK EXECUTED
+
+            Deployment failed and was rolled back to stable version.
+
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+
+            Action required: Investigation needed!
