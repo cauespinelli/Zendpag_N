@@ -12,6 +12,9 @@ import enUS from 'antd/locale/en_US';
 import { useAuthStore } from '@/store/authStore';
 import { themeSelectors } from '@/store/themeStore';
 
+// Theme import
+import { zendapagTheme } from '@/theme/antd-theme';
+
 // Component imports
 import ErrorFallback from '@/components/ErrorFallback';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -59,6 +62,16 @@ const App: React.FC = () => {
   const language = themeSelectors.useLanguage();
   const cssVariables = themeSelectors.useCSSVariables();
 
+  // Merge Zendapag design system theme with existing theme config
+  const mergedTheme = {
+    ...zendapagTheme,
+    ...themeConfig,
+    token: {
+      ...zendapagTheme.token,
+      ...themeConfig?.token,
+    },
+  };
+
   // Initialize auth on app start
   useEffect(() => {
     if (isAuthenticated) {
@@ -89,7 +102,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <QueryClientProvider client={queryClient}>
-        <ConfigProvider theme={themeConfig} locale={locale}>
+        <ConfigProvider theme={mergedTheme} locale={locale}>
           <AntApp>
             <BrowserRouter>
               <Suspense fallback={<LoadingScreen />}>

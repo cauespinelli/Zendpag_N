@@ -1,0 +1,190 @@
+/**
+ * Zendapag Design System - Dashboard Implementation
+ * Import this file before other styles
+ */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+/* Import Design Tokens */
+:root {
+  /* CORES PRIMÁRIAS */
+  --zp-primary-50: #EEF2FF;
+  --zp-primary-100: #E0E7FF;
+  --zp-primary-200: #C7D2FE;
+  --zp-primary-300: #A5B4FC;
+  --zp-primary-400: #818CF8;
+  --zp-primary-500: #6366F1;
+  --zp-primary-600: #4F46E5;
+  --zp-primary-700: #4338CA;
+  --zp-primary-800: #3730A3;
+  --zp-primary-900: #312E81;
+
+  /* SUCCESS */
+  --zp-success-50: #ECFDF5;
+  --zp-success-500: #10B981;
+  --zp-success-600: #059669;
+  --zp-success-100: #D1FAE5;
+  --zp-success-700: #047857;
+
+  /* WARNING/ACCENT */
+  --zp-accent-50: #FFFBEB;
+  --zp-accent-500: #F59E0B;
+  --zp-accent-600: #D97706;
+  --zp-accent-100: #FEF3C7;
+
+  /* ERROR */
+  --zp-error-50: #FEF2F2;
+  --zp-error-500: #EF4444;
+  --zp-error-600: #DC2626;
+  --zp-error-100: #FEE2E2;
+
+  /* INFO */
+  --zp-info-50: #EFF6FF;
+  --zp-info-500: #3B82F6;
+  --zp-info-600: #2563EB;
+  --zp-info-100: #DBEAFE;
+
+  /* NEUTROS */
+  --zp-neutral-50: #F8FAFC;
+  --zp-neutral-100: #F1F5F9;
+  --zp-neutral-200: #E2E8F0;
+  --zp-neutral-300: #CBD5E1;
+  --zp-neutral-400: #94A3B8;
+  --zp-neutral-500: #64748B;
+  --zp-neutral-600: #475569;
+  --zp-neutral-700: #334155;
+  --zp-neutral-800: #1E293B;
+  --zp-neutral-900: #0F172A;
+
+  /* OVERRIDE ANTIGAS VARIÁVEIS */
+  --primary-color: var(--zp-primary-600);
+  --background-color: var(--zp-neutral-50);
+  --surface-color: #FFFFFF;
+  --border-color: var(--zp-neutral-200);
+  --text-color: var(--zp-neutral-700);
+  --text-secondary: var(--zp-neutral-500);
+  --shadow-color: rgba(0, 0, 0, 0.1);
+
+  /* TIPOGRAFIA */
+  --zp-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --zp-font-display: 'Space Grotesk', 'Inter', sans-serif;
+
+  /* ESPAÇAMENTO */
+  --zp-space-1: 0.25rem;
+  --zp-space-2: 0.5rem;
+  --zp-space-3: 0.75rem;
+  --zp-space-4: 1rem;
+  --zp-space-5: 1.25rem;
+  --zp-space-6: 1.5rem;
+  --zp-space-8: 2rem;
+  --zp-space-10: 2.5rem;
+  --zp-space-12: 3rem;
+
+  /* SOMBRAS */
+  --zp-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --zp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --zp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --zp-shadow-primary: 0 10px 25px -5px rgba(99, 102, 241, 0.3);
+
+  /* BORDER RADIUS */
+  --zp-radius-sm: 0.25rem;
+  --zp-radius-md: 0.375rem;
+  --zp-radius-lg: 0.5rem;
+  --zp-radius-xl: 0.75rem;
+  --zp-radius-2xl: 1rem;
+
+  /* TRANSITIONS */
+  --zp-duration-fast: 150ms;
+  --zp-duration-normal: 250ms;
+  --zp-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --zp-transition: all var(--zp-duration-normal) var(--zp-ease-out);
+}
+
+/* DARK MODE */
+[data-theme="dark"] {
+  --zp-neutral-50: #0F172A;
+  --zp-neutral-100: #1E293B;
+  --zp-neutral-200: #334155;
+  --zp-neutral-300: #475569;
+  --zp-neutral-800: #F1F5F9;
+  --zp-neutral-900: #F8FAFC;
+
+  --background-color: var(--zp-neutral-900);
+  --surface-color: var(--zp-neutral-800);
+  --text-color: var(--zp-neutral-100);
+}
+
+/* BODY BASE */
+body {
+  font-family: var(--zp-font-family);
+}
+
+/* ANT DESIGN OVERRIDES - Aplicar design system */
+.ant-btn-primary {
+  background: var(--zp-primary-600) !important;
+  border-color: var(--zp-primary-600) !important;
+  box-shadow: var(--zp-shadow-sm);
+}
+
+.ant-btn-primary:hover {
+  background: var(--zp-primary-700) !important;
+  border-color: var(--zp-primary-700) !important;
+  box-shadow: var(--zp-shadow-primary);
+  transform: translateY(-1px);
+}
+
+.ant-btn {
+  border-radius: var(--zp-radius-lg) !important;
+  font-weight: 600;
+  transition: var(--zp-transition);
+}
+
+.ant-card {
+  border-radius: var(--zp-radius-xl) !important;
+  box-shadow: var(--zp-shadow-md) !important;
+  border-color: var(--zp-neutral-200) !important;
+}
+
+.ant-card:hover {
+  box-shadow: var(--zp-shadow-lg) !important;
+}
+
+.ant-badge-status-success {
+  background-color: var(--zp-success-500) !important;
+}
+
+.ant-badge-status-processing {
+  background-color: var(--zp-primary-500) !important;
+}
+
+.ant-badge-status-warning {
+  background-color: var(--zp-accent-500) !important;
+}
+
+.ant-badge-status-error {
+  background-color: var(--zp-error-500) !important;
+}
+
+/* HEADER CUSTOMIZATION */
+.ant-layout-header {
+  background: white !important;
+  border-bottom: 1px solid var(--zp-neutral-200);
+  box-shadow: var(--zp-shadow-sm);
+}
+
+/* SIDEBAR CUSTOMIZATION */
+.ant-layout-sider {
+  background: white !important;
+  border-right: 1px solid var(--zp-neutral-200);
+}
+
+.ant-menu-item-selected {
+  background: var(--zp-primary-50) !important;
+  color: var(--zp-primary-700) !important;
+}
+
+.ant-menu-item:hover {
+  background: var(--zp-neutral-50) !important;
+  color: var(--zp-primary-600) !important;
+}

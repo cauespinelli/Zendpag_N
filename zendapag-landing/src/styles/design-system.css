@@ -1,0 +1,171 @@
+/**
+ * Zendapag Design System - Landing Page Implementation
+ * Import this file before other styles
+ */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+/* Import Design Tokens */
+:root {
+  /* CORES PRIMÁRIAS */
+  --zp-primary-50: #EEF2FF;
+  --zp-primary-100: #E0E7FF;
+  --zp-primary-200: #C7D2FE;
+  --zp-primary-300: #A5B4FC;
+  --zp-primary-400: #818CF8;
+  --zp-primary-500: #6366F1;
+  --zp-primary-600: #4F46E5;
+  --zp-primary-700: #4338CA;
+  --zp-primary-800: #3730A3;
+  --zp-primary-900: #312E81;
+
+  /* SUCCESS */
+  --zp-success-500: #10B981;
+  --zp-success-600: #059669;
+  --zp-success-100: #D1FAE5;
+
+  /* ACCENT */
+  --zp-accent-500: #F59E0B;
+  --zp-accent-600: #D97706;
+
+  /* NEUTROS */
+  --zp-neutral-50: #F8FAFC;
+  --zp-neutral-100: #F1F5F9;
+  --zp-neutral-200: #E2E8F0;
+  --zp-neutral-300: #CBD5E1;
+  --zp-neutral-400: #94A3B8;
+  --zp-neutral-500: #64748B;
+  --zp-neutral-600: #475569;
+  --zp-neutral-700: #334155;
+  --zp-neutral-800: #1E293B;
+  --zp-neutral-900: #0F172A;
+
+  /* TIPOGRAFIA */
+  --zp-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --zp-font-display: 'Space Grotesk', 'Inter', sans-serif;
+
+  --zp-text-display-2xl: 4.5rem;
+  --zp-text-display-xl: 3.75rem;
+  --zp-text-display-lg: 3rem;
+  --zp-text-h1: 2.25rem;
+  --zp-text-h2: 1.875rem;
+  --zp-text-h3: 1.5rem;
+  --zp-text-h4: 1.25rem;
+  --zp-text-body-lg: 1.125rem;
+  --zp-text-body: 1rem;
+  --zp-text-body-sm: 0.875rem;
+
+  --zp-leading-tight: 1.2;
+  --zp-leading-normal: 1.5;
+  --zp-leading-relaxed: 1.625;
+
+  --zp-tracking-tight: -0.025em;
+  --zp-tracking-normal: 0;
+  --zp-tracking-wide: 0.025em;
+
+  --zp-font-medium: 500;
+  --zp-font-semibold: 600;
+  --zp-font-bold: 700;
+  --zp-font-extrabold: 800;
+
+  /* ESPAÇAMENTO */
+  --zp-space-1: 0.25rem;
+  --zp-space-2: 0.5rem;
+  --zp-space-3: 0.75rem;
+  --zp-space-4: 1rem;
+  --zp-space-5: 1.25rem;
+  --zp-space-6: 1.5rem;
+  --zp-space-8: 2rem;
+  --zp-space-10: 2.5rem;
+  --zp-space-12: 3rem;
+  --zp-space-16: 4rem;
+  --zp-space-20: 5rem;
+  --zp-space-24: 6rem;
+
+  /* SOMBRAS */
+  --zp-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --zp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --zp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --zp-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --zp-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --zp-shadow-primary: 0 10px 25px -5px rgba(99, 102, 241, 0.3);
+  --zp-shadow-success: 0 10px 25px -5px rgba(16, 185, 129, 0.3);
+
+  /* BORDER RADIUS */
+  --zp-radius-sm: 0.25rem;
+  --zp-radius-md: 0.375rem;
+  --zp-radius-lg: 0.5rem;
+  --zp-radius-xl: 0.75rem;
+  --zp-radius-2xl: 1rem;
+  --zp-radius-3xl: 1.5rem;
+  --zp-radius-full: 9999px;
+
+  /* TRANSITIONS */
+  --zp-duration-fast: 150ms;
+  --zp-duration-normal: 250ms;
+  --zp-duration-slow: 350ms;
+  --zp-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --zp-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --zp-transition: all var(--zp-duration-normal) var(--zp-ease-out);
+
+  /* GRADIENTS */
+  --zp-gradient-primary: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  --zp-gradient-premium: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --zp-gradient-subtle: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+}
+
+/* RESET & BASE */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--zp-font-family);
+  font-size: var(--zp-text-body);
+  line-height: var(--zp-leading-normal);
+  color: var(--zp-neutral-700);
+  background: white;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* TIPOGRAFIA */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--zp-font-display);
+  font-weight: var(--zp-font-bold);
+  color: var(--zp-neutral-900);
+  line-height: var(--zp-leading-tight);
+  letter-spacing: var(--zp-tracking-tight);
+}
+
+h1 {
+  font-size: var(--zp-text-display-lg);
+}
+
+h2 {
+  font-size: var(--zp-text-h2);
+}
+
+h3 {
+  font-size: var(--zp-text-h3);
+}
+
+p {
+  line-height: var(--zp-leading-relaxed);
+}
+
+/* UTILITIES */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--zp-space-6);
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 var(--zp-space-4);
+  }
+}

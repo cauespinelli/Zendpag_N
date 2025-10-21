@@ -1,0 +1,18 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect width="48" height="48" rx="12" fill="url(#icon-gradient)"/>
+
+  <!-- Z Symbol with flow indicators -->
+  <g fill="white">
+    <path d="M14,16 h20 l-14,14 h14 v4 h-20 l14,-14 h-14 z"/>
+    <circle cx="36" cy="18" r="2.5"/>
+    <circle cx="36" cy="30" r="2.5"/>
+  </g>
+</svg>

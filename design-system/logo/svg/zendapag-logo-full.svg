@@ -1,0 +1,24 @@
+<svg width="200" height="48" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient Definition -->
+  <defs>
+    <linearGradient id="zp-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Icon: Modern Z with Flow -->
+  <g id="zp-icon">
+    <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#zp-gradient)"/>
+    <g fill="white">
+      <path d="M15,16 h14 l-10,10 h10 v3 h-14 l10,-10 h-10 z" fill-opacity="1"/>
+      <circle cx="32" cy="18" r="2"/>
+      <circle cx="32" cy="30" r="2"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="56" y="32" font-family="Space Grotesk, system-ui, sans-serif" font-weight="700" font-size="20" letter-spacing="-0.02em" fill="#1E293B">
+    zendapag
+  </text>
+</svg>

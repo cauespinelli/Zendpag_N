@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
 import { themeSelectors } from '@/store/themeStore';
+import Logo from '@/components/Logo';
 
 const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
@@ -132,17 +133,15 @@ const DashboardLayout: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#fff',
-            fontSize: collapsed ? 16 : 20,
-            fontWeight: 'bold',
             padding: '0 16px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            borderBottom: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+            background: darkMode ? '#001529' : 'white',
           }}
         >
-          {collapsed ? 'ZP' : 'ZendaPag'}
+          <Logo collapsed={collapsed} variant={darkMode ? 'white' : 'full'} width={collapsed ? 40 : 140} height={40} />
         </div>
         <Menu
-          theme="dark"
+          theme={darkMode ? "dark" : "light"}
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
@@ -151,7 +150,7 @@ const DashboardLayout: React.FC = () => {
             borderRight: 0,
             height: 'calc(100vh - 64px)',
             overflowY: 'auto',
-            background: darkMode ? '#001529' : '#fff',
+            background: darkMode ? '#001529' : 'white',
           }}
         />
       </Sider>
