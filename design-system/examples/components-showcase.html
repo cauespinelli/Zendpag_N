@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zendapag Design System - Component Showcase</title>
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .showcase {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: var(--zend-space-8);
+    }
+
+    .showcase-section {
+      margin-bottom: var(--zend-space-16);
+      padding: var(--zend-space-8);
+      background: white;
+      border-radius: var(--zend-radius-lg);
+      border: 1px solid var(--zend-border-light);
+    }
+
+    .showcase-header {
+      margin-bottom: var(--zend-space-8);
+      padding-bottom: var(--zend-space-6);
+      border-bottom: 2px solid var(--zend-border-light);
+    }
+
+    .showcase-title {
+      font-size: var(--zend-text-3xl);
+      font-weight: var(--zend-weight-bold);
+      color: var(--zend-text-primary);
+      margin-bottom: var(--zend-space-2);
+    }
+
+    .showcase-subtitle {
+      font-size: var(--zend-text-lg);
+      color: var(--zend-text-tertiary);
+    }
+
+    .component-group {
+      margin-bottom: var(--zend-space-8);
+    }
+
+    .component-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .component-label {
+      font-size: var(--zend-text-sm);
+      font-weight: var(--zend-weight-semibold);
+      color: var(--zend-text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: var(--zend-tracking-wider);
+      margin-bottom: var(--zend-space-3);
+    }
+
+    .component-demo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--zend-space-4);
+      align-items: center;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--zend-space-6);
+    }
+
+    .theme-toggle-btn {
+      position: fixed;
+      bottom: var(--zend-space-6);
+      right: var(--zend-space-6);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <!-- Theme Toggle -->
+  <button class="btn btn-primary theme-toggle-btn" onclick="toggleTheme()">
+    🌙 Toggle Dark Mode
+  </button>
+
+  <div class="showcase">
+    <!-- Header -->
+    <header class="showcase-header">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 style="font-size: var(--zend-text-5xl); font-weight: var(--zend-weight-extrabold); color: var(--zend-primary); margin-bottom: var(--zend-space-2);">
+            Zendapag Design System
+          </h1>
+          <p style="font-size: var(--zend-text-xl); color: var(--zend-text-tertiary);">
+            Showcase de Componentes v2.0
+          </p>
+        </div>
+        <span class="badge badge-primary badge-lg">NOVO</span>
+      </div>
+    </header>
+
+    <!-- BUTTONS -->
+    <section class="showcase-section">
+      <h2 class="showcase-title">Buttons</h2>
+      <p class="showcase-subtitle">Variações e tamanhos de botões</p>
+
+      <div class="component-group">
+        <div class="component-label">Primary & Secondary</div>
+        <div class="component-demo">
+          <button class="btn btn-primary">Primary Button</button>
+          <button class="btn btn-secondary">Secondary Button</button>
+          <button class="btn btn-ghost">Ghost Button</button>
+          <button class="btn btn-danger">Danger Button</button>
+          <button class="btn btn-success">Success Button</button>
+        </div>
+      </div>
+
+      <div class="component-group">
+        <div class="component-label">Sizes</div>
+        <div class="component-demo">
+          <button class="btn btn-primary btn-sm">Small</button>
+          <button class="btn btn-primary">Normal</button>
+          <button class="btn btn-primary btn-lg">Large</button>
+          <button class="btn btn-primary btn-xl">Extra Large</button>
+        </div>
+      </div>
+
+      <div class="component-group">
+        <div class="component-label">States</div>
+        <div class="component-demo">
+          <button class="btn btn-primary" disabled>Disabled</button>
+          <button class="btn btn-primary btn-block" style="max-width: 300px;">Full Width</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FORMS -->
+    <section class="showcase-section">
+      <h2 class="showcase-title">Forms</h2>
+      <p class="showcase-subtitle">Inputs, selects e controles de formulário</p>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label required" for="email">Email</label>
+          <input type="email" id="email" class="form-input" placeholder="seu@email.com" />
+          <span class="form-helper">Digite seu email válido</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Senha</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••" />
+          <span class="form-helper is-error" style="display: none;">Senha muito curta</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="select">Select</label>
+          <select id="select" class="form-input form-select">
+            <option>Opção 1</option>
+            <option>Opção 2</option>
+            <option>Opção 3</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Textarea</label>
+          <textarea class="form-input form-textarea" placeholder="Digite sua mensagem..."></textarea>
+        </div>
+      </div>
+
+      <div class="component-group">
+        <div class="component-label">Input States</div>
+        <div class="component-demo" style="flex-direction: column; align-items: stretch; max-width: 400px;">
+          <input class="form-input" placeholder="Normal" />
+          <input class="form-input is-valid" placeholder="Valid" />
+          <input class="form-input is-invalid" placeholder="Invalid" />
+          <input class="form-input" placeholder="Disabled" disabled />
+        </div>
+      </div>
+    </section>
+
+    <!-- CARDS -->
+    <section class="showcase-section">
+      <h2 class="showcase-title">Cards</h2>
+      <p class="showcase-subtitle">Cards padrão e de métricas</p>
+
+      <div class="grid-2">
+        <!-- Card Padrão -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Card Title</h3>
+            <p class="card-subtitle">Optional subtitle</p>
+          </div>
+          <div class="card-body">
+            Este é um card padrão com header, body e footer. Perfeito para conteúdo estruturado.
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-primary btn-sm">Action</button>
+            <button class="btn btn-ghost btn-sm">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Card Interativo -->
+        <div class="card card-interactive">
+          <div class="card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h3 class="card-title">Interactive Card</h3>
+          <p class="card-body">
+            Este card tem hover effects e pode ser clicável.
+          </p>
+        </div>
+
+        <!-- Metric Card -->
+        <div class="card metric-card">
+          <div class="metric-label">Receita Total</div>
+          <div class="metric-value">R$ 45.230</div>
+          <div class="metric-change is-positive">
+            ↑ 12.5%
+          </div>
+        </div>
+
+        <!-- Metric Card 2 -->
+        <div class="card metric-card">
+          <div class="metric-label">Transações</div>
+          <div class="metric-value">1,248</div>
+          <div class="metric-change is-negative">
+            ↓ 3.2%
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BADGES -->
+    <section class="showcase-section">
+      <h2 class="showcase-title">Badges</h2>
+      <p class="showcase-subtitle">Status indicators e tags</p>
+
+      <div class="component-group">
+        <div class="component-label">Colors</div>
+        <div class="component-demo">
+          <span class="badge badge-primary">Primary</span>
+          <span class="badge badge-success">Success</span>
+          <span class="badge badge-warning">Warning</span>
+          <span class="badge badge-error">Error</span>
+          <span class="badge badge-info">Info</span>
+          <span class="badge badge-gray">Gray</span>
+        </div>
+      </div>
+
+      <div class="component-group">
+        <div class="component-label">Sizes</div>
+        <div class="component-demo">
+          <span class="badge badge-primary badge-sm">Small</span>
+          <span class="badge badge-primary">Normal</span>
+          <span class="badge badge-primary badge-lg">Large</span>
+        </div>
+      </div>
+
+      <div class="component-group">
+        <div class="component-label">With Dot</div>
+        <div class="component-demo">
+          <span class="badge badge-success badge-dot">Online</span>
+          <span class="badge badge-warning badge-dot">Away</span>
+          <span class="badge badge-error badge-dot">Offline</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ALERTS -->
+    <section class="showcase-section">
+      <h2 class="showcase-title">Alerts</h2>
+      <p class="showcase-subtitle">Mensagens de feedback</p>
+
+      <div class="flex flex-col gap-4">
+        <div class="alert alert-success">
+          <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <div class="alert-content">
+            <div class="alert-title">Success!</div>
+            <div class="alert-message">Your changes have been saved successfully.</div>
+          </div>
+          <button class="alert-close">×</button>
+        </div>
+
+        <div class="alert alert-error">
+          <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+          </svg>
+          <div class="alert-content">
+            <div class="alert-title">Error!</div>
+            <div class="alert-message">There was an error processing your request.</div>
+          </div>
+          <button class="alert-close">×</button>
+        </div>
+
+        <div class="alert alert-warning">
+          <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+          <div class="alert-content">
+            <div class="alert-title">Warning!</div>
+            <div class="alert-message">Please review your information before submitting.</div>
+          </div>
+          <button class="alert-close">×</button>
+        </div>
+
+        <div class="alert alert-info">
+          <svg class="alert-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+          <div class="alert-content">
+            <div class="alert-title">Info</div>
+            <div class="alert-message">Did you know? You can customize your dashboard.</div>
+          </div>
+          <button class="alert-close">×</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABLE -->
+    <section class="showcase-section">
+      <h2 class="showcase-title">Tables</h2>
+      <p class="showcase-subtitle">Tabelas de dados</p>
+
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Descrição</th>
+              <th class="text-right">Valor</th>
+              <th>Status</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>21/10/2025</td>
+              <td>Pagamento #1234</td>
+              <td class="text-right">R$ 1.250,00</td>
+              <td><span class="badge badge-success">Aprovado</span></td>
+              <td class="text-right">
+                <button class="btn btn-ghost btn-sm">Ver</button>
+              </td>
+            </tr>
+            <tr>
+              <td>20/10/2025</td>
+              <td>Pagamento #1233</td>
+              <td class="text-right">R$ 850,00</td>
+              <td><span class="badge badge-warning">Pendente</span></td>
+              <td class="text-right">
+                <button class="btn btn-ghost btn-sm">Ver</button>
+              </td>
+            </tr>
+            <tr>
+              <td>19/10/2025</td>
+              <td>Pagamento #1232</td>
+              <td class="text-right">R$ 2.100,00</td>
+              <td><span class="badge badge-success">Aprovado</span></td>
+              <td class="text-right">
+                <button class="btn btn-ghost btn-sm">Ver</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- LOADING STATES -->
+    <section class="showcase-section">
+      <h2 class="showcase-title">Loading States</h2>
+      <p class="showcase-subtitle">Spinners e skeletons</p>
+
+      <div class="component-group">
+        <div class="component-label">Spinners</div>
+        <div class="component-demo">
+          <div class="spinner spinner-sm"></div>
+          <div class="spinner"></div>
+          <div class="spinner spinner-lg"></div>
+        </div>
+      </div>
+
+      <div class="component-group">
+        <div class="component-label">Skeleton</div>
+        <div style="max-width: 400px;">
+          <div class="skeleton skeleton-heading"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text short"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TYPOGRAPHY -->
+    <section class="showcase-section">
+      <h2 class="showcase-title">Typography</h2>
+      <p class="showcase-subtitle">Estilos de texto</p>
+
+      <div class="component-group">
+        <h1 style="font-size: var(--zend-text-5xl); font-weight: var(--zend-weight-bold); margin-bottom: var(--zend-space-2);">Heading 1</h1>
+        <h2 style="font-size: var(--zend-text-4xl); font-weight: var(--zend-weight-bold); margin-bottom: var(--zend-space-2);">Heading 2</h2>
+        <h3 style="font-size: var(--zend-text-3xl); font-weight: var(--zend-weight-semibold); margin-bottom: var(--zend-space-2);">Heading 3</h3>
+        <h4 style="font-size: var(--zend-text-2xl); font-weight: var(--zend-weight-semibold); margin-bottom: var(--zend-space-2);">Heading 4</h4>
+        <p style="font-size: var(--zend-text-base); color: var(--zend-text-secondary); line-height: var(--zend-leading-relaxed);">
+          Este é um parágrafo de texto normal com line-height relaxed. O Zendapag Design System usa a fonte Inter para todo o texto, garantindo legibilidade e profissionalismo em todas as plataformas.
+        </p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: var(--zend-space-16) 0; border-top: 1px solid var(--zend-border-light); margin-top: var(--zend-space-16);">
+      <h3 style="font-size: var(--zend-text-2xl); font-weight: var(--zend-weight-bold); color: var(--zend-primary); margin-bottom: var(--zend-space-2);">
+        Zendapag Design System v2.0
+      </h3>
+      <p style="color: var(--zend-text-tertiary);">
+        Desenvolvido com ❤️ para criar experiências incríveis
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // Theme Toggle
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    }
+
+    // Load saved theme
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    });
+
+    // Alert close buttons
+    document.querySelectorAll('.alert-close').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.target.closest('.alert').style.display = 'none';
+      });
+    });
+  </script>
+</body>
+</html>

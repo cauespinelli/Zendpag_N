@@ -1,0 +1,18 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fav-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="url(#fav-gradient)"/>
+
+  <!-- Z Symbol (simplified for small size) -->
+  <path d="M8,11 h12 l-8,8 h8 v2 h-12 l8,-8 h-8 z" fill="white"/>
+
+  <!-- Zen Dots -->
+  <circle cx="22" cy="13" r="1.5" fill="white" opacity="0.9"/>
+  <circle cx="22" cy="19" r="1.5" fill="white" opacity="0.9"/>
+</svg>

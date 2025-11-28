@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Zendapag Dashboard (React)
+  dashboard:
+    build:
+      context: ./zendapag-dashboard
+      dockerfile: Dockerfile.prod
+    container_name: zendapag-dashboard
+    ports:
+      - "3005:3005"
+    restart: unless-stopped
+    networks:
+      - zendapag-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.zendapag.service=dashboard"
+      - "com.zendapag.version=2.0.0"
+
+  # Zendapag Landing Page (React)
+  landing:
+    build:
+      context: ./zendapag-landing
+      dockerfile: Dockerfile.prod
+    container_name: zendapag-landing
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - zendapag-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.zendapag.service=landing"
+      - "com.zendapag.version=2.0.0"
+
+networks:
+  zendapag-network:
+    external: true
+    name: zendapag_default

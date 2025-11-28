@@ -1,0 +1,230 @@
+version: '3.8'
+
+services:
+  # Apache Kafka Zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zendapag-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    restart: unless-stopped
+    networks:
+      - zendapag-network
+
+  # Apache Kafka
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: zendapag-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - zendapag-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: zendapag-redis
+    ports:
+      - "6381:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-zendapag123}
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zendapag-network
+
+  # Zendapag API
+  zendapag-api:
+    build:
+      context: .
+      dockerfile: zendapag-api/Dockerfile
+    image: zendapag-api:latest
+    container_name: zendapag-api
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8091:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      # Database Configuration (usando o PostgreSQL existente)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/zendapag
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-reservasegura_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Voa2025Live!}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_SHOW_SQL: 'false'
+
+      # Redis Configuration
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-zendapag123}
+
+      # Kafka Configuration
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_KAFKA_CONSUMER_GROUP_ID: zendapag-api
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
+
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET:-zendapag-super-secret-key-change-in-production-min-256-bits-long}
+      JWT_EXPIRATION: 86400000
+
+      # Withdrawal Configuration
+      APP_WITHDRAWAL_MAX_AMOUNT: 50000.00
+      APP_WITHDRAWAL_MIN_AMOUNT: 0.01
+      APP_WITHDRAWAL_DAILY_LIMIT: 100000.00
+      APP_WITHDRAWAL_FEE_PERCENTAGE: 0.00
+      APP_WITHDRAWAL_FIXED_FEE: 0.00
+      APP_WITHDRAWAL_MAX_PENDING: 5
+
+      # Kafka Topics
+      APP_KAFKA_TOPICS_WITHDRAWAL_EVENTS: withdrawal-events-prod
+      APP_KAFKA_TOPICS_WITHDRAWAL_PROCESSING: withdrawal-processing-prod
+      APP_KAFKA_TOPICS_WITHDRAWAL_EVENTS_DLQ: withdrawal-events-dlq-prod
+
+      # JVM Options
+      JAVA_OPTS: -Xmx1024m -Xms512m -XX:+UseG1GC -XX:+UseContainerSupport
+    volumes:
+      - ./logs/api:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - zendapag-network
+      - voalive_default  # Conectar à rede do PostgreSQL existente
+
+  # Zendapag Worker
+  zendapag-worker:
+    build:
+      context: .
+      dockerfile: zendapag-worker/Dockerfile
+    image: zendapag-worker:latest
+    container_name: zendapag-worker
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      zendapag-api:
+        condition: service_healthy
+    ports:
+      - "8092:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/zendapag
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-reservasegura_user}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Voa2025Live!}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_SHOW_SQL: 'false'
+
+      # Redis Configuration
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-zendapag123}
+
+      # Kafka Configuration
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_KAFKA_CONSUMER_GROUP_ID: zendapag-worker
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
+      SPRING_KAFKA_CONSUMER_ENABLE_AUTO_COMMIT: 'false'
+      SPRING_KAFKA_LISTENER_ACKMODE: MANUAL
+
+      # Kafka Topics
+      APP_KAFKA_TOPICS_WITHDRAWAL_EVENTS: withdrawal-events-prod
+      APP_KAFKA_TOPICS_WITHDRAWAL_PROCESSING: withdrawal-processing-prod
+      APP_KAFKA_TOPICS_WITHDRAWAL_EVENTS_DLQ: withdrawal-events-dlq-prod
+
+      # JVM Options
+      JAVA_OPTS: -Xmx1024m -Xms512m -XX:+UseG1GC -XX:+UseContainerSupport
+    volumes:
+      - ./logs/worker:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - zendapag-network
+      - voalive_default
+
+  # Zendapag Dashboard
+  zendapag-dashboard:
+    build:
+      context: ./zendapag-dashboard
+      dockerfile: Dockerfile.prod
+    image: zendapag-dashboard:latest
+    container_name: zendapag-dashboard
+    depends_on:
+      - zendapag-api
+    ports:
+      - "3005:3005"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - zendapag-network
+
+networks:
+  zendapag-network:
+    driver: bridge
+  voalive_default:
+    external: true
+
+volumes:
+  zookeeper_data:
+    driver: local
+  zookeeper_logs:
+    driver: local
+  kafka_data:
+    driver: local
+  redis_data:
+    driver: local

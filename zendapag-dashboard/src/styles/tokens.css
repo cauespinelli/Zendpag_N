@@ -1,0 +1,379 @@
+/**
+ * ZENDPAG DESIGN SYSTEM v1.0
+ * Design Tokens & CSS Variables
+ *
+ * Based on Zendpag Visual Identity Guidelines
+ * Complete specifications for fintech payment platform
+ */
+
+:root {
+  /* ============================================
+     PRIMARY COLORS - Core Brand Identity
+     ============================================ */
+
+  /* Blue Confidence - 60% Principal, segurança financeira */
+  --blue-primary: #0066FF;
+  --blue-primary-rgb: 0, 102, 255;
+  --blue-primary-hover: #0052CC;
+  --blue-primary-active: #0043A8;
+  --blue-primary-light: rgba(0, 102, 255, 0.1);
+
+  /* Cyan Technology - 20% Acentos, modernidade */
+  --cyan-tech: #06B6D4;
+  --cyan-tech-rgb: 6, 182, 212;
+  --cyan-tech-hover: #0891B2;
+  --cyan-tech-active: #0E7490;
+  --cyan-tech-light: rgba(6, 182, 212, 0.1);
+
+  /* Dark Primary - Azul escuro, headers */
+  --dark-primary: #0A2540;
+  --dark-primary-rgb: 10, 37, 64;
+
+  /* White Clean - Backgrounds, clareza */
+  --white-clean: #FFFFFF;
+  --white-clean-rgb: 255, 255, 255;
+
+  /* ============================================
+     SECONDARY COLORS - Neutral & Support
+     ============================================ */
+
+  /* Dark Neutral - Textos primários */
+  --dark-neutral: #1A1F36;
+  --dark-neutral-rgb: 26, 31, 54;
+
+  /* Gray Light - Backgrounds alternativos */
+  --gray-light: #F7F9FC;
+  --gray-light-rgb: 247, 249, 252;
+
+  /* Gray Medium - Textos secundários */
+  --gray-medium: #6B7280;
+  --gray-medium-rgb: 107, 114, 128;
+
+  /* Gray Info - Informações complementares */
+  --gray-info: #6B72D0;
+
+  /* ============================================
+     STATUS COLORS - Semantic States
+     ============================================ */
+
+  /* Success - Confirmações, pagamentos aprovados */
+  --success: #10B981;
+  --success-rgb: 16, 185, 129;
+  --success-light: rgba(16, 185, 129, 0.1);
+  --success-border: rgba(16, 185, 129, 0.3);
+
+  /* Error - Falhas, pagamentos recusados */
+  --error: #EF4444;
+  --error-rgb: 239, 68, 68;
+  --error-light: rgba(239, 68, 68, 0.1);
+  --error-border: rgba(239, 68, 68, 0.3);
+
+  /* Warning - Atenção, pagamentos pendentes */
+  --warning: #F59E0B;
+  --warning-rgb: 245, 158, 11;
+  --warning-light: rgba(245, 158, 11, 0.1);
+  --warning-border: rgba(245, 158, 11, 0.3);
+
+  /* Info - Informações gerais */
+  --info: #3B82F6;
+  --info-rgb: 59, 130, 246;
+  --info-light: rgba(59, 130, 246, 0.1);
+  --info-border: rgba(59, 130, 246, 0.3);
+
+  /* ============================================
+     TYPOGRAPHY - Font System
+     ============================================ */
+
+  /* Font Families */
+  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Courier New', monospace;
+
+  /* Font Sizes - Scale Tipográfica */
+  --font-size-xs: 12px;      /* Small text, captions */
+  --font-size-sm: 14px;      /* Body small, labels */
+  --font-size-base: 16px;    /* Body text padrão */
+  --font-size-md: 18px;      /* Subtitles */
+  --font-size-lg: 20px;      /* Section headers */
+  --font-size-xl: 24px;      /* Page headers */
+  --font-size-2xl: 32px;     /* Hero sections */
+  --font-size-3xl: 40px;     /* Landing page hero */
+  --font-size-4xl: 48px;     /* Large display */
+
+  /* Font Weights */
+  --font-weight-thin: 100;
+  --font-weight-light: 300;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Line Heights */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  --line-height-loose: 2;
+
+  /* ============================================
+     SPACING - 8pt Grid System
+     ============================================ */
+
+  --spacing-0: 0;
+  --spacing-1: 4px;          /* 0.5 × base */
+  --spacing-2: 8px;          /* 1 × base (xs) */
+  --spacing-3: 12px;         /* 1.5 × base */
+  --spacing-4: 16px;         /* 2 × base (sm) */
+  --spacing-5: 20px;         /* 2.5 × base */
+  --spacing-6: 24px;         /* 3 × base (md) */
+  --spacing-8: 32px;         /* 4 × base (lg) */
+  --spacing-10: 40px;        /* 5 × base */
+  --spacing-12: 48px;        /* 6 × base (xl) */
+  --spacing-16: 64px;        /* 8 × base (2xl) */
+  --spacing-20: 80px;        /* 10 × base */
+  --spacing-24: 96px;        /* 12 × base (3xl) */
+  --spacing-32: 128px;       /* 16 × base */
+
+  /* Semantic Spacing */
+  --spacing-xs: var(--spacing-2);     /* 8px */
+  --spacing-sm: var(--spacing-4);     /* 16px */
+  --spacing-md: var(--spacing-6);     /* 24px */
+  --spacing-lg: var(--spacing-8);     /* 32px */
+  --spacing-xl: var(--spacing-12);    /* 48px */
+  --spacing-2xl: var(--spacing-16);   /* 64px */
+  --spacing-3xl: var(--spacing-24);   /* 96px */
+
+  /* ============================================
+     BORDER RADIUS - Rounded Corners
+     ============================================ */
+
+  --radius-none: 0;
+  --radius-sm: 8px;          /* Buttons, inputs, cards pequenos */
+  --radius-md: 12px;         /* Cards, modais médios */
+  --radius-lg: 16px;         /* Feature cards, grandes painéis */
+  --radius-xl: 20px;         /* Landing hero sections */
+  --radius-2xl: 24px;        /* Large containers */
+  --radius-full: 9999px;     /* Pills, badges circulares */
+
+  /* ============================================
+     SHADOWS - Elevation System
+     ============================================ */
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 102, 255, 0.24);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 12px 40px rgba(0, 0, 0, 0.2);
+  --shadow-2xl: 0 20px 60px rgba(0, 0, 0, 0.25);
+
+  /* Colored Shadows */
+  --shadow-primary: 0 4px 12px rgba(0, 102, 255, 0.3);
+  --shadow-cyan: 0 4px 12px rgba(6, 182, 212, 0.3);
+  --shadow-success: 0 4px 12px rgba(16, 185, 129, 0.3);
+  --shadow-error: 0 4px 12px rgba(239, 68, 68, 0.3);
+
+  /* ============================================
+     TRANSITIONS - Animation Timing
+     ============================================ */
+
+  --transition-fastest: 100ms ease;
+  --transition-fast: 200ms ease;
+  --transition-base: 300ms ease;
+  --transition-slow: 400ms ease;
+  --transition-slowest: 500ms ease;
+
+  /* Easing Functions */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ============================================
+     BREAKPOINTS - Responsive Design
+     ============================================ */
+
+  --breakpoint-xs: 320px;    /* Small mobile */
+  --breakpoint-sm: 640px;    /* Mobile */
+  --breakpoint-md: 768px;    /* Tablet */
+  --breakpoint-lg: 1024px;   /* Desktop */
+  --breakpoint-xl: 1280px;   /* Large desktop */
+  --breakpoint-2xl: 1440px;  /* Extra large */
+
+  /* ============================================
+     Z-INDEX - Stacking Order
+     ============================================ */
+
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-toast: 800;
+  --z-maximum: 999;
+
+  /* ============================================
+     LAYOUT - Component Dimensions
+     ============================================ */
+
+  /* Header */
+  --header-height: 64px;
+  --header-height-mobile: 56px;
+
+  /* Sidebar */
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 80px;
+
+  /* Footer */
+  --footer-height: 56px;
+
+  /* Container Max Widths */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+
+  /* ============================================
+     OPACITY - Transparency Levels
+     ============================================ */
+
+  --opacity-0: 0;
+  --opacity-10: 0.1;
+  --opacity-20: 0.2;
+  --opacity-30: 0.3;
+  --opacity-40: 0.4;
+  --opacity-50: 0.5;
+  --opacity-60: 0.6;
+  --opacity-70: 0.7;
+  --opacity-80: 0.8;
+  --opacity-90: 0.9;
+  --opacity-100: 1;
+
+  /* ============================================
+     GRADIENTS - Brand Gradients
+     ============================================ */
+
+  --gradient-primary: linear-gradient(135deg, var(--blue-primary) 0%, var(--cyan-tech) 100%);
+  --gradient-dark: linear-gradient(135deg, var(--dark-primary) 0%, var(--dark-neutral) 100%);
+  --gradient-feature: linear-gradient(135deg, var(--dark-primary) 0%, rgba(6, 182, 212, 0.2) 100%);
+  --gradient-hero: linear-gradient(135deg, #0A2540 0%, #0066FF 50%, #06B6D4 100%);
+
+  /* ============================================
+     COMPONENT SPECIFIC - Special Variables
+     ============================================ */
+
+  /* Buttons */
+  --button-height-sm: 32px;
+  --button-height-md: 40px;
+  --button-height-lg: 48px;
+  --button-padding-sm: 12px 16px;
+  --button-padding-md: 16px 24px;
+  --button-padding-lg: 20px 32px;
+
+  /* Inputs */
+  --input-height-sm: 32px;
+  --input-height-md: 40px;
+  --input-height-lg: 48px;
+  --input-border-color: #E5E7EB;
+  --input-border-color-focus: var(--blue-primary);
+  --input-border-color-error: var(--error);
+
+  /* Cards */
+  --card-padding-sm: 16px;
+  --card-padding-md: 24px;
+  --card-padding-lg: 32px;
+  --card-background: var(--white-clean);
+  --card-border-color: #E5E7EB;
+
+  /* Badges */
+  --badge-height: 24px;
+  --badge-padding: 4px 12px;
+  --badge-font-size: 12px;
+
+  /* Avatars */
+  --avatar-size-sm: 32px;
+  --avatar-size-md: 40px;
+  --avatar-size-lg: 56px;
+  --avatar-size-xl: 80px;
+}
+
+/* ============================================
+   DARK THEME OVERRIDES
+   ============================================ */
+
+[data-theme="dark"] {
+  /* Background colors */
+  --white-clean: #0F1419;
+  --gray-light: #1A1F2E;
+  --card-background: #1A1F2E;
+
+  /* Text colors */
+  --dark-neutral: #E5E7EB;
+  --gray-medium: #9CA3AF;
+
+  /* Borders */
+  --card-border-color: #2D3748;
+  --input-border-color: #2D3748;
+
+  /* Shadows (softer in dark mode) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================
+   UTILITY CLASSES - Design Token Helpers
+   ============================================ */
+
+/* Typography Utilities */
+.font-inter { font-family: var(--font-inter); }
+.font-mono { font-family: var(--font-mono); }
+
+.font-thin { font-weight: var(--font-weight-thin); }
+.font-light { font-weight: var(--font-weight-light); }
+.font-regular { font-weight: var(--font-weight-regular); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+.font-extrabold { font-weight: var(--font-weight-extrabold); }
+
+/* Color Utilities */
+.text-primary { color: var(--blue-primary); }
+.text-cyan { color: var(--cyan-tech); }
+.text-success { color: var(--success); }
+.text-error { color: var(--error); }
+.text-warning { color: var(--warning); }
+.text-dark { color: var(--dark-neutral); }
+.text-gray { color: var(--gray-medium); }
+
+.bg-primary { background-color: var(--blue-primary); }
+.bg-cyan { background-color: var(--cyan-tech); }
+.bg-light { background-color: var(--gray-light); }
+.bg-white { background-color: var(--white-clean); }
+
+/* Spacing Utilities */
+.p-xs { padding: var(--spacing-xs); }
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+.p-xl { padding: var(--spacing-xl); }
+
+.m-xs { margin: var(--spacing-xs); }
+.m-sm { margin: var(--spacing-sm); }
+.m-md { margin: var(--spacing-md); }
+.m-lg { margin: var(--spacing-lg); }
+.m-xl { margin: var(--spacing-xl); }
+
+/* Border Radius Utilities */
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-full { border-radius: var(--radius-full); }
+
+/* Shadow Utilities */
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-primary { box-shadow: var(--shadow-primary); }

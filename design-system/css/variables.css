@@ -1,0 +1,252 @@
+/**
+ * ZENDAPAG DESIGN SYSTEM
+ * CSS Variables - Design Tokens
+ * Version: 2.0.0
+ *
+ * Usage: Import this file first in your main CSS
+ */
+
+:root {
+  /* ===== CORES PRIMÁRIAS (Indigo/Blue) ===== */
+  --zend-blue-50: #EEF2FF;
+  --zend-blue-100: #E0E7FF;
+  --zend-blue-200: #C7D2FE;
+  --zend-blue-300: #A5B4FC;
+  --zend-blue-400: #818CF8;
+  --zend-blue-500: #6366F1;
+  --zend-blue-600: #4F46E5;    /* PRINCIPAL */
+  --zend-blue-700: #4338CA;
+  --zend-blue-800: #3730A3;
+  --zend-blue-900: #312E81;
+
+  /* ===== CORES SECUNDÁRIAS (Green - Success) ===== */
+  --zend-green-50: #ECFDF5;
+  --zend-green-100: #D1FAE5;
+  --zend-green-200: #A7F3D0;
+  --zend-green-300: #6EE7B7;
+  --zend-green-400: #34D399;
+  --zend-green-500: #10B981;   /* SECUNDÁRIA */
+  --zend-green-600: #059669;
+  --zend-green-700: #047857;
+  --zend-green-800: #065F46;
+  --zend-green-900: #064E3B;
+
+  /* ===== GRAYSCALE (Slate) ===== */
+  --zend-gray-50: #F8FAFC;
+  --zend-gray-100: #F1F5F9;
+  --zend-gray-200: #E2E8F0;
+  --zend-gray-300: #CBD5E1;
+  --zend-gray-400: #94A3B8;
+  --zend-gray-500: #64748B;
+  --zend-gray-600: #475569;
+  --zend-gray-700: #334155;
+  --zend-gray-800: #1E293B;
+  --zend-gray-900: #0F172A;
+
+  /* ===== CORES FUNCIONAIS ===== */
+  --zend-success: #10B981;
+  --zend-warning: #F59E0B;
+  --zend-error: #EF4444;
+  --zend-info: #3B82F6;
+
+  /* ===== CORES ACCENT ===== */
+  --zend-accent-orange: #F59E0B;
+  --zend-accent-purple: #A855F7;
+  --zend-accent-pink: #EC4899;
+  --zend-accent-cyan: #06B6D4;
+
+  /* ===== CORES SEMÂNTICAS ===== */
+  --zend-primary: var(--zend-blue-600);
+  --zend-secondary: var(--zend-green-500);
+  --zend-accent: var(--zend-accent-orange);
+
+  /* ===== BACKGROUNDS ===== */
+  --zend-bg-primary: #FFFFFF;
+  --zend-bg-secondary: var(--zend-gray-50);
+  --zend-bg-tertiary: var(--zend-gray-100);
+  --zend-bg-overlay: rgba(15, 23, 42, 0.5);
+
+  /* ===== TEXT COLORS ===== */
+  --zend-text-primary: var(--zend-gray-900);
+  --zend-text-secondary: var(--zend-gray-600);
+  --zend-text-tertiary: var(--zend-gray-500);
+  --zend-text-disabled: var(--zend-gray-400);
+  --zend-text-inverse: #FFFFFF;
+
+  /* ===== BORDERS ===== */
+  --zend-border-light: var(--zend-gray-200);
+  --zend-border-medium: var(--zend-gray-300);
+  --zend-border-heavy: var(--zend-gray-400);
+
+  /* ===== TIPOGRAFIA ===== */
+  --zend-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --zend-font-display: 'Space Grotesk', 'Inter', sans-serif;
+
+  /* Font Sizes */
+  --zend-text-xs: 0.75rem;      /* 12px */
+  --zend-text-sm: 0.875rem;     /* 14px */
+  --zend-text-base: 1rem;       /* 16px */
+  --zend-text-lg: 1.125rem;     /* 18px */
+  --zend-text-xl: 1.25rem;      /* 20px */
+  --zend-text-2xl: 1.5rem;      /* 24px */
+  --zend-text-3xl: 1.875rem;    /* 30px */
+  --zend-text-4xl: 2.25rem;     /* 36px */
+  --zend-text-5xl: 3rem;        /* 48px */
+  --zend-text-6xl: 3.75rem;     /* 60px */
+
+  /* Font Weights */
+  --zend-weight-regular: 400;
+  --zend-weight-medium: 500;
+  --zend-weight-semibold: 600;
+  --zend-weight-bold: 700;
+  --zend-weight-extrabold: 800;
+  --zend-weight-black: 900;
+
+  /* Line Heights */
+  --zend-leading-none: 1;
+  --zend-leading-tight: 1.1;
+  --zend-leading-snug: 1.25;
+  --zend-leading-normal: 1.5;
+  --zend-leading-relaxed: 1.625;
+  --zend-leading-loose: 2;
+
+  /* Letter Spacing */
+  --zend-tracking-tighter: -0.05em;
+  --zend-tracking-tight: -0.025em;
+  --zend-tracking-normal: 0;
+  --zend-tracking-wide: 0.025em;
+  --zend-tracking-wider: 0.05em;
+  --zend-tracking-widest: 0.1em;
+
+  /* ===== ESPAÇAMENTO (Sistema 4px) ===== */
+  --zend-space-0: 0;
+  --zend-space-1: 0.25rem;   /* 4px */
+  --zend-space-2: 0.5rem;    /* 8px */
+  --zend-space-3: 0.75rem;   /* 12px */
+  --zend-space-4: 1rem;      /* 16px */
+  --zend-space-5: 1.25rem;   /* 20px */
+  --zend-space-6: 1.5rem;    /* 24px */
+  --zend-space-8: 2rem;      /* 32px */
+  --zend-space-10: 2.5rem;   /* 40px */
+  --zend-space-12: 3rem;     /* 48px */
+  --zend-space-16: 4rem;     /* 64px */
+  --zend-space-20: 5rem;     /* 80px */
+  --zend-space-24: 6rem;     /* 96px */
+  --zend-space-32: 8rem;     /* 128px */
+
+  /* ===== BORDER RADIUS ===== */
+  --zend-radius-none: 0;
+  --zend-radius-sm: 0.25rem;   /* 4px */
+  --zend-radius-base: 0.5rem;  /* 8px */
+  --zend-radius-md: 0.75rem;   /* 12px */
+  --zend-radius-lg: 1rem;      /* 16px */
+  --zend-radius-xl: 1.5rem;    /* 24px */
+  --zend-radius-2xl: 2rem;     /* 32px */
+  --zend-radius-full: 9999px;
+
+  /* ===== SHADOWS ===== */
+  --zend-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --zend-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --zend-shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --zend-shadow-md: 0 6px 12px -2px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --zend-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --zend-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -6px rgba(0, 0, 0, 0.04);
+  --zend-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --zend-shadow-primary: 0 10px 25px -5px rgba(79, 70, 229, 0.3);
+  --zend-shadow-success: 0 10px 25px -5px rgba(16, 185, 129, 0.3);
+  --zend-shadow-error: 0 10px 25px -5px rgba(239, 68, 68, 0.3);
+
+  /* ===== TRANSITIONS ===== */
+  --zend-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --zend-transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --zend-transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --zend-transition-slower: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  --zend-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --zend-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --zend-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ===== Z-INDEX ===== */
+  --zend-z-base: 0;
+  --zend-z-dropdown: 1000;
+  --zend-z-sticky: 1020;
+  --zend-z-fixed: 1030;
+  --zend-z-modal-backdrop: 1040;
+  --zend-z-modal: 1050;
+  --zend-z-popover: 1060;
+  --zend-z-tooltip: 1070;
+  --zend-z-notification: 1080;
+
+  /* ===== BREAKPOINTS (apenas para referência) ===== */
+  /* Use em media queries: @media (min-width: 640px) */
+  --zend-screen-sm: 640px;
+  --zend-screen-md: 768px;
+  --zend-screen-lg: 1024px;
+  --zend-screen-xl: 1280px;
+  --zend-screen-2xl: 1536px;
+
+  /* ===== CONTAINER WIDTHS ===== */
+  --zend-container-sm: 640px;
+  --zend-container-md: 768px;
+  --zend-container-lg: 1024px;
+  --zend-container-xl: 1280px;
+}
+
+/* ===== DARK MODE THEME ===== */
+[data-theme="dark"] {
+  /* Inversão de Grayscale */
+  --zend-gray-50: #0F172A;
+  --zend-gray-100: #1E293B;
+  --zend-gray-200: #334155;
+  --zend-gray-300: #475569;
+  --zend-gray-400: #64748B;
+  --zend-gray-500: #94A3B8;
+  --zend-gray-600: #CBD5E1;
+  --zend-gray-700: #E2E8F0;
+  --zend-gray-800: #F1F5F9;
+  --zend-gray-900: #F8FAFC;
+
+  /* Ajustes de Primary para Dark */
+  --zend-primary: var(--zend-blue-500);
+  --zend-secondary: var(--zend-green-400);
+
+  /* Backgrounds Dark */
+  --zend-bg-primary: #0F172A;
+  --zend-bg-secondary: #1E293B;
+  --zend-bg-tertiary: #334155;
+  --zend-bg-overlay: rgba(0, 0, 0, 0.7);
+
+  /* Text Dark */
+  --zend-text-primary: #F8FAFC;
+  --zend-text-secondary: #CBD5E1;
+  --zend-text-tertiary: #94A3B8;
+  --zend-text-disabled: #64748B;
+
+  /* Borders Dark */
+  --zend-border-light: #334155;
+  --zend-border-medium: #475569;
+  --zend-border-heavy: #64748B;
+
+  /* Shadows Dark (mais sutis) */
+  --zend-shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --zend-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
+  --zend-shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --zend-shadow-md: 0 6px 12px -2px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --zend-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --zend-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -6px rgba(0, 0, 0, 0.5);
+  --zend-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+
+/* ===== BACKWARDS COMPATIBILITY ===== */
+/* Para manter compatibilidade com código existente */
+:root {
+  --zp-primary-600: var(--zend-primary);
+  --zp-success-500: var(--zend-success);
+  --zp-error-500: var(--zend-error);
+  --zp-neutral-50: var(--zend-gray-50);
+  --zp-neutral-900: var(--zend-gray-900);
+  --zp-font-family: var(--zend-font-family);
+  --zp-space-4: var(--zend-space-4);
+  --zp-radius-lg: var(--zend-radius-lg);
+  --zp-shadow-md: var(--zend-shadow-md);
+  --zp-transition: all var(--zend-transition-base);
+}

@@ -1,0 +1,389 @@
+/**
+ * ZENDAPAG DASHBOARD - DESIGN SYSTEM V2
+ * Import this file in your index.tsx or App.tsx
+ */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+/* Import Design System CSS */
+@import url('../../../design-system/css/main.css');
+
+/* ========================================
+   ANT DESIGN OVERRIDES - Match Zendapag DS
+   ======================================== */
+
+/* Buttons */
+.ant-btn {
+  border-radius: var(--zend-radius-base) !important;
+  font-weight: var(--zend-weight-semibold);
+  transition: all var(--zend-transition-base);
+  letter-spacing: var(--zend-tracking-wide);
+}
+
+.ant-btn-primary {
+  background: var(--zend-primary) !important;
+  border-color: var(--zend-primary) !important;
+  box-shadow: var(--zend-shadow-sm);
+}
+
+.ant-btn-primary:hover {
+  background: var(--zend-blue-700) !important;
+  border-color: var(--zend-blue-700) !important;
+  box-shadow: var(--zend-shadow-primary);
+  transform: translateY(-1px);
+}
+
+.ant-btn-default {
+  border: 2px solid var(--zend-border-medium);
+  color: var(--zend-text-primary);
+}
+
+.ant-btn-default:hover {
+  border-color: var(--zend-primary);
+  color: var(--zend-primary);
+  background: var(--zend-blue-50);
+}
+
+/* Cards */
+.ant-card {
+  border-radius: var(--zend-radius-md) !important;
+  box-shadow: var(--zend-shadow-sm) !important;
+  border-color: var(--zend-border-light) !important;
+  transition: all var(--zend-transition-base);
+}
+
+.ant-card:hover {
+  box-shadow: var(--zend-shadow-md) !important;
+  transform: translateY(-2px);
+}
+
+.ant-card-head {
+  border-bottom-color: var(--zend-border-light) !important;
+  font-weight: var(--zend-weight-semibold);
+}
+
+/* Badges */
+.ant-badge-status-success {
+  background-color: var(--zend-success) !important;
+}
+
+.ant-badge-status-processing {
+  background-color: var(--zend-primary) !important;
+}
+
+.ant-badge-status-warning {
+  background-color: var(--zend-warning) !important;
+}
+
+.ant-badge-status-error {
+  background-color: var(--zend-error) !important;
+}
+
+/* Layout */
+.ant-layout {
+  background: var(--zend-bg-secondary) !important;
+}
+
+.ant-layout-header {
+  background: white !important;
+  border-bottom: 1px solid var(--zend-border-light);
+  box-shadow: var(--zend-shadow-sm);
+  padding: 0 var(--zend-space-6);
+}
+
+.ant-layout-sider {
+  background: white !important;
+  border-right: 1px solid var(--zend-border-light);
+}
+
+.ant-layout-content {
+  background: var(--zend-bg-secondary) !important;
+  padding: var(--zend-space-6);
+}
+
+/* Menu */
+.ant-menu {
+  background: transparent !important;
+  border-right: none !important;
+}
+
+.ant-menu-item {
+  border-radius: var(--zend-radius-base) !important;
+  margin: var(--zend-space-1) var(--zend-space-2) !important;
+  transition: all var(--zend-transition-base);
+}
+
+.ant-menu-item-selected {
+  background: var(--zend-blue-50) !important;
+  color: var(--zend-primary) !important;
+  font-weight: var(--zend-weight-semibold);
+}
+
+.ant-menu-item:hover {
+  background: var(--zend-gray-100) !important;
+  color: var(--zend-primary) !important;
+}
+
+/* Forms */
+.ant-input,
+.ant-select-selector,
+.ant-picker {
+  border-radius: var(--zend-radius-base) !important;
+  border-color: var(--zend-border-light) !important;
+  transition: all var(--zend-transition-base);
+}
+
+.ant-input:hover,
+.ant-select-selector:hover,
+.ant-picker:hover {
+  border-color: var(--zend-border-medium) !important;
+}
+
+.ant-input:focus,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  border-color: var(--zend-primary) !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+}
+
+.ant-form-item-label > label {
+  font-weight: var(--zend-weight-medium);
+  color: var(--zend-text-primary);
+}
+
+/* Tables */
+.ant-table {
+  border-radius: var(--zend-radius-md);
+  overflow: hidden;
+}
+
+.ant-table-thead > tr > th {
+  background: var(--zend-bg-secondary) !important;
+  border-bottom: 1px solid var(--zend-border-light) !important;
+  font-weight: var(--zend-weight-semibold);
+  color: var(--zend-text-tertiary);
+  text-transform: uppercase;
+  font-size: var(--zend-text-xs);
+  letter-spacing: var(--zend-tracking-wider);
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: var(--zend-bg-secondary) !important;
+}
+
+/* Modals */
+.ant-modal-content {
+  border-radius: var(--zend-radius-lg) !important;
+  box-shadow: var(--zend-shadow-2xl) !important;
+}
+
+.ant-modal-header {
+  border-bottom-color: var(--zend-border-light) !important;
+  border-radius: var(--zend-radius-lg) var(--zend-radius-lg) 0 0 !important;
+}
+
+.ant-modal-title {
+  font-weight: var(--zend-weight-semibold);
+  color: var(--zend-text-primary);
+}
+
+.ant-modal-footer {
+  border-top-color: var(--zend-border-light) !important;
+}
+
+/* Alerts */
+.ant-alert {
+  border-radius: var(--zend-radius-base) !important;
+  border-left-width: 4px !important;
+}
+
+.ant-alert-success {
+  background: var(--zend-green-50) !important;
+  border-left-color: var(--zend-success) !important;
+}
+
+.ant-alert-error {
+  background: #FEE2E2 !important;
+  border-left-color: var(--zend-error) !important;
+}
+
+.ant-alert-warning {
+  background: #FEF3C7 !important;
+  border-left-color: var(--zend-warning) !important;
+}
+
+.ant-alert-info {
+  background: var(--zend-blue-50) !important;
+  border-left-color: var(--zend-info) !important;
+}
+
+/* Notifications */
+.ant-notification-notice {
+  border-radius: var(--zend-radius-md) !important;
+  box-shadow: var(--zend-shadow-xl) !important;
+}
+
+/* Tags (similar to badges) */
+.ant-tag {
+  border-radius: var(--zend-radius-full) !important;
+  padding: var(--zend-space-1) var(--zend-space-3);
+  font-weight: var(--zend-weight-semibold);
+  font-size: var(--zend-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--zend-tracking-wider);
+  border: none;
+}
+
+.ant-tag-success {
+  background: var(--zend-green-50);
+  color: var(--zend-green-700);
+}
+
+.ant-tag-error {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.ant-tag-warning {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.ant-tag-processing {
+  background: var(--zend-blue-50);
+  color: var(--zend-blue-700);
+}
+
+/* Statistic (Metric Cards) */
+.ant-statistic {
+  font-family: var(--zend-font-family);
+}
+
+.ant-statistic-title {
+  font-size: var(--zend-text-sm);
+  color: var(--zend-text-tertiary);
+  font-weight: var(--zend-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--zend-tracking-wider);
+  margin-bottom: var(--zend-space-2);
+}
+
+.ant-statistic-content {
+  font-size: var(--zend-text-4xl);
+  font-weight: var(--zend-weight-bold);
+  color: var(--zend-text-primary);
+}
+
+/* ========================================
+   CUSTOM DASHBOARD COMPONENTS
+   ======================================== */
+
+/* Dashboard Header */
+.dashboard-header {
+  margin-bottom: var(--zend-space-8);
+}
+
+.dashboard-greeting {
+  font-size: var(--zend-text-3xl);
+  font-weight: var(--zend-weight-bold);
+  color: var(--zend-text-primary);
+  margin-bottom: var(--zend-space-2);
+}
+
+.dashboard-subtitle {
+  font-size: var(--zend-text-lg);
+  color: var(--zend-text-tertiary);
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--zend-space-6);
+  margin-bottom: var(--zend-space-8);
+}
+
+/* Chart Container */
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+.chart-container canvas {
+  max-height: 100% !important;
+}
+
+/* Status Indicators (Custom) */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--zend-space-2);
+  padding: var(--zend-space-1) var(--zend-space-3);
+  border-radius: var(--zend-radius-full);
+  font-size: var(--zend-text-xs);
+  font-weight: var(--zend-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--zend-tracking-wider);
+}
+
+.status-indicator.status-success {
+  background: var(--zend-green-50);
+  color: var(--zend-green-700);
+}
+
+.status-indicator.status-pending {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.status-indicator.status-error {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.status-indicator.status-active {
+  background: var(--zend-blue-50);
+  color: var(--zend-blue-700);
+}
+
+/* ========================================
+   DARK MODE OVERRIDES FOR ANT DESIGN
+   ======================================== */
+
+[data-theme="dark"] .ant-layout-header,
+[data-theme="dark"] .ant-layout-sider,
+[data-theme="dark"] .ant-card {
+  background: var(--zend-bg-secondary) !important;
+}
+
+[data-theme="dark"] .ant-card {
+  border-color: var(--zend-border-light) !important;
+}
+
+[data-theme="dark"] .ant-menu-item-selected {
+  background: var(--zend-blue-900) !important;
+}
+
+[data-theme="dark"] .ant-table-thead > tr > th {
+  background: var(--zend-bg-tertiary) !important;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .ant-layout-content {
+    padding: var(--zend-space-4);
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-greeting {
+    font-size: var(--zend-text-2xl);
+  }
+}
