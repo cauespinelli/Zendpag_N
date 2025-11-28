@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @Service
 public class ReconciliationService {
 
-    private static final Logger logger = LoggerFactory.getLogger;
+    private static final Logger logger = LoggerFactory.getLogger(ReconciliationService.class);
 
     @Autowired
     private TransactionRepository transactionRepository;

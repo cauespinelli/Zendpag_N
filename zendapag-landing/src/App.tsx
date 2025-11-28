@@ -35,7 +35,7 @@ const App: React.FC = () => {
               <li><a href="#integration">Integração</a></li>
               <li><a href="#docs">Documentação</a></li>
               <li>
-                <a href="http://167.99.12.191:3005" className="zp-btn-nav">
+                <a href="http://localhost:3008" className="zp-btn-nav">
                   Acessar Dashboard →
                 </a>
               </li>
@@ -63,7 +63,7 @@ const App: React.FC = () => {
             </p>
 
             <div className="zp-hero-buttons">
-              <a href="http://167.99.12.191:3005" className="zp-btn zp-btn-primary zp-btn-lg">
+              <a href="http://localhost:3008" className="zp-btn zp-btn-primary zp-btn-lg">
                 Começar Gratuitamente
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -223,7 +223,7 @@ const App: React.FC = () => {
               <p className="zp-cta-subtitle">
                 Junte-se a centenas de empresas que processam pagamentos PIX com Zendapag
               </p>
-              <a href="http://167.99.12.191:3005" className="zp-btn zp-btn-primary zp-btn-xl">
+              <a href="http://localhost:3008" className="zp-btn zp-btn-primary zp-btn-xl">
                 Criar Conta Gratuitamente →
               </a>
               <p className="zp-cta-note">Sem cartão de crédito • Setup em 5 minutos</p>
@@ -260,14 +260,14 @@ const App: React.FC = () => {
                 <ul>
                   <li><a href="#features">Recursos</a></li>
                   <li><a href="#pricing">Preços</a></li>
-                  <li><a href="http://167.99.12.191:3005">Dashboard</a></li>
+                  <li><a href="http://localhost:3008">Dashboard</a></li>
                 </ul>
               </div>
 
               <div className="zp-footer-column">
                 <h4>Desenvolvedores</h4>
                 <ul>
-                  <li><a href="http://167.99.12.191:8093/api">API</a></li>
+                  <li><a href="http://localhost:8093/api">API</a></li>
                   <li><a href="#docs">Documentação</a></li>
                   <li><a href="https://github.com/klebergobbi/zendapag">GitHub</a></li>
                 </ul>
