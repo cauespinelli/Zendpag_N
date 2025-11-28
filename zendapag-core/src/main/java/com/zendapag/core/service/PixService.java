@@ -4,13 +4,7 @@ import com.zendapag.core.audit.AuditService;
 import com.zendapag.core.entity.Payment;
 import com.zendapag.core.entity.enums.AuditAction;
 import com.zendapag.core.exception.BusinessException;
-import com.zendapag.core.pix.client.PixClient;
-import com.zendapag.core.pix.dto.PixPaymentRequest;
-import com.zendapag.core.pix.dto.PixPaymentResponse;
 import com.zendapag.core.pix.qrcode.PixQrCodeGenerator;
-import com.zendapag.core.pix.security.PixCertificateManager;
-import com.zendapag.core.pix.webhook.PixWebhookProcessor;
-import com.zendapag.core.pix.reconciliation.PixReconciliationService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import io.micrometer.core.annotation.Timed;
@@ -18,281 +12,177 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.LocalDate;
+import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class PixService {
 
-    private final PixClient pixClient;
     private final PixQrCodeGenerator qrCodeGenerator;
-    private final PixCertificateManager certificateManager;
-    private final PixWebhookProcessor webhookProcessor;
-    private final PixReconciliationService reconciliationService;
     private final AuditService auditService;
+
+    // Regex patterns for PIX key validation
+    private static final Pattern CPF_PATTERN = Pattern.compile("^\\d{11}$");
+    private static final Pattern CNPJ_PATTERN = Pattern.compile("^\\d{14}$");
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.-]+@[\\w.-]+\\.\\w+$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^\\+?55\\d{10,11}$");
+    private static final Pattern EVP_PATTERN = Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
     @Autowired
     public PixService(
-            PixClient pixClient,
             PixQrCodeGenerator qrCodeGenerator,
-            PixCertificateManager certificateManager,
-            PixWebhookProcessor webhookProcessor,
-            PixReconciliationService reconciliationService,
             AuditService auditService) {
-        this.pixClient = pixClient;
         this.qrCodeGenerator = qrCodeGenerator;
-        this.certificateManager = certificateManager;
-        this.webhookProcessor = webhookProcessor;
-        this.reconciliationService = reconciliationService;
         this.auditService = auditService;
     }
 
     @Timed
-    @CircuitBreaker
-    @Retry
-    public PixQrCodeGenerator.PixQrCodeResult generatePixQrCode {
-        log.info);
+    @CircuitBreaker(name = "pix-service")
+    @Retry(name = "pix-service")
+    public PixQrCodeGenerator.PixQrCodeResult generatePixQrCode(Payment payment) {
+        log.info("Generating PIX QR Code for payment: {}", payment.getId());
 
         try {
-            // Generate dynamic QR code using new PIX components
-            PixQrCodeGenerator.PixQrCodeResult result = qrCodeGenerator.generateDynamicQrCode;
+            // Generate dynamic QR code using PIX components
+            PixQrCodeGenerator.PixQrCodeResult result = qrCodeGenerator.generateDynamicQrCode(payment);
 
             // Audit log
-            auditService.logAction, "Payment", payment.getId().toString(),
-                AuditAction.CREATE, "PIX QR code generated");
+            auditService.logAction(
+                "PAYMENT",
+                payment.getId().toString(),
+                AuditAction.CREATE,
+                "PIX QR code generated"
+            );
 
-            log.info);
+            log.info("PIX QR Code generated successfully for payment: {}", payment.getId());
             return result;
 
-        } catch  {
-            log.error, e.getMessage(), e);
-            auditService.logFailure, "Payment", payment.getId().toString(),
-                AuditAction.CREATE, "PIX QR code generation failed", e);
-            throw new BusinessException;
+        } catch (Exception e) {
+            log.error("Failed to generate PIX QR Code for payment: {}", payment.getId(), e);
+            auditService.logFailure(
+                "PAYMENT",
+                payment.getId().toString(),
+                AuditAction.CREATE,
+                "PIX QR code generation failed",
+                e
+            );
+            throw new BusinessException("Failed to generate PIX QR Code: " + e.getMessage());
         }
     }
 
     @Timed
-    public PixQrCodeGenerator.PixQrCodeResult generateStaticQrCode {
-        log.debug);
+    public PixQrCodeGenerator.PixQrCodeResult generateStaticQrCode(String pixKey, String amount, String description) {
+        log.debug("Generating static QR Code for PIX key: {}", maskPixKey(pixKey));
 
         try {
-            return qrCodeGenerator.generateStaticQrCode;
-        } catch  {
-            log.error, e);
-            throw new BusinessException;
+            return qrCodeGenerator.generateStaticQrCode(pixKey, amount, description);
+        } catch (Exception e) {
+            log.error("Failed to generate static QR Code", e);
+            throw new BusinessException("Failed to generate static PIX QR Code: " + e.getMessage());
         }
     }
 
     @Timed
-    @CircuitBreaker
-    @Retry
-    public boolean validatePixKey {
-        log.debug, pixKeyType);
+    @CircuitBreaker(name = "pix-service")
+    @Retry(name = "pix-service")
+    public boolean validatePixKey(String pixKey, String pixKeyType) {
+        log.debug("Validating PIX key: {} of type: {}", maskPixKey(pixKey), pixKeyType);
 
         try {
-            // Use new PIX client for validation
-            PixPaymentRequest.PixKeyType keyType = PixPaymentRequest.PixKeyType.valueOf);
-            return pixClient.validatePixKey;
+            boolean isValid = switch (pixKeyType.toUpperCase()) {
+                case "CPF" -> CPF_PATTERN.matcher(pixKey.replaceAll("[^0-9]", "")).matches();
+                case "CNPJ" -> CNPJ_PATTERN.matcher(pixKey.replaceAll("[^0-9]", "")).matches();
+                case "EMAIL" -> EMAIL_PATTERN.matcher(pixKey.toLowerCase()).matches();
+                case "PHONE" -> PHONE_PATTERN.matcher(formatPhone(pixKey)).matches();
+                case "EVP" -> EVP_PATTERN.matcher(pixKey.toLowerCase()).matches();
+                default -> false;
+            };
 
-        } catch  {
-            log.warn, e.getMessage());
-            // Return true for offline validation to avoid blocking payments
-            return true;
+            log.debug("PIX key validation result: {} is {}", maskPixKey(pixKey), isValid ? "valid" : "invalid");
+            return isValid;
+
+        } catch (Exception e) {
+            log.warn("PIX key validation failed for key {}: {}", maskPixKey(pixKey), e.getMessage());
+            // Return false for validation failures to avoid blocking payments
+            return false;
         }
     }
 
-    @Timed
-    @CircuitBreaker
-    @Retry
-    public PixPaymentResponse createPixPayment {
-        log.info);
+    public String detectPixKeyType(String pixKey) {
+        String cleaned = pixKey.replaceAll("[^0-9a-zA-Z@.+-]", "");
 
-        try {
-            // Build PIX payment request using new DTOs
-            PixPaymentRequest request = buildPixPaymentRequest;
-
-            // Create payment through new PIX client
-            PixPaymentResponse pixResponse = pixClient.createPixPayment;
-
-            // Audit log
-            auditService.logAction, "Payment", payment.getId().toString(),
-                AuditAction.CREATE, "PIX payment created in provider: " + pixResponse.getTxId);
-
-            log.info("PIX payment created in provider: {} for payment: {}",
-                pixResponse.getTxId, payment.getReferenceId());
-
-            return pixResponse;
-
-        } catch  {
-            log.error, e.getMessage(), e);
-            auditService.logFailure, "Payment", payment.getId().toString(),
-                AuditAction.CREATE, "PIX payment creation failed", e);
-            throw new BusinessException;
+        if (cleaned.contains("@")) {
+            return "EMAIL";
         }
-    }
 
-    @Timed
-    @CircuitBreaker
-    @Retry
-    public PixPaymentResponse checkPixStatus {
-        log.debug;
-
-        try {
-            // Use new PIX client for status check
-            return pixClient.checkPaymentStatus;
-
-        } catch  {
-            log.warn);
-            throw new BusinessException;
+        if (cleaned.startsWith("+55") || cleaned.matches("^\\d{10,11}$")) {
+            return "PHONE";
         }
-    }
 
-    @Timed
-    @CircuitBreaker
-    @Retry
-    public PixPaymentResponse cancelPixPayment {
-        log.info;
-
-        try {
-            return pixClient.cancelPixPayment;
-
-        } catch  {
-            log.error, e);
-            throw new BusinessException;
+        if (cleaned.matches("^\\d{11}$")) {
+            return "CPF";
         }
-    }
 
-    // Webhook processing methods
-    public PixWebhookProcessor.WebhookProcessingResult processWebhook {
-        return webhookProcessor.processWebhook;
+        if (cleaned.matches("^\\d{14}$")) {
+            return "CNPJ";
+        }
+
+        if (cleaned.matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")) {
+            return "EVP";
+        }
+
+        throw new BusinessException("Unable to determine PIX key type");
     }
 
     // QR Code utility methods
-    public boolean validateQrCodeExpiration {
-        return qrCodeGenerator.validateQrCodeExpiration;
+    public boolean validateQrCodeExpiration(Payment payment) {
+        return qrCodeGenerator.validateQrCodeExpiration(payment);
     }
 
-    public String formatExpirationTime {
-        return qrCodeGenerator.formatExpirationTime;
+    public String formatExpirationTime(Payment payment) {
+        return qrCodeGenerator.formatExpirationTime(payment);
     }
 
-    public void clearQrCodeCache {
-        qrCodeGenerator.clearCache;
-    }
-
-    // Reconciliation methods
-    public PixReconciliationService.ReconciliationResult performReconciliation {
-        return reconciliationService.performReconciliation;
-    }
-
-    public PixReconciliationService.QuickReconciliationResult performQuickReconciliation {
-        return reconciliationService.performQuickReconciliation;
-    }
-
-    public PixReconciliationService.ReconciliationSummary generateReconciliationSummary {
-        return reconciliationService.generateReconciliationSummary;
-    }
-
-    // Certificate management methods
-    public String getCertificateFingerprint {
-        try {
-            return certificateManager.getCertificateFingerprint;
-        } catch  {
-            log.error, e);
-            return null;
-        }
-    }
-
-    public boolean isCertificateExpiringSoon {
-        return certificateManager.isCertificateExpiringSoon;
-    }
-
-    public void refreshCertificates {
-        certificateManager.refreshCertificates;
+    public void clearQrCodeCache() {
+        qrCodeGenerator.clearCache();
     }
 
     // Helper methods
-    private PixPaymentRequest buildPixPaymentRequest {
-        PixPaymentRequest request = new PixPaymentRequest;
-
-        request.setTxId);
-        request.setReferenceId);
-        request.setAmount);
-        request.setCurrency);
-        request.setDescription);
-
-        // Set PIX key and type
-        if  != null) {
-            request.setPixKey);
-            // Infer key type from format 
-            request.setPixKeyType));
+    private String maskPixKey(String pixKey) {
+        if (pixKey == null || pixKey.length() <= 4) {
+            return "***";
         }
-
-        // Merchant information
-        PixPaymentRequest.MerchantInfo merchantInfo = new PixPaymentRequest.MerchantInfo;
-        merchantInfo.setName.getName());
-        merchantInfo.setDocument.getDocument());
-        merchantInfo.setTradingName.getTradingName());
-        merchantInfo.setPhoneNumber.getPhoneNumber());
-        request.setMerchant;
-
-        // Customer information
-        if  != null || payment.getCustomerEmail() != null) {
-            PixPaymentRequest.CustomerInfo customerInfo = new PixPaymentRequest.CustomerInfo;
-            customerInfo.setName);
-            customerInfo.setEmail);
-            customerInfo.setDocument);
-            request.setCustomer;
-        }
-
-        // Expiration
-        if  != null) {
-            request.setExpiresAt);
-        }
-
-        return request;
+        return pixKey.substring(0, 2) + "***" + pixKey.substring(pixKey.length() - 2);
     }
 
-    private PixPaymentRequest.PixKeyType inferPixKeyType {
-        if ) {
-            return PixPaymentRequest.PixKeyType.CPF;
-        } else if ) {
-            return PixPaymentRequest.PixKeyType.CNPJ;
-        } else if ) {
-            return PixPaymentRequest.PixKeyType.EMAIL;
-        } else if ) {
-            return PixPaymentRequest.PixKeyType.PHONE;
-        } else {
-            return PixPaymentRequest.PixKeyType.EVP;
+    private String formatPhone(String phone) {
+        String cleaned = phone.replaceAll("[^0-9]", "");
+        if (!cleaned.startsWith("55")) {
+            cleaned = "55" + cleaned;
         }
-    }
-
-    private String maskPixKey {
-        if  <= 4) {
-            return pixKey;
-        }
-        return pixKey.substring + "***" + pixKey.substring(pixKey.length() - 2);
+        return "+" + cleaned;
     }
 
     // Fallback methods for Circuit Breaker
-    public PixQrCodeGenerator.PixQrCodeResult fallbackGeneratePixQrCode {
-        log.warn);
+    public PixQrCodeGenerator.PixQrCodeResult fallbackGeneratePixQrCode(Payment payment, Exception ex) {
+        log.warn("Fallback: Using placeholder QR Code for payment: {}", payment.getId());
 
-        String placeholderText = "00020101021226580014BR.GOV.BCB.PIX0136" + payment.getReferenceId + "520400005303986" + "6304XXXX";
+        String placeholderText = "00020101021226580014BR.GOV.BCB.PIX0136" +
+                                payment.getReferenceId() +
+                                "520400005303986" +
+                                "6304XXXX";
         String placeholderImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
-        return new PixQrCodeGenerator.PixQrCodeResult);
+        return new PixQrCodeGenerator.PixQrCodeResult(
+            placeholderText,
+            placeholderImage,
+            "FALLBACK_" + UUID.randomUUID().toString()
+        );
     }
 
-    public boolean fallbackValidatePixKey {
-        log.warn);
+    public boolean fallbackValidatePixKey(String pixKey, String pixKeyType, Exception ex) {
+        log.warn("Fallback: PIX key validation failed, returning true to avoid blocking: {}", maskPixKey(pixKey));
         return true; // Return true to avoid blocking payments
-    }
-
-    public PixPaymentResponse fallbackCreatePixPayment {
-        log.error);
-        throw new BusinessException;
     }
 }
