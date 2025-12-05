@@ -146,11 +146,11 @@ public interface PixWithdrawalRepository extends JpaRepository<PixWithdrawal, UU
                                                @Param("startDate") Instant startDate,
                                                @Param("endDate") Instant endDate);
 
-    @Query("SELECT AVG(EXTRACT(EPOCH FROM (w.completedAt - w.requestedAt))) FROM PixWithdrawal w WHERE " +
+    @Query(value = "SELECT AVG(DATEDIFF(SECOND, w.requested_at, w.completed_at)) FROM pix_withdrawals w WHERE " +
            "w.status = 'COMPLETED' " +
-           "AND w.completedAt IS NOT NULL " +
-           "AND w.requestedAt >= :startDate AND w.requestedAt < :endDate " +
-           "AND w.deleted = false")
+           "AND w.completed_at IS NOT NULL " +
+           "AND w.requested_at >= :startDate AND w.requested_at < :endDate " +
+           "AND w.deleted = false", nativeQuery = true)
     Double getAverageProcessingTimeInSeconds(@Param("startDate") Instant startDate,
                                             @Param("endDate") Instant endDate);
 

@@ -9,5 +9,7 @@ public enum PaymentStatus {
     REFUNDED,
     PARTIALLY_REFUNDED,
     CHARGEBACK,
-    EXPIRED
+    EXPIRED,
+    FAILED,
+    COMPLETED
 }

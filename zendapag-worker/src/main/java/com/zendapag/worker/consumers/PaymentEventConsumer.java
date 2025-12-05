@@ -25,12 +25,9 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Kafka consumer for payment-related events.
- * Processes payment lifecycle events with high throughput and reliability.
- */
 @Component
 @KafkaListener(
     topics = "payment-events",
@@ -45,8 +42,8 @@ public class PaymentEventConsumer {
     private final RiskAnalysisService riskAnalysisService;
     private final NotificationService notificationService;
     private final WebhookDeliveryService webhookDeliveryService;
+    private final MeterRegistry meterRegistry;
 
-    // Metrics
     private final Counter eventCounter;
     private final Counter errorCounter;
     private final Timer processingTimer;
@@ -60,6 +57,7 @@ public class PaymentEventConsumer {
         this.riskAnalysisService = riskAnalysisService;
         this.notificationService = notificationService;
         this.webhookDeliveryService = webhookDeliveryService;
+        this.meterRegistry = meterRegistry;
 
         this.eventCounter = Counter.builder("kafka.events.processed")
                 .tag("topic", "payment-events")
@@ -73,286 +71,137 @@ public class PaymentEventConsumer {
     }
 
     @KafkaHandler
-    @Retryable(
-        value = {Exception.class},
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
+    @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
     public void handlePaymentCreated(@Payload PaymentCreatedEvent event,
-                                   @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                   @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                    @Header(KafkaHeaders.OFFSET) long offset,
                                    Acknowledgment acknowledgment) {
-
-        Timer.Sample sample = Timer.start();
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            log.info("Processing PaymentCreatedEvent: paymentId={}, merchantId={}, amount={}, partition={}, offset={}",
-                    event.getPaymentId(), event.getMerchantId(), event.getAmount(), partition, offset);
-
-            // Process in parallel for better performance
-            CompletableFuture<Void> riskAnalysis = CompletableFuture.runAsync(() ->
-                processRiskAnalysis(event));
-
-            CompletableFuture<Void> webhookDelivery = CompletableFuture.runAsync(() ->
-                processWebhookDelivery(event));
-
-            CompletableFuture<Void> notification = CompletableFuture.runAsync(() ->
-                processNotification(event));
-
-            // Wait for all async operations to complete
-            CompletableFuture.allOf(riskAnalysis, webhookDelivery, notification).join();
-
-            // Track metrics
-            eventCounter.increment(
-                "event_type", "payment_created",
-                "merchant_id", event.getMerchantId(),
-                "payment_method", event.getPaymentMethod().toString()
-            );
-
-            log.debug("Successfully processed PaymentCreatedEvent: paymentId={}", event.getPaymentId());
-
-            // Manual acknowledgment
+            log.info("Processing PaymentCreatedEvent: paymentId={}, merchantId={}", event.getPaymentId(), event.getMerchantId());
+            processRiskAnalysis(event);
+            processWebhookDelivery(event.getPaymentId(), "payment_created");
+            processNotification(event);
+            eventCounter.increment();
             acknowledgment.acknowledge();
-
         } catch (Exception e) {
-            log.error("Failed to process PaymentCreatedEvent: paymentId={}, error={}",
-                     event.getPaymentId(), e.getMessage(), e);
-
-            errorCounter.increment(
-                "event_type", "payment_created",
-                "error_type", e.getClass().getSimpleName()
-            );
-
-            throw e; // Re-throw to trigger retry mechanism
+            log.error("Failed to process PaymentCreatedEvent", e);
+            errorCounter.increment();
+            throw e;
         } finally {
-            sample.stop(processingTimer.tag("event_type", "payment_created"));
+            sample.stop(processingTimer);
         }
     }
 
     @KafkaHandler
     @Transactional
-    @Retryable(
-        value = {Exception.class},
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
+    @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
     public void handlePaymentCompleted(@Payload PaymentCompletedEvent event,
-                                     @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                     @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                      @Header(KafkaHeaders.OFFSET) long offset,
                                      Acknowledgment acknowledgment) {
-
-        Timer.Sample sample = Timer.start();
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            log.info("Processing PaymentCompletedEvent: paymentId={}, merchantId={}, amount={}, partition={}, offset={}",
-                    event.getPaymentId(), event.getMerchantId(), event.getAmount(), partition, offset);
-
-            // Update payment status
+            log.info("Processing PaymentCompletedEvent: paymentId={}", event.getPaymentId());
             paymentProcessingService.markPaymentAsCompleted(event);
-
-            // Process settlement if required
             if (event.shouldTriggerSettlement()) {
                 paymentProcessingService.initiateSettlement(event);
             }
-
-            // Process in parallel
-            CompletableFuture<Void> webhookDelivery = CompletableFuture.runAsync(() ->
-                processWebhookDelivery(event));
-
-            CompletableFuture<Void> notification = CompletableFuture.runAsync(() ->
-                processCompletionNotification(event));
-
-            // Wait for async operations
-            CompletableFuture.allOf(webhookDelivery, notification).join();
-
-            // Track metrics
-            eventCounter.increment(
-                "event_type", "payment_completed",
-                "merchant_id", event.getMerchantId(),
-                "payment_method", event.getPaymentMethod().toString(),
-                "has_settlement", String.valueOf(event.shouldTriggerSettlement())
-            );
-
-            log.info("Successfully processed PaymentCompletedEvent: paymentId={}, netAmount={}",
-                    event.getPaymentId(), event.getNetAmount());
-
+            processWebhookDelivery(event.getPaymentId(), "payment_completed");
+            processCompletionNotification(event);
+            eventCounter.increment();
             acknowledgment.acknowledge();
-
         } catch (Exception e) {
-            log.error("Failed to process PaymentCompletedEvent: paymentId={}, error={}",
-                     event.getPaymentId(), e.getMessage(), e);
-
-            errorCounter.increment(
-                "event_type", "payment_completed",
-                "error_type", e.getClass().getSimpleName()
-            );
-
+            log.error("Failed to process PaymentCompletedEvent", e);
+            errorCounter.increment();
             throw e;
         } finally {
-            sample.stop(processingTimer.tag("event_type", "payment_completed"));
+            sample.stop(processingTimer);
         }
     }
 
     @KafkaHandler
-    @Retryable(
-        value = {Exception.class},
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
+    @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
     public void handlePaymentFailed(@Payload PaymentFailedEvent event,
-                                  @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                  @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                   @Header(KafkaHeaders.OFFSET) long offset,
                                   Acknowledgment acknowledgment) {
-
-        Timer.Sample sample = Timer.start();
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            log.info("Processing PaymentFailedEvent: paymentId={}, merchantId={}, reason={}, partition={}, offset={}",
-                    event.getPaymentId(), event.getMerchantId(), event.getFailureReason(), partition, offset);
-
-            // Update payment status
+            log.info("Processing PaymentFailedEvent: paymentId={}, error={}", event.getPaymentId(), event.getErrorMessage());
             paymentProcessingService.markPaymentAsFailed(event);
-
-            // Process in parallel
-            CompletableFuture<Void> webhookDelivery = CompletableFuture.runAsync(() ->
-                processWebhookDelivery(event));
-
-            CompletableFuture<Void> notification = CompletableFuture.runAsync(() ->
-                processFailureNotification(event));
-
-            CompletableFuture.allOf(webhookDelivery, notification).join();
-
-            // Track metrics
-            eventCounter.increment(
-                "event_type", "payment_failed",
-                "merchant_id", event.getMerchantId(),
-                "failure_reason", event.getFailureReason() != null ? event.getFailureReason() : "unknown"
-            );
-
-            log.debug("Successfully processed PaymentFailedEvent: paymentId={}", event.getPaymentId());
-
+            processWebhookDelivery(event.getPaymentId(), "payment_failed");
+            processFailureNotification(event);
+            eventCounter.increment();
             acknowledgment.acknowledge();
-
         } catch (Exception e) {
-            log.error("Failed to process PaymentFailedEvent: paymentId={}, error={}",
-                     event.getPaymentId(), e.getMessage(), e);
-
-            errorCounter.increment(
-                "event_type", "payment_failed",
-                "error_type", e.getClass().getSimpleName()
-            );
-
+            log.error("Failed to process PaymentFailedEvent", e);
+            errorCounter.increment();
             throw e;
         } finally {
-            sample.stop(processingTimer.tag("event_type", "payment_failed"));
+            sample.stop(processingTimer);
         }
     }
 
     @KafkaHandler
-    @Retryable(
-        value = {Exception.class},
-        maxAttempts = 3,
-        backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
+    @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
     public void handlePaymentCancelled(@Payload PaymentCancelledEvent event,
-                                     @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                     @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                      @Header(KafkaHeaders.OFFSET) long offset,
                                      Acknowledgment acknowledgment) {
-
-        Timer.Sample sample = Timer.start();
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            log.info("Processing PaymentCancelledEvent: paymentId={}, merchantId={}, reason={}, partition={}, offset={}",
-                    event.getPaymentId(), event.getMerchantId(), event.getReason(), partition, offset);
-
-            // Update payment status
+            log.info("Processing PaymentCancelledEvent: paymentId={}", event.getPaymentId());
             paymentProcessingService.markPaymentAsCancelled(event);
-
-            // Process webhook delivery
-            processWebhookDelivery(event);
-
-            // Track metrics
-            eventCounter.increment(
-                "event_type", "payment_cancelled",
-                "merchant_id", event.getMerchantId()
-            );
-
-            log.debug("Successfully processed PaymentCancelledEvent: paymentId={}", event.getPaymentId());
-
+            processWebhookDelivery(event.getPaymentId(), "payment_cancelled");
+            eventCounter.increment();
             acknowledgment.acknowledge();
-
         } catch (Exception e) {
-            log.error("Failed to process PaymentCancelledEvent: paymentId={}, error={}",
-                     event.getPaymentId(), e.getMessage(), e);
-
-            errorCounter.increment(
-                "event_type", "payment_cancelled",
-                "error_type", e.getClass().getSimpleName()
-            );
-
+            log.error("Failed to process PaymentCancelledEvent", e);
+            errorCounter.increment();
             throw e;
         } finally {
-            sample.stop(processingTimer.tag("event_type", "payment_cancelled"));
+            sample.stop(processingTimer);
         }
     }
 
-    // Handler for unknown event types
     @KafkaHandler(isDefault = true)
     public void handleUnknownEvent(Object event, Acknowledgment acknowledgment) {
         log.warn("Received unknown event type: {}", event.getClass().getName());
-
-        errorCounter.increment(
-            "event_type", "unknown",
-            "error_type", "UnknownEventType"
-        );
-
-        // Acknowledge to avoid infinite retries
+        errorCounter.increment();
         acknowledgment.acknowledge();
     }
 
-    // Private helper methods
     private void processRiskAnalysis(PaymentCreatedEvent event) {
         try {
-            riskAnalysisService.analyzePayment(
-                event.getPaymentId(),
-                event.getMerchantId(),
-                event.getAmount(),
-                event.getCustomerDocument(),
-                event.getEventData()
-            );
+            UUID paymentUUID = UUID.fromString(event.getPaymentId());
+            riskAnalysisService.analyzePayment(paymentUUID, event.getAmount(), event.getCustomerDocument());
         } catch (Exception e) {
             log.warn("Risk analysis failed for payment {}: {}", event.getPaymentId(), e.getMessage());
-            // Don't re-throw - risk analysis failure shouldn't block payment processing
         }
     }
 
-    private void processWebhookDelivery(Object event) {
+    private void processWebhookDelivery(String paymentId, String eventType) {
         try {
-            webhookDeliveryService.deliverEvent(event);
+            webhookDeliveryService.deliverWebhook(paymentId, eventType);
         } catch (Exception e) {
-            log.warn("Webhook delivery failed for event {}: {}", event.getClass().getSimpleName(), e.getMessage());
-            // Don't re-throw - webhook failures are handled separately
+            log.warn("Webhook delivery failed for payment {}: {}", paymentId, e.getMessage());
         }
     }
 
     private void processNotification(PaymentCreatedEvent event) {
         try {
-            notificationService.sendPaymentCreatedNotification(
-                event.getMerchantId(),
-                event.getPaymentId(),
-                event.getAmount(),
-                event.getCustomerEmail()
-            );
+            UUID paymentUUID = UUID.fromString(event.getPaymentId());
+            notificationService.notifyPaymentReceived(paymentUUID, event.getCustomerEmail());
         } catch (Exception e) {
             log.warn("Notification failed for payment {}: {}", event.getPaymentId(), e.getMessage());
-            // Don't re-throw - notification failure shouldn't block payment processing
         }
     }
 
     private void processCompletionNotification(PaymentCompletedEvent event) {
         try {
-            notificationService.sendPaymentCompletedNotification(
-                event.getMerchantId(),
-                event.getPaymentId(),
-                event.getAmount(),
-                event.getNetAmount()
-            );
+            UUID paymentUUID = UUID.fromString(event.getPaymentId());
+            notificationService.notifyPaymentCompleted(paymentUUID, null);
         } catch (Exception e) {
             log.warn("Completion notification failed for payment {}: {}", event.getPaymentId(), e.getMessage());
         }
@@ -360,11 +209,8 @@ public class PaymentEventConsumer {
 
     private void processFailureNotification(PaymentFailedEvent event) {
         try {
-            notificationService.sendPaymentFailedNotification(
-                event.getMerchantId(),
-                event.getPaymentId(),
-                event.getFailureReason()
-            );
+            UUID merchantUUID = UUID.fromString(event.getMerchantId());
+            notificationService.notifyMerchant(merchantUUID, "Payment Failed", event.getErrorMessage());
         } catch (Exception e) {
             log.warn("Failure notification failed for payment {}: {}", event.getPaymentId(), e.getMessage());
         }

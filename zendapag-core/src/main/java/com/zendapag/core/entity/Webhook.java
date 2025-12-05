@@ -130,6 +130,27 @@ public class Webhook extends BaseEntity {
     @Column(name = "external_id")
     private String externalId;
 
+    // Correlation and Entity tracking
+    @Size(max = 255, message = "Correlation ID must be at most 255 characters")
+    @Column(name = "correlation_id")
+    private String correlationId;
+
+    @Size(max = 255, message = "Entity ID must be at most 255 characters")
+    @Column(name = "entity_id")
+    private String entityId;
+
+    // Additional response tracking
+    @Column(name = "http_status_code")
+    private Integer httpStatusCode;
+
+    @Column(name = "response_time")
+    private Long responseTime;
+
+    // Tags for filtering
+    @Size(max = 1000, message = "Tags must be at most 1000 characters")
+    @Column(name = "tags", length = 1000)
+    private String tags;
+
     // Constructors
     public Webhook() {
         super();
@@ -442,5 +463,45 @@ public class Webhook extends BaseEntity {
 
     public void setExternalId(String externalId) {
         this.externalId = externalId;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
+    }
+
+    public String getEntityId() {
+        return entityId;
+    }
+
+    public void setEntityId(String entityId) {
+        this.entityId = entityId;
+    }
+
+    public Integer getHttpStatusCode() {
+        return httpStatusCode;
+    }
+
+    public void setHttpStatusCode(Integer httpStatusCode) {
+        this.httpStatusCode = httpStatusCode;
+    }
+
+    public Long getResponseTime() {
+        return responseTime;
+    }
+
+    public void setResponseTime(Long responseTime) {
+        this.responseTime = responseTime;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 }

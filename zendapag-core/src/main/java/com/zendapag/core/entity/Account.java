@@ -35,6 +35,10 @@ public class Account {
     @Builder.Default
     private BigDecimal balance = BigDecimal.ZERO;
 
+    @Column(name = "pending_balance", precision = 19, scale = 2)
+    @Builder.Default
+    private BigDecimal pendingBalance = BigDecimal.ZERO;
+
     @Column(name = "pix_key", unique = true)
     private String pixKey;
 
@@ -49,6 +53,10 @@ public class Account {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "merchant_id")
+    private Merchant merchant;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

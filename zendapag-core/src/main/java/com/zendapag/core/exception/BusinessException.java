@@ -49,4 +49,23 @@ public class BusinessException extends ZendapagException {
             super(message, "RISK_REJECTION");
         }
     }
+
+    public static class PaymentNotFoundException extends BusinessException {
+        public PaymentNotFoundException(String message) {
+            super(message, "PAYMENT_NOT_FOUND");
+        }
+    }
+
+    public static class MerchantNotFoundException extends BusinessException {
+        public MerchantNotFoundException(String message) {
+            super(message, "MERCHANT_NOT_FOUND");
+        }
+    }
+
+    public static class AccessDeniedException extends BusinessException {
+        public AccessDeniedException(String message) {
+            super(message, "ACCESS_DENIED");
+        }
+    }
+
 }

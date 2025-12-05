@@ -36,6 +36,12 @@ public class DatabaseConfig {
     @Value("${spring.datasource.driver-class-name:org.postgresql.Driver}")
     private String driverClassName;
 
+    @Value("${spring.jpa.hibernate.ddl-auto:validate}")
+    private String ddlAuto;
+
+    @Value("${spring.jpa.properties.hibernate.dialect:org.hibernate.dialect.PostgreSQLDialect}")
+    private String hibernateDialect;
+
     @Bean
     @Primary
     @ConfigurationProperties("spring.datasource.hikari")
@@ -113,9 +119,9 @@ public class DatabaseConfig {
     private Properties hibernateProperties() {
         Properties properties = new Properties();
 
-        // Basic Hibernate settings
-        properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-        properties.put("hibernate.hbm2ddl.auto", "validate");
+        // Basic Hibernate settings - use configured values from application.yml
+        properties.put("hibernate.dialect", hibernateDialect);
+        properties.put("hibernate.hbm2ddl.auto", ddlAuto);
         properties.put("hibernate.show_sql", false);
         properties.put("hibernate.format_sql", false);
 
@@ -137,7 +143,7 @@ public class DatabaseConfig {
 
         // Statistics and monitoring
         properties.put("hibernate.generate_statistics", true);
-        properties.put("hibernate.session.events.log.LOG_QUERIES_SLOWER_THAN_MS", 1000);
+        properties.put("hibernate.session.events.log.LOG_QUERIES_SLOWER_THAN_MS", "1000");
 
         // Connection provider
         properties.put("hibernate.connection.provider_disables_autocommit", true);

@@ -1,5 +1,6 @@
 package com.zendapag.core.entity;
 
+import com.zendapag.core.entity.enums.TransactionStatus;
 import com.zendapag.core.entity.enums.TransactionType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -9,9 +10,11 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.UUID;
 
 @Entity
 @Table(name = "transactions", indexes = {
@@ -48,10 +51,27 @@ public class Transaction extends BaseEntity {
     @JoinColumn(name = "settlement_id", foreignKey = @ForeignKey(name = "fk_transaction_settlement"))
     private Settlement settlement;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", foreignKey = @ForeignKey(name = "fk_transaction_account"))
+    private Account account;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_account_id", foreignKey = @ForeignKey(name = "fk_transaction_source_account"))
+    private Account sourceAccount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_account_id", foreignKey = @ForeignKey(name = "fk_transaction_target_account"))
+    private Account targetAccount;
+
     @NotNull(message = "Transaction type is required")
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)
     private TransactionType type;
+
+    @NotNull(message = "Transaction status is required")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private TransactionStatus status = TransactionStatus.PENDING;
 
     @NotNull(message = "Amount is required")
     @Column(name = "amount", nullable = false, precision = 15, scale = 2)
@@ -69,6 +89,16 @@ public class Transaction extends BaseEntity {
     @NotNull(message = "Transaction date is required")
     @Column(name = "transaction_date", nullable = false)
     private LocalDate transactionDate;
+
+    @Column(name = "processed_at")
+    private Instant processedAt;
+
+    @Size(max = 500, message = "Error message must be at most 500 characters")
+    @Column(name = "error_message", length = 500)
+    private String errorMessage;
+
+    @Column(name = "original_transaction_id")
+    private UUID originalTransactionId;
 
     // Balance tracking
     @Column(name = "balance_before", precision = 15, scale = 2)
@@ -130,6 +160,17 @@ public class Transaction extends BaseEntity {
 
     @Column(name = "reversed", nullable = false)
     private Boolean reversed = false;
+    // Additional tracking fields for repository queries
+    @Size(max = 255, message = "External ID must be at most 255 characters")
+    @Column(name = "external_id")
+    private String externalId;
+
+    @Column(name = "parent_transaction_id")
+    private UUID parentTransactionId;
+
+    @Column(name = "reversal_transaction_id")
+    private UUID reversalTransactionId;
+
 
     // Constructors
     public Transaction() {
@@ -137,6 +178,7 @@ public class Transaction extends BaseEntity {
         this.currency = "BRL";
         this.settled = false;
         this.reversed = false;
+        this.status = TransactionStatus.PENDING;
         this.transactionDate = LocalDate.now();
     }
 
@@ -233,6 +275,30 @@ public class Transaction extends BaseEntity {
         this.merchant = merchant;
     }
 
+    public Account getAccount() {
+        return account;
+    }
+
+    public void setAccount(Account account) {
+        this.account = account;
+    }
+
+    public Account getSourceAccount() {
+        return sourceAccount;
+    }
+
+    public void setSourceAccount(Account sourceAccount) {
+        this.sourceAccount = sourceAccount;
+    }
+
+    public Account getTargetAccount() {
+        return targetAccount;
+    }
+
+    public void setTargetAccount(Account targetAccount) {
+        this.targetAccount = targetAccount;
+    }
+
     public Payment getPayment() {
         return payment;
     }
@@ -255,6 +321,14 @@ public class Transaction extends BaseEntity {
 
     public void setType(TransactionType type) {
         this.type = type;
+    }
+
+    public TransactionStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TransactionStatus status) {
+        this.status = status;
     }
 
     public BigDecimal getAmount() {
@@ -288,6 +362,30 @@ public class Transaction extends BaseEntity {
 
     public void setTransactionDate(LocalDate transactionDate) {
         this.transactionDate = transactionDate;
+    }
+
+    public Instant getProcessedAt() {
+        return processedAt;
+    }
+
+    public void setProcessedAt(Instant processedAt) {
+        this.processedAt = processedAt;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public UUID getOriginalTransactionId() {
+        return originalTransactionId;
+    }
+
+    public void setOriginalTransactionId(UUID originalTransactionId) {
+        this.originalTransactionId = originalTransactionId;
     }
 
     public BigDecimal getBalanceBefore() {
@@ -410,4 +508,29 @@ public class Transaction extends BaseEntity {
     public void setReversed(Boolean reversed) {
         this.reversed = reversed;
     }
+
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
+    }
+
+    public UUID getParentTransactionId() {
+        return parentTransactionId;
+    }
+
+    public void setParentTransactionId(UUID parentTransactionId) {
+        this.parentTransactionId = parentTransactionId;
+    }
+
+    public UUID getReversalTransactionId() {
+        return reversalTransactionId;
+    }
+
+    public void setReversalTransactionId(UUID reversalTransactionId) {
+        this.reversalTransactionId = reversalTransactionId;
+    }
+
 }

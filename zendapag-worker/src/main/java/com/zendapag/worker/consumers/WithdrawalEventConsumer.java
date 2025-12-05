@@ -72,7 +72,7 @@ public class WithdrawalEventConsumer {
     )
     @KafkaListener(topics = "withdrawal-events", groupId = "withdrawal-processor")
     public void handleWithdrawalEvent(@Payload PixWithdrawal withdrawal,
-                                     @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                     @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                      @Header(KafkaHeaders.OFFSET) long offset,
                                      Acknowledgment acknowledgment) {
 
@@ -116,7 +116,7 @@ public class WithdrawalEventConsumer {
     )
     @KafkaListener(topics = "withdrawal-processing", groupId = "withdrawal-processor")
     public void handleWithdrawalProcessing(@Payload String withdrawalId,
-                                          @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                          @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                           @Header(KafkaHeaders.OFFSET) long offset,
                                           Acknowledgment acknowledgment) {
 
@@ -130,7 +130,7 @@ public class WithdrawalEventConsumer {
             UUID id = UUID.fromString(withdrawalId);
 
             // Processar saque
-            withdrawalService.processWithdrawal(id);
+            withdrawalService.processPixWithdrawal(id.toString());
 
             // Commit manual
             if (acknowledgment != null) {
@@ -158,7 +158,7 @@ public class WithdrawalEventConsumer {
     private void processWithdrawal(PixWithdrawal withdrawal) {
         try {
             // Chamar o serviço para processar o saque
-            withdrawalService.processWithdrawal(withdrawal.getId());
+            withdrawalService.processPixWithdrawal(withdrawal.getId().toString());
 
             log.debug("Withdrawal processing completed: {}", withdrawal.getReferenceId());
 
@@ -173,7 +173,7 @@ public class WithdrawalEventConsumer {
      */
     @KafkaListener(topics = "withdrawal-events-dlq", groupId = "withdrawal-dlq-processor")
     public void handleDeadLetterQueue(@Payload String message,
-                                     @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                     @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                      @Header(KafkaHeaders.OFFSET) long offset,
                                      @Header(value = KafkaHeaders.EXCEPTION_MESSAGE, required = false) String exceptionMessage) {
 

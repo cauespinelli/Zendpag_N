@@ -13,7 +13,7 @@ import io.micrometer.core.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse;
+
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
 
 @Tag(name = "Merchants", description = "Merchant management API")
@@ -47,13 +46,13 @@ public class MerchantController {
         description = "Returns the authenticated merchant's profile information and current status."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Merchant profile retrieved"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required"),
-        @SwaggerApiResponse(responseCode = "404", description = "Merchant not found")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Merchant profile retrieved"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Merchant not found")
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
-    @Timed(name = "api.merchants.me", description = "Time taken to get merchant profile")
+    @Timed(value = "api.merchants.me", description = "Time taken to get merchant profile")
     public ResponseEntity<ApiResponse<MerchantResponse>> getMerchantProfile(Authentication authentication) {
         log.debug("Getting merchant profile for: {}", authentication.getName());
 
@@ -68,14 +67,14 @@ public class MerchantController {
         description = "Updates merchant profile information. Some fields may require re-verification."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Merchant profile updated"),
-        @SwaggerApiResponse(responseCode = "400", description = "Invalid data provided"),
-        @SwaggerApiResponse(responseCode = "409", description = "Email already exists")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Merchant profile updated"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid data provided"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Email already exists")
     })
     @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/me")
     @RateLimiter(name = "merchants-api")
-    @Timed(name = "api.merchants.update", description = "Time taken to update merchant profile")
+    @Timed(value = "api.merchants.update", description = "Time taken to update merchant profile")
     public ResponseEntity<ApiResponse<MerchantResponse>> updateMerchantProfile(
             @Valid @RequestBody MerchantUpdateRequest request,
             Authentication authentication) {
@@ -87,7 +86,7 @@ public class MerchantController {
         // Update merchant fields
         updateMerchantFromRequest(merchant, request);
 
-        Merchant updatedMerchant = merchantService.updateMerchant(merchant);
+        Merchant updatedMerchant = merchantService.updateMerchant(merchant.getId(), merchant);
         MerchantResponse response = convertToMerchantResponse(updatedMerchant);
 
         return ResponseEntity.ok(ApiResponse.success("Merchant profile updated successfully", response));
@@ -99,7 +98,7 @@ public class MerchantController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me/balance")
-    @Timed(name = "api.merchants.balance", description = "Time taken to get merchant balance")
+    @Timed(value = "api.merchants.balance", description = "Time taken to get merchant balance")
     public ResponseEntity<ApiResponse<BalanceResponse>> getMerchantBalance(Authentication authentication) {
         Merchant merchant = getMerchantFromAuth(authentication);
         BigDecimal balance = transactionService.getMerchantBalance(merchant);
@@ -113,13 +112,13 @@ public class MerchantController {
         description = "Generates a new API key for the merchant. Previous API key will be invalidated."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "API key generated"),
-        @SwaggerApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "API key generated"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Rate limit exceeded")
     })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/me/api-keys")
     @RateLimiter(name = "merchants-api")
-    @Timed(name = "api.merchants.generate.apikey", description = "Time taken to generate API key")
+    @Timed(value = "api.merchants.generate.apikey", description = "Time taken to generate API key")
     public ResponseEntity<ApiResponse<ApiKeyResponse>> generateApiKey(
             @Parameter(description = "API key description")
             @RequestParam(required = false, defaultValue = "Generated via API") String description,
@@ -149,7 +148,7 @@ public class MerchantController {
     @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/me/webhook-url")
     @RateLimiter(name = "merchants-api")
-    @Timed(name = "api.merchants.webhook.update", description = "Time taken to update webhook URL")
+    @Timed(value = "api.merchants.webhook.update", description = "Time taken to update webhook URL")
     public ResponseEntity<ApiResponse<WebhookConfigResponse>> updateWebhookUrl(
             @Parameter(description = "Webhook URL", required = true)
             @RequestParam String webhookUrl,
@@ -171,7 +170,7 @@ public class MerchantController {
             merchant.setWebhookSecret(webhookSecret);
         }
 
-        Merchant updatedMerchant = merchantService.updateMerchant(merchant);
+        Merchant updatedMerchant = merchantService.updateMerchant(merchant.getId(), merchant);
 
         WebhookConfigResponse response = new WebhookConfigResponse(
             updatedMerchant.getWebhookUrl(),
@@ -189,7 +188,7 @@ public class MerchantController {
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/me/webhook/test")
     @RateLimiter(name = "merchants-api")
-    @Timed(name = "api.merchants.webhook.test", description = "Time taken to test webhook")
+    @Timed(value = "api.merchants.webhook.test", description = "Time taken to test webhook")
     public ResponseEntity<ApiResponse<WebhookTestResponse>> testWebhook(Authentication authentication) {
         log.info("Testing webhook for merchant: {}", authentication.getName());
 
@@ -214,7 +213,7 @@ public class MerchantController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me/status")
-    @Timed(name = "api.merchants.status", description = "Time taken to get merchant status")
+    @Timed(value = "api.merchants.status", description = "Time taken to get merchant status")
     public ResponseEntity<ApiResponse<MerchantStatusResponse>> getMerchantStatus(Authentication authentication) {
         Merchant merchant = getMerchantFromAuth(authentication);
 
@@ -238,7 +237,7 @@ public class MerchantController {
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/me/kyc/verify")
     @RateLimiter(name = "merchants-api")
-    @Timed(name = "api.merchants.kyc.verify", description = "Time taken to request KYC verification")
+    @Timed(value = "api.merchants.kyc.verify", description = "Time taken to request KYC verification")
     public ResponseEntity<ApiResponse<KycVerificationResponse>> requestKycVerification(Authentication authentication) {
         log.info("Requesting KYC verification for merchant: {}", authentication.getName());
 
@@ -266,13 +265,7 @@ public class MerchantController {
 
     private Merchant getMerchantFromAuth(Authentication authentication) {
         String merchantDocument = authentication.getName();
-        Optional<Merchant> merchantOpt = merchantService.findByDocument(merchantDocument);
-
-        if (merchantOpt.isEmpty()) {
-            throw new BusinessException.InvalidMerchantException("Merchant not found");
-        }
-
-        return merchantOpt.get();
+        return merchantService.findByDocument(merchantDocument);
     }
 
     private MerchantResponse convertToMerchantResponse(Merchant merchant) {
@@ -288,7 +281,7 @@ public class MerchantController {
         response.setStatus(merchant.getStatus().name());
         response.setKycVerified(merchant.getKycVerified());
         response.setRiskScore(merchant.getRiskScore());
-        response.setAddress(merchant.getAddress());
+        response.setAddress(merchant.getAddressAsMap());
         response.setCreatedAt(merchant.getCreatedAt());
         response.setLastLoginAt(merchant.getLastLoginAt());
         return response;
@@ -301,7 +294,14 @@ public class MerchantController {
         if (request.getPhoneNumber() != null) merchant.setPhoneNumber(request.getPhoneNumber());
         if (request.getWebsiteUrl() != null) merchant.setWebsiteUrl(request.getWebsiteUrl());
         if (request.getDescription() != null) merchant.setDescription(request.getDescription());
-        if (request.getAddress() != null) merchant.setAddress(request.getAddress());
+        if (request.getAddress() != null) {
+            java.util.Map<String, Object> addrMap = request.getAddress();
+            if (addrMap.get("street") != null) merchant.setAddress((String) addrMap.get("street"));
+            if (addrMap.get("city") != null) merchant.setCity((String) addrMap.get("city"));
+            if (addrMap.get("state") != null) merchant.setState((String) addrMap.get("state"));
+            if (addrMap.get("postalCode") != null) merchant.setPostalCode((String) addrMap.get("postalCode"));
+            if (addrMap.get("country") != null) merchant.setCountry((String) addrMap.get("country"));
+        }
     }
 
     private boolean isValidWebhookUrl(String webhookUrl) {

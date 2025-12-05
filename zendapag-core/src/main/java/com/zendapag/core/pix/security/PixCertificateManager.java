@@ -14,6 +14,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Base64;
 
+import javax.crypto.spec.SecretKeySpec;
 @Component
 @Slf4j
 public class PixCertificateManager {

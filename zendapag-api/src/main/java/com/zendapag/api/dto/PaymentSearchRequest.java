@@ -26,7 +26,7 @@ public class PaymentSearchRequest {
     @Schema(description = "Sort field", example = "createdAt")
     private String sortBy = "createdAt";
 
-    @Schema(description = "Sort direction", example = "desc", allowableValues = {"asc", "desc"})
+    @Schema(description = "Sort direction", example = "desc")
     private String sortDir = "desc";
 
     @Schema(description = "Filter by payment status")

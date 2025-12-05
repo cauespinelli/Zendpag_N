@@ -98,7 +98,7 @@ public class PixConfig {
 
     // Helper methods
     public String getEffectiveBaseUrl() {
-        return sandbox ? participant.sandboxUrl : participant.baseUrl;
+        return participant.sandbox ? participant.sandboxUrl : participant.baseUrl;
     }
 
     public String buildEndpointUrl(String endpoint) {

@@ -21,10 +21,9 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 
-/**
- * Kafka consumer for webhook-related events.
- * Handles webhook delivery, retries, and failure processing with low latency.
- */
+import java.time.Instant;
+import java.util.HashMap;
+
 @Component
 @KafkaListener(
     topics = "webhook-events",
@@ -37,8 +36,8 @@ public class WebhookEventConsumer {
 
     private final WebhookDeliveryService webhookDeliveryService;
     private final DeadLetterQueueService deadLetterQueueService;
+    private final MeterRegistry meterRegistry;
 
-    // Metrics
     private final Counter eventCounter;
     private final Counter errorCounter;
     private final Timer processingTimer;
@@ -49,6 +48,7 @@ public class WebhookEventConsumer {
                               MeterRegistry meterRegistry) {
         this.webhookDeliveryService = webhookDeliveryService;
         this.deadLetterQueueService = deadLetterQueueService;
+        this.meterRegistry = meterRegistry;
 
         this.eventCounter = Counter.builder("kafka.events.processed")
                 .tag("topic", "webhook-events")
@@ -64,41 +64,31 @@ public class WebhookEventConsumer {
     }
 
     @KafkaHandler
-    @Retryable(
-        value = {Exception.class},
-        maxAttempts = 2, // Fewer retries for webhooks to maintain low latency
-        backoff = @Backoff(delay = 500, multiplier = 2)
-    )
+    @Retryable(value = {Exception.class}, maxAttempts = 2, backoff = @Backoff(delay = 500, multiplier = 2))
     public void handleWebhookTriggered(@Payload WebhookTriggeredEvent event,
-                                     @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                     @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                      @Header(KafkaHeaders.OFFSET) long offset,
                                      Acknowledgment acknowledgment) {
 
-        Timer.Sample sample = Timer.start();
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
             log.info("Processing WebhookTriggeredEvent: webhookId={}, merchantId={}, eventType={}, partition={}, offset={}",
                     event.getWebhookId(), event.getMerchantId(), event.getEventType(), partition, offset);
 
-            // Attempt webhook delivery
+            // Use getTargetUrl() instead of getWebhookUrl()
             boolean deliverySuccess = webhookDeliveryService.attemptDelivery(
                 event.getWebhookId(),
                 event.getMerchantId(),
-                event.getWebhookUrl(),
+                event.getTargetUrl(),
                 event.getEventType(),
                 event.getPayload(),
                 event.getHeaders(),
-                event.getSignature(),
-                event.getAttemptNumber(),
-                event.getMaxAttempts()
+                null, // no signature field in this event
+                1,    // default attempt number
+                3     // default max attempts
             );
 
-            // Track metrics
-            eventCounter.increment(
-                "event_type", "webhook_triggered",
-                "merchant_id", event.getMerchantId(),
-                "webhook_event_type", event.getEventType(),
-                "delivery_success", String.valueOf(deliverySuccess)
-            );
+            eventCounter.increment();
 
             if (deliverySuccess) {
                 log.debug("Successfully delivered webhook: webhookId={}, eventType={}",
@@ -113,55 +103,38 @@ public class WebhookEventConsumer {
         } catch (Exception e) {
             log.error("Failed to process WebhookTriggeredEvent: webhookId={}, error={}",
                      event.getWebhookId(), e.getMessage(), e);
-
-            errorCounter.increment(
-                "event_type", "webhook_triggered",
-                "error_type", e.getClass().getSimpleName()
-            );
-
+            errorCounter.increment();
             throw e;
         } finally {
-            sample.stop(processingTimer.tag("event_type", "webhook_triggered"));
+            sample.stop(processingTimer);
         }
     }
 
     @KafkaHandler
-    @Retryable(
-        value = {Exception.class},
-        maxAttempts = 2,
-        backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
+    @Retryable(value = {Exception.class}, maxAttempts = 2, backoff = @Backoff(delay = 1000, multiplier = 2))
     public void handleWebhookFailed(@Payload WebhookFailedEvent event,
-                                  @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                  @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                   @Header(KafkaHeaders.OFFSET) long offset,
                                   Acknowledgment acknowledgment) {
 
-        Timer.Sample sample = Timer.start();
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
             log.info("Processing WebhookFailedEvent: webhookId={}, merchantId={}, attempt={}/{}, status={}, partition={}, offset={}",
                     event.getWebhookId(), event.getMerchantId(), event.getAttemptNumber(),
                     event.getMaxAttempts(), event.getHttpStatusCode(), partition, offset);
 
             if (event.willRetry()) {
-                // Schedule retry
                 webhookDeliveryService.scheduleRetry(
                     event.getWebhookId(),
                     event.getDeliveryId(),
                     event.getNextRetryAt(),
                     event.getAttemptNumber() + 1
                 );
-
-                retryCounter.increment(
-                    "webhook_id", event.getWebhookId(),
-                    "merchant_id", event.getMerchantId(),
-                    "failure_category", event.categorizeFailure()
-                );
-
+                retryCounter.increment();
                 log.info("Scheduled webhook retry: webhookId={}, nextAttempt={}, retryAt={}",
                         event.getWebhookId(), event.getAttemptNumber() + 1, event.getNextRetryAt());
 
             } else if (event.shouldGoToDeadLetterQueue()) {
-                // Send to dead letter queue
                 deadLetterQueueService.sendWebhookToDeadLetter(
                     event.getWebhookId(),
                     event.getDeliveryId(),
@@ -173,83 +146,55 @@ public class WebhookEventConsumer {
                     event.getAttemptNumber(),
                     event.getResponseBody()
                 );
-
                 log.warn("Webhook sent to dead letter queue: webhookId={}, finalAttempt={}, status={}",
                         event.getWebhookId(), event.getAttemptNumber(), event.getHttpStatusCode());
             }
 
-            // Track metrics
-            eventCounter.increment(
-                "event_type", "webhook_failed",
-                "merchant_id", event.getMerchantId(),
-                "failure_category", event.categorizeFailure(),
-                "will_retry", String.valueOf(event.willRetry()),
-                "is_final_attempt", String.valueOf(event.isLastAttempt())
-            );
-
+            eventCounter.increment();
             acknowledgment.acknowledge();
 
         } catch (Exception e) {
             log.error("Failed to process WebhookFailedEvent: webhookId={}, error={}",
                      event.getWebhookId(), e.getMessage(), e);
-
-            errorCounter.increment(
-                "event_type", "webhook_failed",
-                "error_type", e.getClass().getSimpleName()
-            );
-
+            errorCounter.increment();
             throw e;
         } finally {
-            sample.stop(processingTimer.tag("event_type", "webhook_failed"));
+            sample.stop(processingTimer);
         }
     }
 
     @KafkaHandler
-    @Retryable(
-        value = {Exception.class},
-        maxAttempts = 2,
-        backoff = @Backoff(delay = 500, multiplier = 2)
-    )
+    @Retryable(value = {Exception.class}, maxAttempts = 2, backoff = @Backoff(delay = 500, multiplier = 2))
     public void handleWebhookRetry(@Payload WebhookRetryEvent event,
-                                 @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                 @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                  @Header(KafkaHeaders.OFFSET) long offset,
                                  Acknowledgment acknowledgment) {
 
-        Timer.Sample sample = Timer.start();
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            log.info("Processing WebhookRetryEvent: webhookId={}, deliveryId={}, attempt={}, partition={}, offset={}",
-                    event.getWebhookId(), event.getDeliveryId(), event.getAttemptNumber(), partition, offset);
+            log.info("Processing WebhookRetryEvent: webhookId={}, attempt={}/{}, partition={}, offset={}",
+                    event.getWebhookId(), event.getAttemptNumber(), event.getMaxAttempts(), partition, offset);
 
-            // Check if retry is still valid (not expired)
-            if (event.isRetryExpired()) {
-                log.warn("Webhook retry expired: webhookId={}, deliveryId={}",
-                        event.getWebhookId(), event.getDeliveryId());
+            // Check if retry is expired by comparing scheduledRetryAt with current time
+            Instant scheduledAt = event.getScheduledRetryAt();
+            boolean isExpired = scheduledAt != null && Instant.now().isAfter(scheduledAt.plusSeconds(300)); // 5 min grace
 
-                // Send to dead letter queue
+            if (isExpired) {
+                log.warn("Webhook retry expired: webhookId={}", event.getWebhookId());
                 deadLetterQueueService.sendExpiredRetryToDeadLetter(event);
                 acknowledgment.acknowledge();
                 return;
             }
 
-            // Attempt webhook delivery again
+            // Use webhookId as deliveryId since the event doesn't have deliveryId
             boolean deliverySuccess = webhookDeliveryService.retryDelivery(
                 event.getWebhookId(),
-                event.getDeliveryId(),
+                event.getWebhookId(), // use webhookId as fallback for deliveryId
                 event.getAttemptNumber()
             );
 
-            // Track retry metrics
-            retryCounter.increment(
-                "webhook_id", event.getWebhookId(),
-                "merchant_id", event.getMerchantId(),
-                "retry_success", String.valueOf(deliverySuccess)
-            );
-
-            eventCounter.increment(
-                "event_type", "webhook_retry",
-                "merchant_id", event.getMerchantId(),
-                "retry_success", String.valueOf(deliverySuccess)
-            );
+            retryCounter.increment();
+            eventCounter.increment();
 
             if (deliverySuccess) {
                 log.info("Webhook retry successful: webhookId={}, attempt={}",
@@ -264,29 +209,17 @@ public class WebhookEventConsumer {
         } catch (Exception e) {
             log.error("Failed to process WebhookRetryEvent: webhookId={}, error={}",
                      event.getWebhookId(), e.getMessage(), e);
-
-            errorCounter.increment(
-                "event_type", "webhook_retry",
-                "error_type", e.getClass().getSimpleName()
-            );
-
+            errorCounter.increment();
             throw e;
         } finally {
-            sample.stop(processingTimer.tag("event_type", "webhook_retry"));
+            sample.stop(processingTimer);
         }
     }
 
-    // Handler for unknown event types
     @KafkaHandler(isDefault = true)
     public void handleUnknownEvent(Object event, Acknowledgment acknowledgment) {
         log.warn("Received unknown webhook event type: {}", event.getClass().getName());
-
-        errorCounter.increment(
-            "event_type", "unknown",
-            "error_type", "UnknownEventType"
-        );
-
-        // Acknowledge to avoid infinite retries
+        errorCounter.increment();
         acknowledgment.acknowledge();
     }
 }

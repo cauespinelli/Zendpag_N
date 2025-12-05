@@ -2,6 +2,7 @@ package com.zendapag.core.entity.enums;
 
 public enum AuditAction {
     CREATE,
+    VIEW,
     READ,
     UPDATE,
     DELETE,

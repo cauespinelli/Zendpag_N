@@ -1,5 +1,6 @@
 package com.zendapag.core.repository;
 
+// Account import removed - Payment entity does not have account field
 import com.zendapag.core.entity.Merchant;
 import com.zendapag.core.entity.Payment;
 import com.zendapag.core.entity.enums.PaymentStatus;
@@ -164,12 +165,12 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpec
                                              @Param("startDate") Instant startDate,
                                              @Param("endDate") Instant endDate);
 
-    @Query("SELECT DATE(p.createdAt), COUNT(p), SUM(p.amount) FROM Payment p WHERE " +
+    @Query("SELECT CAST(p.createdAt AS DATE), COUNT(p), SUM(p.amount) FROM Payment p WHERE " +
            "p.status = 'APPROVED' " +
            "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
            "AND p.deleted = false " +
-           "GROUP BY DATE(p.createdAt) " +
-           "ORDER BY DATE(p.createdAt)")
+           "GROUP BY CAST(p.createdAt AS DATE) " +
+           "ORDER BY CAST(p.createdAt AS DATE)")
     List<Object[]> getDailyPaymentStats(@Param("startDate") Instant startDate,
                                         @Param("endDate") Instant endDate);
 
@@ -180,18 +181,18 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpec
            "AND p.deleted = false")
     Page<Payment> searchPayments(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    @Query("SELECT DISTINCT DATE(p.createdAt) FROM Payment p WHERE " +
+    @Query("SELECT DISTINCT CAST(p.createdAt AS DATE) FROM Payment p WHERE " +
            "p.merchant = :merchant " +
            "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
            "AND p.deleted = false " +
-           "ORDER BY DATE(p.createdAt) DESC")
+           "ORDER BY CAST(p.createdAt AS DATE) DESC")
     List<LocalDate> getPaymentDates(@Param("merchant") Merchant merchant,
                                     @Param("startDate") Instant startDate,
                                     @Param("endDate") Instant endDate);
 
     @Query("SELECT p FROM Payment p WHERE " +
            "p.merchant = :merchant " +
-           "AND DATE(p.createdAt) = :date " +
+           "AND CAST(p.createdAt AS DATE) = :date " +
            "AND p.deleted = false " +
            "ORDER BY p.createdAt DESC")
     List<Payment> findByMerchantAndDate(@Param("merchant") Merchant merchant,
@@ -211,11 +212,11 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpec
            "ORDER BY p.amount DESC, p.createdAt DESC")
     Page<Payment> findHighValuePayments(@Param("threshold") BigDecimal threshold, Pageable pageable);
 
-    @Query(value = "SELECT DATE_TRUNC('hour', p.created_at) as hour, COUNT(*) as count " +
+    @Query(value = "SELECT DATETRUNC('HOUR', p.created_at) as hour, COUNT(*) as count " +
            "FROM payments p " +
            "WHERE p.created_at >= :startDate AND p.created_at < :endDate " +
            "AND p.deleted = false " +
-           "GROUP BY DATE_TRUNC('hour', p.created_at) " +
+           "GROUP BY DATETRUNC('HOUR', p.created_at) " +
            "ORDER BY hour",
            nativeQuery = true)
     List<Object[]> getHourlyPaymentVolume(@Param("startDate") Instant startDate,
@@ -249,4 +250,95 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpec
     Object getPaymentSummaryByMerchant(@Param("merchant") Merchant merchant,
                                        @Param("startDate") Instant startDate,
                                        @Param("endDate") Instant endDate);
+
+    // NEW: findAllByStatus - returns List (for PaymentService)
+    @Query("SELECT p FROM Payment p WHERE p.status = :status AND p.deleted = false")
+    List<Payment> findAllByStatus(@Param("status") PaymentStatus status);
+
+    // NEW: findByAccount (for PaymentService)
+
+
+
+    // NEW: findByMerchantAndCreatedAtBetween with Pageable (for PaymentService)
+    @Query("SELECT p FROM Payment p WHERE " +
+           "p.merchant = :merchant " +
+           "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
+           "AND p.deleted = false " +
+           "ORDER BY p.createdAt DESC")
+    Page<Payment> findByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
+                                                    @Param("startDate") Instant startDate,
+                                                    @Param("endDate") Instant endDate,
+                                                    Pageable pageable);
+
+    // NEW: findByMerchantAndCreatedAtBetween without Pageable (for ReportService)
+    @Query("SELECT p FROM Payment p WHERE " +
+           "p.merchant = :merchant " +
+           "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
+           "AND p.deleted = false " +
+           "ORDER BY p.createdAt DESC")
+    List<Payment> findByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
+                                                    @Param("startDate") Instant startDate,
+                                                    @Param("endDate") Instant endDate);
+
+    // NEW: findByStatusAndExpiresAtBefore (for PaymentService)
+    @Query("SELECT p FROM Payment p WHERE " +
+           "p.status = :status " +
+           "AND p.expiresAt IS NOT NULL " +
+           "AND p.expiresAt < :before " +
+           "AND p.deleted = false")
+    List<Payment> findByStatusAndExpiresAtBefore(@Param("status") PaymentStatus status,
+                                                  @Param("before") Instant before);
+
+    // NEW: countByMerchantAndCreatedAtBetween (for PaymentService)
+    @Query("SELECT COUNT(p) FROM Payment p WHERE " +
+           "p.merchant = :merchant " +
+           "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
+           "AND p.deleted = false")
+    long countByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
+                                            @Param("startDate") Instant startDate,
+                                            @Param("endDate") Instant endDate);
+
+    // NEW: sumAmountByMerchantAndCreatedAtBetween (for PaymentService)
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE " +
+           "p.merchant = :merchant " +
+           "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
+           "AND p.deleted = false")
+    BigDecimal sumAmountByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
+                                                       @Param("startDate") Instant startDate,
+                                                       @Param("endDate") Instant endDate);
+
+    // NEW: sumFeesByMerchantAndCreatedAtBetween (for PaymentService)
+    @Query("SELECT COALESCE(SUM(p.feeAmount), 0) FROM Payment p WHERE " +
+           "p.merchant = :merchant " +
+           "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
+           "AND p.deleted = false")
+    BigDecimal sumFeesByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
+                                                     @Param("startDate") Instant startDate,
+                                                     @Param("endDate") Instant endDate);
+
+    // NEW: findByPixTxId (for PixWebhookProcessor)
+    @Query("SELECT p FROM Payment p WHERE p.pixTransactionId = :pixTxId AND p.deleted = false")
+    Optional<Payment> findByPixTxId(@Param("pixTxId") String pixTxId);
+
+    // NEW: countByMerchantAndCreatedAtBetweenAndStatus (for ReportService)
+    @Query("SELECT COUNT(p) FROM Payment p WHERE " +
+           "p.merchant = :merchant " +
+           "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
+           "AND p.status = :status " +
+           "AND p.deleted = false")
+    long countByMerchantAndCreatedAtBetweenAndStatus(@Param("merchant") Merchant merchant,
+                                                      @Param("startDate") Instant startDate,
+                                                      @Param("endDate") Instant endDate,
+                                                      @Param("status") PaymentStatus status);
+
+    // NEW: sumAmountByMerchantAndCreatedAtBetweenAndStatus (for ReportService)
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE " +
+           "p.merchant = :merchant " +
+           "AND p.createdAt >= :startDate AND p.createdAt < :endDate " +
+           "AND p.status = :status " +
+           "AND p.deleted = false")
+    BigDecimal sumAmountByMerchantAndCreatedAtBetweenAndStatus(@Param("merchant") Merchant merchant,
+                                                                @Param("startDate") Instant startDate,
+                                                                @Param("endDate") Instant endDate,
+                                                                @Param("status") PaymentStatus status);
 }

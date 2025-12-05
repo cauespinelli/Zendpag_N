@@ -21,71 +21,71 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public User createUser {
-        log.info);
+    public User createUser(User user) {
+        log.info("Creating user with username: {}", user.getUsername());
 
-        validateUserData;
+        validateUserData(user);
 
-        user.setPassword));
-        user.setStatus;
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setStatus(User.UserStatus.ACTIVE);
 
-        if  == null || user.getRoles().isEmpty()) {
-            user.setRoles);
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            user.setRoles(Set.of(User.Role.USER));
         }
 
-        User savedUser = userRepository.save;
-        log.info);
+        User savedUser = userRepository.save(user);
+        log.info("User created with ID: {}", savedUser.getId());
 
         return savedUser;
     }
 
-    @Transactional
-    public User findById {
-        return userRepository.findById
-                .orElseThrow -> new ResourceNotFoundException("User", "id", id));
+    @Transactional(readOnly = true)
+    public User findById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
+    }
+
+    @Transactional(readOnly = true)
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+    }
+
+    @Transactional(readOnly = true)
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+    }
+
+    @Transactional(readOnly = true)
+    public User findByUsernameOrEmail(String usernameOrEmail) {
+        return userRepository.findByUsernameOrEmail(usernameOrEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username/email", usernameOrEmail));
     }
 
     @Transactional
-    public User findByUsername {
-        return userRepository.findByUsername
-                .orElseThrow -> new ResourceNotFoundException("User", "username", username));
+    public User updateUserStatus(Long id, User.UserStatus status) {
+        User user = findById(id);
+        user.setStatus(status);
+        return userRepository.save(user);
     }
 
-    @Transactional
-    public User findByEmail {
-        return userRepository.findByEmail
-                .orElseThrow -> new ResourceNotFoundException("User", "email", email));
+    @Transactional(readOnly = true)
+    public boolean validatePassword(String rawPassword, String encodedPassword) {
+        return passwordEncoder.matches(rawPassword, encodedPassword);
     }
 
-    @Transactional
-    public User findByUsernameOrEmail {
-        return userRepository.findByUsernameOrEmail
-                .orElseThrow -> new ResourceNotFoundException("User", "username/email", usernameOrEmail));
-    }
-
-    @Transactional
-    public User updateUserStatus {
-        User user = findById;
-        user.setStatus;
-        return userRepository.save;
-    }
-
-    @Transactional
-    public boolean validatePassword {
-        return passwordEncoder.matches;
-    }
-
-    private void validateUserData {
-        if )) {
-            throw new BusinessException);
+    private void validateUserData(User user) {
+        if (userRepository.existsByUsername(user.getUsername())) {
+            throw new BusinessException("DUPLICATE_USERNAME", "Username already exists");
         }
 
-        if )) {
-            throw new BusinessException);
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new BusinessException("DUPLICATE_EMAIL", "Email already exists");
         }
 
-        if )) {
-            throw new BusinessException);
+        if (user.getPassword() == null || user.getPassword().length() < 8) {
+            throw new BusinessException("WEAK_PASSWORD", "Password must be at least 8 characters");
         }
     }
 }

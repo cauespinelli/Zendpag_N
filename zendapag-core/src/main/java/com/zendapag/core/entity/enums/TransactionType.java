@@ -7,5 +7,9 @@ public enum TransactionType {
     FEE,
     SETTLEMENT,
     REVERSAL,
-    ADJUSTMENT
+    ADJUSTMENT,
+    CREDIT,
+    DEBIT,
+    WITHDRAWAL,
+    TRANSFER
 }

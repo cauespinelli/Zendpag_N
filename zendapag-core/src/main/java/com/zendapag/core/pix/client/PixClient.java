@@ -6,7 +6,7 @@ import com.zendapag.core.pix.dto.PixPaymentRequest;
 import com.zendapag.core.pix.dto.PixPaymentResponse;
 import com.zendapag.core.pix.security.PixCertificateManager;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retryable;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -72,11 +72,7 @@ public class PixClient {
         return template;
     }
 
-    @Retryable(
-        retryFor = {Exception.class},
-        maxAttempts = 3,
-        fallbackMethod = "fallbackCreatePixPayment"
-    )
+    @Retry(name = "pix-client", fallbackMethod = "fallbackCreatePixPayment")
     @CircuitBreaker(name = "pix-client", fallbackMethod = "fallbackCreatePixPayment")
     public PixPaymentResponse createPixPayment(PixPaymentRequest request) {
         log.info("Creating PIX payment for txId: {}", request.getTxId());
@@ -112,7 +108,7 @@ public class PixClient {
         }
     }
 
-    @Retryable(retryFor = {Exception.class}, maxAttempts = 3)
+    @Retry(name = "pix-client")
     @CircuitBreaker(name = "pix-client")
     public PixPaymentResponse checkPaymentStatus(String txId) {
         log.debug("Checking PIX payment status for txId: {}", txId);
@@ -145,7 +141,7 @@ public class PixClient {
         }
     }
 
-    @Retryable(retryFor = {Exception.class}, maxAttempts = 3)
+    @Retry(name = "pix-client")
     @CircuitBreaker(name = "pix-client")
     public PixPaymentResponse cancelPixPayment(String txId, String reason) {
         log.info("Cancelling PIX payment for txId: {} reason: {}", txId, reason);

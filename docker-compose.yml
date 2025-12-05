@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: zendapag
       POSTGRES_PASSWORD: zendapag123
     ports:
-      - "5435:5432"
+      - "5438:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -25,7 +25,7 @@ services:
     image: redis:7-alpine
     container_name: zendapag-redis
     ports:
-      - "6381:6379"
+      - "6384:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -37,7 +37,7 @@ services:
 
   # Apache Kafka
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.4.0
     container_name: zendapag-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -46,7 +46,7 @@ services:
       - "2181:2181"
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.4.0
     container_name: zendapag-kafka
     depends_on:
       - zookeeper

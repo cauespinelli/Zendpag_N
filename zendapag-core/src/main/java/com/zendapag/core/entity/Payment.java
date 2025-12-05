@@ -625,4 +625,56 @@ public class Payment extends BaseEntity {
     public void setWebhooks(Set<Webhook> webhooks) {
         this.webhooks = webhooks;
     }
+
+    // Alias methods for compatibility
+    public String getPixTxId() {
+        return pixTransactionId;
+    }
+
+    public void setPixTxId(String pixTxId) {
+        this.pixTransactionId = pixTxId;
+    }
+
+    public BigDecimal getFee() {
+        return feeAmount;
+    }
+
+    public void setFee(BigDecimal fee) {
+        this.feeAmount = fee;
+    }
+
+    public Account getAccount() {
+        return null; // TODO: Add account relationship if needed
+    }
+
+    public void setAccount(Account account) {
+        // TODO: Add account relationship if needed
+    }
+
+    // Payer information fields for PIX Webhook processing
+    private String payerDocument;
+    private String payerName;
+    private String payerBank;
+    private String payerBankIspb;
+    private Instant paidAt;
+    private Instant cancelledAt;
+    private String cancellationReason;
+    private String refundReason;
+
+    public String getPayerDocument() { return payerDocument; }
+    public void setPayerDocument(String payerDocument) { this.payerDocument = payerDocument; }
+    public String getPayerName() { return payerName; }
+    public void setPayerName(String payerName) { this.payerName = payerName; }
+    public String getPayerBank() { return payerBank; }
+    public void setPayerBank(String payerBank) { this.payerBank = payerBank; }
+    public String getPayerBankIspb() { return payerBankIspb; }
+    public void setPayerBankIspb(String payerBankIspb) { this.payerBankIspb = payerBankIspb; }
+    public Instant getPaidAt() { return paidAt; }
+    public void setPaidAt(Instant paidAt) { this.paidAt = paidAt; }
+    public Instant getCancelledAt() { return cancelledAt; }
+    public void setCancelledAt(Instant cancelledAt) { this.cancelledAt = cancelledAt; }
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
+    public String getRefundReason() { return refundReason; }
+    public void setRefundReason(String refundReason) { this.refundReason = refundReason; }
 }

@@ -17,7 +17,6 @@ import io.micrometer.core.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,17 +57,17 @@ public class PaymentController {
         description = "Creates a new PIX payment with QR code generation. Returns payment details including QR code for customer scanning."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "201", description = "Payment created successfully"),
-        @SwaggerApiResponse(responseCode = "400", description = "Invalid request data"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required"),
-        @SwaggerApiResponse(responseCode = "403", description = "Insufficient permissions"),
-        @SwaggerApiResponse(responseCode = "429", description = "Rate limit exceeded"),
-        @SwaggerApiResponse(responseCode = "500", description = "Internal server error")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Payment created successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request data"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Rate limit exceeded"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/pix")
     @RateLimiter(name = "payments-api")
-    @Timed(name = "api.payments.create.pix", description = "Time taken to create PIX payment via API")
+    @Timed(value = "api.payments.create.pix", description = "Time taken to create PIX payment via API")
     public ResponseEntity<ApiResponse<PaymentResponse>> createPixPayment(
             @Valid @RequestBody CreatePixPaymentRequest request,
             Authentication authentication,
@@ -80,9 +79,6 @@ public class PaymentController {
         try {
             // Get merchant from authentication
             UUID merchantId = getMerchantIdFromAuth(authentication);
-
-            // Add request metadata
-            enrichRequestWithMetadata(request, httpRequest);
 
             // Create payment
             PaymentResponse response = paymentService.createPixPayment(merchantId, request);
@@ -107,13 +103,13 @@ public class PaymentController {
         description = "Retrieves payment details by payment ID. Only accessible by the payment's merchant."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Payment found"),
-        @SwaggerApiResponse(responseCode = "404", description = "Payment not found"),
-        @SwaggerApiResponse(responseCode = "403", description = "Access denied - payment belongs to different merchant")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Payment found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Payment not found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - payment belongs to different merchant")
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}")
-    @Timed(name = "api.payments.get", description = "Time taken to get payment by ID")
+    @Timed(value = "api.payments.get", description = "Time taken to get payment by ID")
     public ResponseEntity<ApiResponse<PaymentResponse>> getPayment(
             @Parameter(description = "Payment ID", required = true)
             @PathVariable UUID id,
@@ -121,12 +117,7 @@ public class PaymentController {
 
         log.debug("Getting payment: {} for merchant: {}", id, authentication.getName());
 
-        Optional<Payment> paymentOpt = paymentService.findById(id);
-        if (paymentOpt.isEmpty()) {
-            throw new BusinessException.PaymentNotFoundException("Payment not found");
-        }
-
-        Payment payment = paymentOpt.get();
+        Payment payment = paymentService.findById(id);
         UUID merchantId = getMerchantIdFromAuth(authentication);
 
         // Verify payment belongs to authenticated merchant
@@ -144,18 +135,13 @@ public class PaymentController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/reference/{referenceId}")
-    @Timed(name = "api.payments.get.reference", description = "Time taken to get payment by reference")
+    @Timed(value = "api.payments.get.reference", description = "Time taken to get payment by reference")
     public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByReference(
             @Parameter(description = "Merchant reference ID", required = true)
             @PathVariable @NotBlank String referenceId,
             Authentication authentication) {
 
-        Optional<Payment> paymentOpt = paymentService.findByReferenceId(referenceId);
-        if (paymentOpt.isEmpty()) {
-            throw new BusinessException.PaymentNotFoundException("Payment not found");
-        }
-
-        Payment payment = paymentOpt.get();
+        Payment payment = paymentService.findByReferenceId(referenceId);
         UUID merchantId = getMerchantIdFromAuth(authentication);
 
         // Verify payment belongs to authenticated merchant
@@ -173,7 +159,7 @@ public class PaymentController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping
-    @Timed(name = "api.payments.list", description = "Time taken to list payments")
+    @Timed(value = "api.payments.list", description = "Time taken to list payments")
     public ResponseEntity<ApiResponse<Page<PaymentResponse>>> listPayments(
             @Parameter(description = "Page number (0-based)")
             @RequestParam(defaultValue = "0") int page,
@@ -210,7 +196,9 @@ public class PaymentController {
         Specification<Payment> spec = buildPaymentSearchSpec(merchantId, status, startDate, endDate,
             minAmount, maxAmount, customerEmail);
 
-        Page<Payment> payments = paymentService.findAll(spec, pageRequest);
+        // Use simplified query method
+        Merchant merchant = merchantService.findById(merchantId);
+        Page<Payment> payments = paymentService.findByMerchant(merchant, pageRequest);
         Page<PaymentResponse> responses = payments.map(this::convertToPaymentResponse);
 
         return ResponseEntity.ok(ApiResponse.success("Payments retrieved", responses));
@@ -221,14 +209,14 @@ public class PaymentController {
         description = "Cancels a pending payment. Only pending payments can be cancelled."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Payment cancelled successfully"),
-        @SwaggerApiResponse(responseCode = "400", description = "Payment cannot be cancelled in current status"),
-        @SwaggerApiResponse(responseCode = "404", description = "Payment not found")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Payment cancelled successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Payment cannot be cancelled in current status"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Payment not found")
     })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{id}/cancel")
     @RateLimiter(name = "payments-api")
-    @Timed(name = "api.payments.cancel", description = "Time taken to cancel payment")
+    @Timed(value = "api.payments.cancel", description = "Time taken to cancel payment")
     public ResponseEntity<ApiResponse<PaymentResponse>> cancelPayment(
             @Parameter(description = "Payment ID", required = true)
             @PathVariable UUID id,
@@ -252,14 +240,14 @@ public class PaymentController {
         description = "Processes a full or partial refund for an approved payment."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Refund processed successfully"),
-        @SwaggerApiResponse(responseCode = "400", description = "Invalid refund amount or payment cannot be refunded"),
-        @SwaggerApiResponse(responseCode = "404", description = "Payment not found")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Refund processed successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid refund amount or payment cannot be refunded"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Payment not found")
     })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{id}/refund")
     @RateLimiter(name = "payments-api")
-    @Timed(name = "api.payments.refund", description = "Time taken to refund payment")
+    @Timed(value = "api.payments.refund", description = "Time taken to refund payment")
     public ResponseEntity<ApiResponse<PaymentResponse>> refundPayment(
             @Parameter(description = "Payment ID", required = true)
             @PathVariable UUID id,
@@ -272,7 +260,7 @@ public class PaymentController {
         // Verify payment belongs to merchant
         verifyPaymentOwnership(id, authentication);
 
-        Payment refundedPayment = paymentService.refundPayment(id, request.getAmount(), request.getReason());
+        Payment refundedPayment = paymentService.refundPayment(id, request.getReason());
         PaymentResponse response = convertToPaymentResponse(refundedPayment);
 
         return ResponseEntity.ok(ApiResponse.success("Refund processed successfully", response));
@@ -284,7 +272,7 @@ public class PaymentController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/stats")
-    @Timed(name = "api.payments.stats", description = "Time taken to get payment statistics")
+    @Timed(value = "api.payments.stats", description = "Time taken to get payment statistics")
     public ResponseEntity<ApiResponse<PaymentStatsResponse>> getPaymentStats(
             @Parameter(description = "Start date for stats (YYYY-MM-DD)")
             @RequestParam(required = false) LocalDate startDate,
@@ -310,18 +298,13 @@ public class PaymentController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}/qr-code")
-    @Timed(name = "api.payments.qrcode", description = "Time taken to get payment QR code")
+    @Timed(value = "api.payments.qrcode", description = "Time taken to get payment QR code")
     public ResponseEntity<ApiResponse<QrCodeResponse>> getPaymentQrCode(
             @Parameter(description = "Payment ID", required = true)
             @PathVariable UUID id,
             Authentication authentication) {
 
-        Optional<Payment> paymentOpt = paymentService.findById(id);
-        if (paymentOpt.isEmpty()) {
-            throw new BusinessException.PaymentNotFoundException("Payment not found");
-        }
-
-        Payment payment = paymentOpt.get();
+        Payment payment = paymentService.findById(id);
         UUID merchantId = getMerchantIdFromAuth(authentication);
 
         // Verify payment belongs to authenticated merchant
@@ -333,7 +316,7 @@ public class PaymentController {
             throw new BusinessException("QR code not available for this payment", "QR_CODE_NOT_AVAILABLE");
         }
 
-        QrCodeResponse response = new QrCodeResponse(payment.getPixQrCode(), payment.getPixQrCodeText());
+        QrCodeResponse response = new QrCodeResponse(payment.getPixQrCode(), payment.getPixQrCode());
         return ResponseEntity.ok(ApiResponse.success("QR code retrieved", response));
     }
 
@@ -343,23 +326,11 @@ public class PaymentController {
         // This would typically extract the merchant ID from JWT token claims
         // For now, we'll assume the username is the merchant document and look it up
         String merchantDocument = authentication.getName();
-        Optional<Merchant> merchantOpt = merchantService.findByDocument(merchantDocument);
-
-        if (merchantOpt.isEmpty()) {
-            throw new BusinessException.InvalidMerchantException("Merchant not found");
-        }
-
-        return merchantOpt.get().getId();
+        Merchant merchant = merchantService.findByDocument(merchantDocument);
+        return merchant.getId();
     }
 
-    private void enrichRequestWithMetadata(CreatePixPaymentRequest request, HttpServletRequest httpRequest) {
-        // Add IP address and user agent for fraud detection
-        String ipAddress = getClientIpAddress(httpRequest);
-        String userAgent = httpRequest.getHeader("User-Agent");
 
-        request.setIpAddress(ipAddress);
-        request.setUserAgent(userAgent);
-    }
 
     private String getClientIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
@@ -376,12 +347,7 @@ public class PaymentController {
     }
 
     private void verifyPaymentOwnership(UUID paymentId, Authentication authentication) {
-        Optional<Payment> paymentOpt = paymentService.findById(paymentId);
-        if (paymentOpt.isEmpty()) {
-            throw new BusinessException.PaymentNotFoundException("Payment not found");
-        }
-
-        Payment payment = paymentOpt.get();
+        Payment payment = paymentService.findById(paymentId);
         UUID merchantId = getMerchantIdFromAuth(authentication);
 
         if (!payment.getMerchant().getId().equals(merchantId)) {
@@ -409,8 +375,6 @@ public class PaymentController {
         response.setCreatedAt(payment.getCreatedAt());
         response.setExpiresAt(payment.getExpiresAt());
         response.setProcessedAt(payment.getProcessedAt());
-        response.setRefundedAmount(payment.getRefundedAmount());
-        response.setRefundableAmount(payment.getRefundableAmount());
         return response;
     }
 

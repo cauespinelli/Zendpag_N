@@ -21,8 +21,6 @@ import java.util.Map;
 
 /**
  * Kafka consumer for dead letter queue processing.
- * Handles failed events that couldn't be processed after all retry attempts.
- * This consumer focuses on logging, alerting, and manual intervention tracking.
  */
 @Component
 @KafkaListener(
@@ -36,8 +34,8 @@ public class DeadLetterQueueConsumer {
 
     private final DeadLetterQueueService deadLetterQueueService;
     private final AlertingService alertingService;
+    private final MeterRegistry meterRegistry;
 
-    // Metrics
     private final Counter dlqCounter;
     private final Counter alertCounter;
     private final Timer processingTimer;
@@ -47,26 +45,24 @@ public class DeadLetterQueueConsumer {
                                  MeterRegistry meterRegistry) {
         this.deadLetterQueueService = deadLetterQueueService;
         this.alertingService = alertingService;
+        this.meterRegistry = meterRegistry;
 
-        this.dlqCounter = Counter.builder("kafka.dlq.events.received")
-                .register(meterRegistry);
-        this.alertCounter = Counter.builder("kafka.dlq.alerts.sent")
-                .register(meterRegistry);
-        this.processingTimer = Timer.builder("kafka.dlq.processing.time")
-                .register(meterRegistry);
+        this.dlqCounter = Counter.builder("kafka.dlq.events.received").register(meterRegistry);
+        this.alertCounter = Counter.builder("kafka.dlq.alerts.sent").register(meterRegistry);
+        this.processingTimer = Timer.builder("kafka.dlq.processing.time").register(meterRegistry);
     }
 
     @KafkaListener(topics = "dead-letter-queue")
     public void handleDeadLetterEvent(@Payload Object event,
                                     @Header(KafkaHeaders.RECEIVED_TOPIC) String originalTopic,
-                                    @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+                                    @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
                                     @Header(KafkaHeaders.OFFSET) long offset,
                                     @Header(value = KafkaHeaders.EXCEPTION_MESSAGE, required = false) String exceptionMessage,
                                     @Header(value = KafkaHeaders.EXCEPTION_STACKTRACE, required = false) String stackTrace,
                                     @Header(value = "kafka_original-topic", required = false) String kafkaOriginalTopic,
                                     Acknowledgment acknowledgment) {
 
-        Timer.Sample sample = Timer.start();
+        Timer.Sample sample = Timer.start(meterRegistry);
         try {
             String eventType = event.getClass().getSimpleName();
             String eventId = extractEventId(event);
@@ -75,47 +71,28 @@ public class DeadLetterQueueConsumer {
             log.error("Processing dead letter event: type={}, id={}, merchantId={}, originalTopic={}, partition={}, offset={}, error={}",
                     eventType, eventId, merchantId, kafkaOriginalTopic, partition, offset, exceptionMessage);
 
-            // Store dead letter event for analysis
             String dlqRecordId = deadLetterQueueService.storeDlqEvent(
-                event,
-                eventType,
-                eventId,
-                merchantId,
+                event, eventType, eventId, merchantId,
                 kafkaOriginalTopic != null ? kafkaOriginalTopic : originalTopic,
-                exceptionMessage,
-                stackTrace,
-                Instant.now()
+                exceptionMessage, stackTrace, Instant.now()
             );
 
-            // Categorize the failure
             String failureCategory = categorizeFailure(exceptionMessage, stackTrace);
 
-            // Send alert for critical events
             if (shouldAlert(eventType, failureCategory, merchantId)) {
                 sendAlert(eventType, eventId, merchantId, failureCategory, exceptionMessage, dlqRecordId);
             }
 
-            // Track metrics
-            dlqCounter.increment(
-                "event_type", eventType,
-                "original_topic", kafkaOriginalTopic != null ? kafkaOriginalTopic : "unknown",
-                "failure_category", failureCategory
-            );
-
-            // Check for patterns that might indicate system issues
+            dlqCounter.increment();
             checkForSystemIssues(eventType, failureCategory, merchantId);
 
-            log.info("Dead letter event processed and stored: dlqRecordId={}, eventType={}, category={}",
+            log.info("Dead letter event processed: dlqRecordId={}, eventType={}, category={}",
                     dlqRecordId, eventType, failureCategory);
 
             acknowledgment.acknowledge();
-
         } catch (Exception e) {
             log.error("Failed to process dead letter event: {}", e.getMessage(), e);
-
-            // Still acknowledge to avoid infinite loops in DLQ processing
             acknowledgment.acknowledge();
-
         } finally {
             sample.stop(processingTimer);
         }
@@ -125,8 +102,6 @@ public class DeadLetterQueueConsumer {
         if (event instanceof DomainEvent) {
             return ((DomainEvent) event).getEventId();
         }
-
-        // Try to extract ID using reflection for other event types
         try {
             var method = event.getClass().getMethod("getEventId");
             return (String) method.invoke(event);
@@ -139,8 +114,6 @@ public class DeadLetterQueueConsumer {
         if (event instanceof DomainEvent) {
             return (String) ((DomainEvent) event).getMetadataValue("merchant_id");
         }
-
-        // Try to extract merchant ID using reflection
         try {
             var method = event.getClass().getMethod("getMerchantId");
             return (String) method.invoke(event);
@@ -150,50 +123,20 @@ public class DeadLetterQueueConsumer {
     }
 
     private String categorizeFailure(String exceptionMessage, String stackTrace) {
-        if (exceptionMessage == null) {
-            return "unknown";
-        }
-
+        if (exceptionMessage == null) return "unknown";
         String message = exceptionMessage.toLowerCase();
-
-        if (message.contains("timeout") || message.contains("read timed out")) {
-            return "timeout";
-        } else if (message.contains("connection") || message.contains("network")) {
-            return "network";
-        } else if (message.contains("serialization") || message.contains("deserialization")) {
-            return "serialization";
-        } else if (message.contains("validation") || message.contains("constraint")) {
-            return "validation";
-        } else if (message.contains("database") || message.contains("sql")) {
-            return "database";
-        } else if (message.contains("null") || message.contains("npe")) {
-            return "null_pointer";
-        } else if (message.contains("authentication") || message.contains("authorization")) {
-            return "auth";
-        } else if (message.contains("rate") || message.contains("limit")) {
-            return "rate_limit";
-        } else {
-            return "application";
-        }
+        if (message.contains("timeout")) return "timeout";
+        if (message.contains("connection") || message.contains("network")) return "network";
+        if (message.contains("serialization")) return "serialization";
+        if (message.contains("validation")) return "validation";
+        if (message.contains("database") || message.contains("sql")) return "database";
+        return "application";
     }
 
     private boolean shouldAlert(String eventType, String failureCategory, String merchantId) {
-        // Alert on critical event types
-        if (eventType.contains("PaymentCompleted") || eventType.contains("SettlementCompleted")) {
-            return true;
-        }
-
-        // Alert on system-wide issues
-        if ("database".equals(failureCategory) || "network".equals(failureCategory)) {
-            return true;
-        }
-
-        // Alert on validation errors for specific merchants (might indicate integration issues)
-        if ("validation".equals(failureCategory) && merchantId != null && !merchantId.equals("unknown")) {
-            return true;
-        }
-
-        return false;
+        if (eventType.contains("PaymentCompleted") || eventType.contains("SettlementCompleted")) return true;
+        if ("database".equals(failureCategory) || "network".equals(failureCategory)) return true;
+        return "validation".equals(failureCategory) && merchantId != null && !merchantId.equals("unknown");
     }
 
     private void sendAlert(String eventType, String eventId, String merchantId,
@@ -208,21 +151,9 @@ public class DeadLetterQueueConsumer {
                 "dlq_record_id", dlqRecordId,
                 "timestamp", Instant.now().toString()
             );
-
-            alertingService.sendDlqAlert(
-                "Dead Letter Queue Alert",
-                String.format("Event %s (%s) failed processing and was sent to DLQ", eventType, eventId),
-                alertData
-            );
-
-            alertCounter.increment(
-                "event_type", eventType,
-                "failure_category", failureCategory
-            );
-
-            log.info("Alert sent for DLQ event: eventType={}, category={}, dlqRecordId={}",
-                    eventType, failureCategory, dlqRecordId);
-
+            alertingService.sendDlqAlert("Dead Letter Queue Alert",
+                String.format("Event %s (%s) failed processing", eventType, eventId), alertData);
+            alertCounter.increment();
         } catch (Exception e) {
             log.error("Failed to send DLQ alert: {}", e.getMessage(), e);
         }
@@ -230,30 +161,15 @@ public class DeadLetterQueueConsumer {
 
     private void checkForSystemIssues(String eventType, String failureCategory, String merchantId) {
         try {
-            // Check if we're seeing a spike in similar failures
-            long recentSimilarFailures = deadLetterQueueService.countRecentFailures(
-                failureCategory,
-                java.time.Duration.ofMinutes(15)
-            );
-
-            if (recentSimilarFailures > 10) { // Threshold for system-wide issue
-                alertingService.sendSystemAlert(
-                    "High DLQ Volume Alert",
-                    String.format("High volume of %s failures detected: %d events in last 15 minutes",
-                            failureCategory, recentSimilarFailures),
-                    Map.of(
-                        "failure_category", failureCategory,
-                        "failure_count", recentSimilarFailures,
-                        "time_window", "15_minutes"
-                    )
-                );
-
-                log.warn("System issue detected: {} failures in last 15 minutes for category {}",
-                        recentSimilarFailures, failureCategory);
+            long recentFailures = deadLetterQueueService.countRecentFailures(
+                failureCategory, java.time.Duration.ofMinutes(15));
+            if (recentFailures > 10) {
+                alertingService.sendSystemAlert("High DLQ Volume Alert",
+                    String.format("High volume of %s failures: %d events in 15 min", failureCategory, recentFailures),
+                    Map.of("failure_category", failureCategory, "failure_count", recentFailures, "time_window", "15_minutes"));
             }
-
         } catch (Exception e) {
-            log.error("Failed to check for system issues: {}", e.getMessage(), e);
+            log.error("Failed to check system issues: {}", e.getMessage(), e);
         }
     }
 }

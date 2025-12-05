@@ -11,7 +11,6 @@ import io.micrometer.core.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -48,20 +47,20 @@ public class PixWithdrawalController {
         description = "Creates a new PIX withdrawal request. Validates balance and limits before processing."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "201", description = "Withdrawal created successfully"),
-        @SwaggerApiResponse(responseCode = "400", description = "Invalid request data or insufficient balance"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required"),
-        @SwaggerApiResponse(responseCode = "403", description = "Insufficient permissions"),
-        @SwaggerApiResponse(responseCode = "429", description = "Rate limit exceeded or too many pending withdrawals"),
-        @SwaggerApiResponse(responseCode = "500", description = "Internal server error")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Withdrawal created successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request data or insufficient balance"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Rate limit exceeded or too many pending withdrawals"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping
     @RateLimiter(name = "withdrawal-api")
-    @Timed(name = "api.withdrawals.create", description = "Time taken to create PIX withdrawal")
+    @Timed(value = "api.withdrawals.create", description = "Time taken to create PIX withdrawal")
     public ResponseEntity<ApiResponse<PixWithdrawalResponse>> createWithdrawal(
             @Valid @RequestBody CreatePixWithdrawalRequest request,
-            @RequestParam @Parameter(description = "Account ID") UUID accountId,
+            @RequestParam @Parameter(description = "Account ID") Long accountId,
             @RequestParam @Parameter(description = "Merchant ID") UUID merchantId,
             Authentication authentication) {
 
@@ -81,7 +80,7 @@ public class PixWithdrawalController {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error creating withdrawal: {}", e.getMessage(), e);
-            throw new BusinessException("Failed to create withdrawal", e);
+            throw new BusinessException("Failed to create withdrawal: " + e.getMessage());
         }
     }
 
@@ -90,13 +89,13 @@ public class PixWithdrawalController {
         description = "Retrieves withdrawal details by withdrawal ID"
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Withdrawal found"),
-        @SwaggerApiResponse(responseCode = "404", description = "Withdrawal not found"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Withdrawal found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Withdrawal not found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{id}")
-    @Timed(name = "api.withdrawals.get", description = "Time taken to get withdrawal by ID")
+    @Timed(value = "api.withdrawals.get", description = "Time taken to get withdrawal by ID")
     public ResponseEntity<ApiResponse<PixWithdrawalResponse>> getWithdrawalById(
             @PathVariable @Parameter(description = "Withdrawal ID") UUID id) {
 
@@ -115,13 +114,13 @@ public class PixWithdrawalController {
         description = "Retrieves withdrawal details by reference ID"
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Withdrawal found"),
-        @SwaggerApiResponse(responseCode = "404", description = "Withdrawal not found"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Withdrawal found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Withdrawal not found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/reference/{referenceId}")
-    @Timed(name = "api.withdrawals.get.by.reference", description = "Time taken to get withdrawal by reference")
+    @Timed(value = "api.withdrawals.get.by.reference", description = "Time taken to get withdrawal by reference")
     public ResponseEntity<ApiResponse<PixWithdrawalResponse>> getWithdrawalByReference(
             @PathVariable @Parameter(description = "Reference ID") String referenceId) {
 
@@ -140,14 +139,14 @@ public class PixWithdrawalController {
         description = "Lists all withdrawals for a specific account with pagination"
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Withdrawals retrieved successfully"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Withdrawals retrieved successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/account/{accountId}")
-    @Timed(name = "api.withdrawals.list.by.account", description = "Time taken to list withdrawals by account")
+    @Timed(value = "api.withdrawals.list.by.account", description = "Time taken to list withdrawals by account")
     public ResponseEntity<ApiResponse<Page<PixWithdrawalResponse>>> listWithdrawalsByAccount(
-            @PathVariable @Parameter(description = "Account ID") UUID accountId,
+            @PathVariable @Parameter(description = "Account ID") Long accountId,
             @RequestParam(defaultValue = "0") @Parameter(description = "Page number") int page,
             @RequestParam(defaultValue = "20") @Parameter(description = "Page size") int size,
             @RequestParam(defaultValue = "createdAt") @Parameter(description = "Sort field") String sortBy,
@@ -168,13 +167,13 @@ public class PixWithdrawalController {
         description = "Lists all withdrawals for a specific merchant with pagination"
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Withdrawals retrieved successfully"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Withdrawals retrieved successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/merchant/{merchantId}")
     @PreAuthorize("hasRole('MERCHANT') or hasRole('ADMIN')")
-    @Timed(name = "api.withdrawals.list.by.merchant", description = "Time taken to list withdrawals by merchant")
+    @Timed(value = "api.withdrawals.list.by.merchant", description = "Time taken to list withdrawals by merchant")
     public ResponseEntity<ApiResponse<Page<PixWithdrawalResponse>>> listWithdrawalsByMerchant(
             @PathVariable @Parameter(description = "Merchant ID") UUID merchantId,
             @RequestParam(defaultValue = "0") @Parameter(description = "Page number") int page,
@@ -197,13 +196,13 @@ public class PixWithdrawalController {
         description = "Lists all withdrawals with a specific status with pagination"
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Withdrawals retrieved successfully"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Withdrawals retrieved successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Timed(name = "api.withdrawals.list.by.status", description = "Time taken to list withdrawals by status")
+    @Timed(value = "api.withdrawals.list.by.status", description = "Time taken to list withdrawals by status")
     public ResponseEntity<ApiResponse<Page<PixWithdrawalResponse>>> listWithdrawalsByStatus(
             @PathVariable @Parameter(description = "Withdrawal status") WithdrawalStatus status,
             @RequestParam(defaultValue = "0") @Parameter(description = "Page number") int page,
@@ -223,14 +222,14 @@ public class PixWithdrawalController {
         description = "Cancels a pending or processing withdrawal"
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Withdrawal cancelled successfully"),
-        @SwaggerApiResponse(responseCode = "400", description = "Withdrawal cannot be cancelled"),
-        @SwaggerApiResponse(responseCode = "404", description = "Withdrawal not found"),
-        @SwaggerApiResponse(responseCode = "401", description = "Authentication required")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Withdrawal cancelled successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Withdrawal cannot be cancelled"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Withdrawal not found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required")
     })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{id}/cancel")
-    @Timed(name = "api.withdrawals.cancel", description = "Time taken to cancel withdrawal")
+    @Timed(value = "api.withdrawals.cancel", description = "Time taken to cancel withdrawal")
     public ResponseEntity<ApiResponse<PixWithdrawalResponse>> cancelWithdrawal(
             @PathVariable @Parameter(description = "Withdrawal ID") UUID id,
             @RequestParam @Parameter(description = "Cancellation reason") String reason) {
@@ -249,7 +248,7 @@ public class PixWithdrawalController {
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error cancelling withdrawal: {}", e.getMessage(), e);
-            throw new BusinessException("Failed to cancel withdrawal", e);
+            throw new BusinessException("Failed to cancel withdrawal: " + e.getMessage());
         }
     }
 }

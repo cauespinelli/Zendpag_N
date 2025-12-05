@@ -13,7 +13,6 @@ import io.micrometer.core.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -49,14 +48,14 @@ public class WebhookController {
         description = "Configures webhook URL and settings for the merchant. This will be used for payment notifications."
     )
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Webhook configured successfully"),
-        @SwaggerApiResponse(responseCode = "400", description = "Invalid webhook configuration"),
-        @SwaggerApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Webhook configured successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid webhook configuration"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Rate limit exceeded")
     })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping
     @RateLimiter(name = "webhooks-api")
-    @Timed(name = "api.webhooks.configure", description = "Time taken to configure webhook")
+    @Timed(value = "api.webhooks.configure", description = "Time taken to configure webhook")
     public ResponseEntity<ApiResponse<WebhookConfigResponse>> configureWebhook(
             @Valid @RequestBody WebhookConfigRequest request,
             Authentication authentication) {
@@ -79,7 +78,7 @@ public class WebhookController {
         // Update additional webhook settings if provided
         // In a real implementation, these would be stored in a separate webhook configuration entity
 
-        Merchant updatedMerchant = merchantService.updateMerchant(merchant);
+        Merchant updatedMerchant = merchantService.updateMerchant(merchant.getId(), merchant);
 
         WebhookConfigResponse response = new WebhookConfigResponse(
             updatedMerchant.getWebhookUrl(),
@@ -97,7 +96,7 @@ public class WebhookController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/config")
-    @Timed(name = "api.webhooks.config", description = "Time taken to get webhook config")
+    @Timed(value = "api.webhooks.config", description = "Time taken to get webhook config")
     public ResponseEntity<ApiResponse<WebhookConfigResponse>> getWebhookConfig(Authentication authentication) {
         Merchant merchant = getMerchantFromAuth(authentication);
 
@@ -118,7 +117,7 @@ public class WebhookController {
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/test")
     @RateLimiter(name = "webhooks-api")
-    @Timed(name = "api.webhooks.test", description = "Time taken to test webhook")
+    @Timed(value = "api.webhooks.test", description = "Time taken to test webhook")
     public ResponseEntity<ApiResponse<WebhookTestResponse>> testWebhook(Authentication authentication) {
         log.info("Testing webhook for merchant: {}", authentication.getName());
 
@@ -166,7 +165,7 @@ public class WebhookController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/events")
-    @Timed(name = "api.webhooks.events", description = "Time taken to list webhook events")
+    @Timed(value = "api.webhooks.events", description = "Time taken to list webhook events")
     public ResponseEntity<ApiResponse<Page<WebhookEventResponse>>> listWebhookEvents(
             @Parameter(description = "Page number (0-based)")
             @RequestParam(defaultValue = "0") int page,
@@ -199,7 +198,7 @@ public class WebhookController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/events/{id}")
-    @Timed(name = "api.webhooks.event.detail", description = "Time taken to get webhook event details")
+    @Timed(value = "api.webhooks.event.detail", description = "Time taken to get webhook event details")
     public ResponseEntity<ApiResponse<WebhookEventResponse>> getWebhookEvent(
             @Parameter(description = "Webhook event ID", required = true)
             @PathVariable UUID id,
@@ -229,7 +228,7 @@ public class WebhookController {
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/events/{id}/retry")
     @RateLimiter(name = "webhooks-api")
-    @Timed(name = "api.webhooks.retry", description = "Time taken to retry webhook")
+    @Timed(value = "api.webhooks.retry", description = "Time taken to retry webhook")
     public ResponseEntity<ApiResponse<WebhookEventResponse>> retryWebhook(
             @Parameter(description = "Webhook event ID", required = true)
             @PathVariable UUID id,
@@ -266,7 +265,7 @@ public class WebhookController {
     )
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/stats")
-    @Timed(name = "api.webhooks.stats", description = "Time taken to get webhook statistics")
+    @Timed(value = "api.webhooks.stats", description = "Time taken to get webhook statistics")
     public ResponseEntity<ApiResponse<WebhookStatsResponse>> getWebhookStats(
             @Parameter(description = "Number of days to include in statistics")
             @RequestParam(defaultValue = "7") int days,
@@ -292,13 +291,7 @@ public class WebhookController {
 
     private Merchant getMerchantFromAuth(Authentication authentication) {
         String merchantDocument = authentication.getName();
-        Optional<Merchant> merchantOpt = merchantService.findByDocument(merchantDocument);
-
-        if (merchantOpt.isEmpty()) {
-            throw new BusinessException.InvalidMerchantException("Merchant not found");
-        }
-
-        return merchantOpt.get();
+        return merchantService.findByDocument(merchantDocument);
     }
 
     private boolean isValidWebhookUrl(String webhookUrl) {
@@ -320,12 +313,12 @@ public class WebhookController {
             webhook.getEventType(),
             webhook.getUrl(),
             webhook.getStatus().name(),
-            webhook.getAttempts(),
-            webhook.getResponseStatusCode(),
-            webhook.getResponseTime(),
-            webhook.getFailureReason(),
+            webhook.getRetryCount(),
+            webhook.getResponseStatus(),
+            webhook.getResponseTimeMs(),
+            webhook.getErrorMessage(),
             webhook.getCreatedAt(),
-            webhook.getLastAttemptAt(),
+            webhook.getSentAt(),
             webhook.getDeliveredAt(),
             webhook.getPayment() != null ? webhook.getPayment().getReferenceId() : null
         );

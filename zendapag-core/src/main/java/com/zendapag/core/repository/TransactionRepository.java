@@ -1,9 +1,11 @@
 package com.zendapag.core.repository;
 
+import com.zendapag.core.entity.Account;
 import com.zendapag.core.entity.Merchant;
 import com.zendapag.core.entity.Payment;
 import com.zendapag.core.entity.Settlement;
 import com.zendapag.core.entity.Transaction;
+import com.zendapag.core.entity.enums.TransactionStatus;
 import com.zendapag.core.entity.enums.TransactionType;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -126,12 +128,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
                                                  @Param("startDate") Instant startDate,
                                                  @Param("endDate") Instant endDate);
 
-    @Query("SELECT DATE(t.createdAt), t.type, COUNT(t), SUM(t.amount) FROM Transaction t WHERE " +
+    @Query("SELECT CAST(t.createdAt AS DATE), t.type, COUNT(t), SUM(t.amount) FROM Transaction t WHERE " +
            "t.merchant = :merchant " +
            "AND t.createdAt >= :startDate AND t.createdAt < :endDate " +
            "AND t.deleted = false " +
-           "GROUP BY DATE(t.createdAt), t.type " +
-           "ORDER BY DATE(t.createdAt), t.type")
+           "GROUP BY CAST(t.createdAt AS DATE), t.type " +
+           "ORDER BY CAST(t.createdAt AS DATE), t.type")
     List<Object[]> getDailyTransactionStatsByMerchant(@Param("merchant") Merchant merchant,
                                                       @Param("startDate") Instant startDate,
                                                       @Param("endDate") Instant endDate);
@@ -157,12 +159,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
                                            @Param("startDate") Instant startDate,
                                            @Param("endDate") Instant endDate);
 
-    @Query(value = "SELECT DATE_TRUNC('hour', t.created_at) as hour, " +
+    @Query(value = "SELECT DATETRUNC('HOUR', t.created_at) as hour, " +
            "t.type, COUNT(*) as count, SUM(t.amount) as total " +
            "FROM transactions t " +
            "WHERE t.created_at >= :startDate AND t.created_at < :endDate " +
            "AND t.deleted = false " +
-           "GROUP BY DATE_TRUNC('hour', t.created_at), t.type " +
+           "GROUP BY DATETRUNC('HOUR', t.created_at), t.type " +
            "ORDER BY hour, t.type",
            nativeQuery = true)
     List<Object[]> getHourlyTransactionVolume(@Param("startDate") Instant startDate,
@@ -233,4 +235,62 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
            "t.settlement = :settlement " +
            "AND t.deleted = false")
     BigDecimal calculateSettlementAmount(@Param("settlement") Settlement settlement);
+
+    // NEW: findByAccount (for TransactionService)
+    @Query("SELECT t FROM Transaction t WHERE t.account = :account AND t.deleted = false ORDER BY t.createdAt DESC")
+    Page<Transaction> findByAccount(@Param("account") Account account, Pageable pageable);
+
+    // NEW: findByMerchantAndStatus (for TransactionService)
+    @Query("SELECT t FROM Transaction t WHERE " +
+           "t.merchant = :merchant " +
+           "AND t.status = :status " +
+           "AND t.deleted = false " +
+           "ORDER BY t.createdAt DESC")
+    Page<Transaction> findByMerchantAndStatus(@Param("merchant") Merchant merchant,
+                                              @Param("status") TransactionStatus status,
+                                              Pageable pageable);
+
+    // NEW: findByMerchantAndCreatedAtBetween with Pageable (for TransactionService)
+    @Query("SELECT t FROM Transaction t WHERE " +
+           "t.merchant = :merchant " +
+           "AND t.createdAt >= :startDate AND t.createdAt < :endDate " +
+           "AND t.deleted = false " +
+           "ORDER BY t.createdAt DESC")
+    Page<Transaction> findByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
+                                                        @Param("startDate") Instant startDate,
+                                                        @Param("endDate") Instant endDate,
+                                                        Pageable pageable);
+
+    // NEW: findByMerchantAndCreatedAtBetween without Pageable (for ReportService)
+    @Query("SELECT t FROM Transaction t WHERE " +
+           "t.merchant = :merchant " +
+           "AND t.createdAt >= :startDate AND t.createdAt < :endDate " +
+           "AND t.deleted = false " +
+           "ORDER BY t.createdAt DESC")
+    List<Transaction> findByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
+                                                        @Param("startDate") Instant startDate,
+                                                        @Param("endDate") Instant endDate);
+
+    // NEW: sumCreditsByAccount (for TransactionService)
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE " +
+           "t.account = :account " +
+           "AND t.type IN ('PAYMENT', 'REVERSAL') " +
+           "AND t.deleted = false")
+    BigDecimal sumCreditsByAccount(@Param("account") Account account);
+
+    // NEW: sumDebitsByAccount (for TransactionService)
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE " +
+           "t.account = :account " +
+           "AND t.type IN ('REFUND', 'CHARGEBACK', 'FEE', 'SETTLEMENT') " +
+           "AND t.deleted = false")
+    BigDecimal sumDebitsByAccount(@Param("account") Account account);
+
+    // NEW: countByMerchantAndCreatedAtBetween (for TransactionService)
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE " +
+           "t.merchant = :merchant " +
+           "AND t.createdAt >= :startDate AND t.createdAt < :endDate " +
+           "AND t.deleted = false")
+    long countByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
+                                            @Param("startDate") Instant startDate,
+                                            @Param("endDate") Instant endDate);
 }

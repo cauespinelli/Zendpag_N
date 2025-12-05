@@ -9,6 +9,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CommonsRequestLoggingFilter;
+import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.*;
 
 import java.time.Duration;
@@ -125,7 +126,7 @@ public class WebConfig implements WebMvcConfigurer {
     }
 
     @Bean
-    public org.springframework.core.task.TaskExecutor asyncTaskExecutor() {
+    public org.springframework.core.task.AsyncTaskExecutor asyncTaskExecutor() {
         org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor executor =
             new org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor();
 

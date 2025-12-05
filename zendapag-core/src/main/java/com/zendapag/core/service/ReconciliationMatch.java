@@ -1,150 +1,92 @@
 package com.zendapag.core.service;
 
-import com.zendapag.core.dto.PixTransaction;
-import com.zendapag.core.entity.Transaction;
-
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
-/**
- * Represents a successful match between an internal transaction and external PIX transaction
- * Used during reconciliation process to track matched pairs
- */
 public class ReconciliationMatch {
 
-    private final Transaction internalTransaction;
-    private final PixTransaction externalTransaction;
-    private final double matchScore;
-    private final LocalDateTime matchedAt;
+    private String paymentId;
+    private String externalId;
+    private BigDecimal amount;
+    private String status;
+    private Instant matchedAt;
+    private String matchType;
+    private String description;
 
-    public ReconciliationMatch {
-        this;
+    public ReconciliationMatch() {
     }
 
-    public ReconciliationMatch {
-        this.internalTransaction = internalTransaction;
-        this.externalTransaction = externalTransaction;
-        this.matchScore = Math.max); // Clamp between 0 and 1
-        this.matchedAt = LocalDateTime.now;
+    public ReconciliationMatch(String paymentId, String externalId, BigDecimal amount, String status) {
+        this.paymentId = paymentId;
+        this.externalId = externalId;
+        this.amount = amount;
+        this.status = status;
+        this.matchedAt = Instant.now();
     }
 
-    /**
-     * Check if this is a perfect match 
-     */
-    public boolean isPerfectMatch {
-        return matchScore >= 1.0;
+    public String getPaymentId() {
+        return paymentId;
     }
 
-    /**
-     * Check if amounts match exactly
-     */
-    public boolean hasAmountMatch {
-        BigDecimal internalAmount = internalTransaction.getAmount;
-        BigDecimal externalAmount = externalTransaction.getEffectiveAmount;
-
-        return internalAmount != null && externalAmount != null &&
-               internalAmount.compareTo == 0;
+    public void setPaymentId(String paymentId) {
+        this.paymentId = paymentId;
     }
 
-    /**
-     * Check if statuses match
-     */
-    public boolean hasStatusMatch {
-        String internalStatus = internalTransaction.getStatus.name();
-        String externalStatus = externalTransaction.getNormalizedStatus;
-
-        return normalizeStatus.equals(normalizeStatus(externalStatus));
+    public String getExternalId() {
+        return externalId;
     }
 
-    /**
-     * Get amount difference between transactions
-     */
-    public BigDecimal getAmountDifference {
-        BigDecimal internalAmount = internalTransaction.getAmount;
-        BigDecimal externalAmount = externalTransaction.getEffectiveAmount;
-
-        if  {
-            return BigDecimal.ZERO;
-        }
-
-        return externalAmount.subtract;
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
-    /**
-     * Get match quality description
-     */
-    public String getMatchQuality {
-        if  {
-            return "Perfect";
-        } else if  {
-            return "Excellent";
-        } else if  {
-            return "Good";
-        } else if  {
-            return "Fair";
-        } else {
-            return "Poor";
-        }
+    public BigDecimal getAmount() {
+        return amount;
     }
 
-    /**
-     * Get summary description of the match
-     */
-    public String getSummary {
-        return String.format",
-            internalTransaction.getId,
-            internalTransaction.getAmount,
-            externalTransaction.getEffectiveAmount,
-            matchScore,
-            getMatchQuality);
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
     }
 
-    /**
-     * Normalize status for comparison
-     */
-    private String normalizeStatus {
-        if  return "UNKNOWN";
-
-        switch ) {
-            case "COMPLETED":
-            case "SETTLED":
-            case "CONFIRMED":
-                return "COMPLETED";
-            case "FAILED":
-            case "REJECTED":
-            case "CANCELLED":
-                return "FAILED";
-            case "PENDING":
-            case "PROCESSING":
-                return "PENDING";
-            default:
-                return status.toUpperCase;
-        }
+    public String getStatus() {
+        return status;
     }
 
-    // Getters
-    public Transaction getInternalTransaction {
-        return internalTransaction;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
-    public PixTransaction getExternalTransaction {
-        return externalTransaction;
-    }
-
-    public double getMatchScore {
-        return matchScore;
-    }
-
-    public LocalDateTime getMatchedAt {
+    public Instant getMatchedAt() {
         return matchedAt;
     }
 
+    public void setMatchedAt(Instant matchedAt) {
+        this.matchedAt = matchedAt;
+    }
+
+    public String getMatchType() {
+        return matchType;
+    }
+
+    public void setMatchType(String matchType) {
+        this.matchType = matchType;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
     @Override
-    public String toString {
+    public String toString() {
         return "ReconciliationMatch{" +
-                "internalId=" + internalTransaction.getId +
-                ", externalId=" + externalTransaction.getId +
-                ", matchScore=" + matchScore +
+                "paymentId='" + paymentId + '\'' +
+                ", externalId='" + externalId + '\'' +
+                ", amount=" + amount +
+                ", status='" + status + '\'' +
                 ", matchedAt=" + matchedAt +
                 '}';
     }

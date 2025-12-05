@@ -1,431 +1,216 @@
 package com.zendapag.core.service;
 
-import com.zendapag.core.audit.AuditService;
+import com.zendapag.common.exception.BusinessException;
+import com.zendapag.common.exception.ResourceNotFoundException;
+import com.zendapag.core.entity.Account;
 import com.zendapag.core.entity.Merchant;
 import com.zendapag.core.entity.Payment;
-import com.zendapag.core.entity.Settlement;
 import com.zendapag.core.entity.Transaction;
-import com.zendapag.core.entity.enums.AuditAction;
+import com.zendapag.core.entity.enums.TransactionStatus;
 import com.zendapag.core.entity.enums.TransactionType;
-import com.zendapag.core.exception.BusinessException;
 import com.zendapag.core.repository.TransactionRepository;
-import io.micrometer.core.annotation.Timed;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@Transactional
 @Slf4j
+@RequiredArgsConstructor
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
-    private final AuditService auditService;
 
-    @Autowired
-    public TransactionService(TransactionRepository transactionRepository,
-                             AuditService auditService) {
-        this.transactionRepository = transactionRepository;
-        this.auditService = auditService;
-    }
-
-    @Timed
     @Transactional
-    public Transaction createPaymentTransaction {
-        log.info);
+    public Transaction createTransaction(Payment payment, TransactionType type, BigDecimal amount) {
+        log.info("Creating transaction for payment: {} type: {} amount: {}",
+            payment.getReferenceId(), type, amount);
 
-        try {
-            // Calculate current balance
-            BigDecimal currentBalance = getMerchantBalance);
+        Transaction transaction = new Transaction();
+        transaction.setReferenceId(generateReferenceId());
+        transaction.setMerchant(payment.getMerchant());
+        transaction.setAccount(payment.getAccount());
+        transaction.setPayment(payment);
+        transaction.setType(type);
+        transaction.setAmount(amount);
+        transaction.setCurrency(payment.getCurrency());
+        transaction.setStatus(TransactionStatus.PENDING);
+        transaction.setDescription("Transaction for payment: " + payment.getReferenceId());
+        transaction.setCreatedAt(Instant.now());
 
-            // Create credit transaction for net amount
-            Transaction transaction = new Transaction;
-            transaction.setMerchant);
-            transaction.setPayment;
-            transaction.setReferenceId));
-            transaction.setType;
-            transaction.setCategory;
-            transaction.setAmount);
-            transaction.setCurrency);
-            transaction.setDescription);
-            transaction.setBalanceBefore;
-            transaction.setBalanceAfter));
-            transaction.setProcessedAt);
-            transaction.setSettlementDate.plusDays(1)); // T+1 settlement
-
-            Transaction savedTransaction = transactionRepository.save;
-
-            // Create fee transaction if applicable
-            if .compareTo(BigDecimal.ZERO) > 0) {
-                createFeeTransaction;
-            }
-
-            // Audit log
-            auditService.logAction, "Transaction", savedTransaction.getId().toString(),
-                AuditAction.CREATE, "Payment transaction created");
-
-            log.info("Payment transaction created: {} for payment: {}",
-                savedTransaction.getReferenceId, payment.getReferenceId());
-
-            return savedTransaction;
-
-        } catch  {
-            log.error, e.getMessage(), e);
-            auditService.logFailure, "Transaction", payment.getId().toString(),
-                AuditAction.CREATE, "Payment transaction creation failed", e);
-            throw new BusinessException;
-        }
+        Transaction saved = transactionRepository.save(transaction);
+        log.info("Transaction created with ID: {}", saved.getId());
+        return saved;
     }
 
-    @Timed
-    public Transaction confirmPaymentTransaction {
-        log.info);
-
-        try {
-            List<Transaction> paymentTransactions = transactionRepository.findByPayment;
-            if ) {
-                throw new BusinessException;
-            }
-
-            Transaction transaction = paymentTransactions.get; // Main payment transaction
-            transaction.setProcessedAt);
-            transaction.setSettled; // Will be settled later
-
-            Transaction savedTransaction = transactionRepository.save;
-
-            // Audit log
-            auditService.logAction, "Transaction", savedTransaction.getId().toString(),
-                AuditAction.UPDATE, "Payment transaction confirmed");
-
-            return savedTransaction;
-
-        } catch  {
-            log.error, e.getMessage(), e);
-            throw new BusinessException;
-        }
-    }
-
-    @Timed
     @Transactional
-    public Transaction reversePaymentTransaction {
-        log.info, reason);
+    public Transaction createCreditTransaction(Account account, BigDecimal amount, String description) {
+        log.info("Creating credit transaction for account: {} amount: {}",
+            account.getId(), amount);
 
-        try {
-            List<Transaction> paymentTransactions = transactionRepository.findByPayment;
-            if ) {
-                throw new BusinessException;
-            }
+        Transaction transaction = new Transaction();
+        transaction.setReferenceId(generateReferenceId());
+        transaction.setMerchant(account.getMerchant());
+        transaction.setAccount(account);
+        transaction.setType(TransactionType.CREDIT);
+        transaction.setAmount(amount);
+        transaction.setCurrency("BRL");
+        transaction.setStatus(TransactionStatus.COMPLETED);
+        transaction.setDescription(description);
+        transaction.setCreatedAt(Instant.now());
+        transaction.setProcessedAt(Instant.now());
 
-            Transaction originalTransaction = paymentTransactions.get;
-
-            // Check if already reversed
-            if  != null) {
-                log.warn);
-                return originalTransaction;
-            }
-
-            // Calculate current balance
-            BigDecimal currentBalance = getMerchantBalance);
-
-            // Create reversal transaction
-            Transaction reversalTransaction = new Transaction;
-            reversalTransaction.setMerchant);
-            reversalTransaction.setPayment;
-            reversalTransaction.setReferenceId));
-            reversalTransaction.setType;
-            reversalTransaction.setCategory;
-            reversalTransaction.setAmount);
-            reversalTransaction.setCurrency);
-            reversalTransaction.setDescription;
-            reversalTransaction.setParentTransactionId);
-            reversalTransaction.setBalanceBefore;
-            reversalTransaction.setBalanceAfter));
-            reversalTransaction.setProcessedAt);
-
-            Transaction savedReversalTransaction = transactionRepository.save;
-
-            // Update original transaction
-            originalTransaction.setReversalTransactionId);
-            transactionRepository.save;
-
-            // Audit log
-            Map<String, Object> metadata = Map.of);
-            auditService.logAction, "Transaction", savedReversalTransaction.getId().toString(),
-                AuditAction.CREATE, "Payment transaction reversed: " + reason, null, metadata);
-
-            log.info("Payment transaction reversed: {} for payment: {}",
-                savedReversalTransaction.getReferenceId, payment.getReferenceId());
-
-            return savedReversalTransaction;
-
-        } catch  {
-            log.error, e.getMessage(), e);
-            auditService.logFailure, "Transaction", payment.getId().toString(),
-                AuditAction.CREATE, "Payment transaction reversal failed", e);
-            throw new BusinessException;
-        }
+        return transactionRepository.save(transaction);
     }
 
-    @Timed
     @Transactional
-    public Transaction createRefundTransaction {
-        log.info, refundAmount);
+    public Transaction createDebitTransaction(Account account, BigDecimal amount, String description) {
+        log.info("Creating debit transaction for account: {} amount: {}",
+            account.getId(), amount);
 
-        try {
-            // Calculate current balance
-            BigDecimal currentBalance = getMerchantBalance);
+        Transaction transaction = new Transaction();
+        transaction.setReferenceId(generateReferenceId());
+        transaction.setMerchant(account.getMerchant());
+        transaction.setAccount(account);
+        transaction.setType(TransactionType.DEBIT);
+        transaction.setAmount(amount);
+        transaction.setCurrency("BRL");
+        transaction.setStatus(TransactionStatus.COMPLETED);
+        transaction.setDescription(description);
+        transaction.setCreatedAt(Instant.now());
+        transaction.setProcessedAt(Instant.now());
 
-            // Create refund transaction 
-            Transaction transaction = new Transaction;
-            transaction.setMerchant);
-            transaction.setPayment;
-            transaction.setReferenceId));
-            transaction.setType;
-            transaction.setCategory;
-            transaction.setAmount;
-            transaction.setCurrency);
-            transaction.setDescription;
-            transaction.setBalanceBefore;
-            transaction.setBalanceAfter);
-            transaction.setProcessedAt);
-            transaction.setSettlementDate.plusDays(1));
-
-            Transaction savedTransaction = transactionRepository.save;
-
-            // Audit log
-            auditService.logAction, "Transaction", savedTransaction.getId().toString(),
-                AuditAction.CREATE, "Refund transaction created: " + reason);
-
-            log.info("Refund transaction created: {} for payment: {}",
-                savedTransaction.getReferenceId, payment.getReferenceId());
-
-            return savedTransaction;
-
-        } catch  {
-            log.error, e.getMessage(), e);
-            auditService.logFailure, "Transaction", payment.getId().toString(),
-                AuditAction.CREATE, "Refund transaction creation failed", e);
-            throw new BusinessException;
-        }
+        return transactionRepository.save(transaction);
     }
 
-    @Timed
-    @Transactional
-    public Transaction createSettlementTransaction {
-        log.info);
-
-        try {
-            // Calculate current balance
-            BigDecimal currentBalance = getMerchantBalance);
-
-            // Calculate settlement amount 
-            BigDecimal settlementAmount = settlement.getNetAmount;
-
-            // Create settlement transaction 
-            Transaction transaction = new Transaction;
-            transaction.setMerchant);
-            transaction.setSettlement;
-            transaction.setReferenceId.toString()));
-            transaction.setType;
-            transaction.setCategory;
-            transaction.setAmount;
-            transaction.setCurrency);
-            transaction.setDescription + " transactions");
-            transaction.setBalanceBefore;
-            transaction.setBalanceAfter);
-            transaction.setProcessedAt);
-            transaction.setSettled;
-            transaction.setSettlementDate);
-
-            Transaction savedTransaction = transactionRepository.save;
-
-            // Mark settled transactions as settled
-            markTransactionsAsSettled;
-
-            // Audit log
-            Map<String, Object> metadata = Map.of(
-                "settlement_id", settlement.getId,
-                "transactions_count", settledTransactions.size,
-                "settlement_amount", settlementAmount
-            );
-            auditService.logAction, "Transaction", savedTransaction.getId().toString(),
-                AuditAction.CREATE, "Settlement transaction created", null, metadata);
-
-            log.info("Settlement transaction created: {} for {} transactions",
-                savedTransaction.getReferenceId, settledTransactions.size());
-
-            return savedTransaction;
-
-        } catch  {
-            log.error, e);
-            auditService.logFailure, "Transaction", settlement.getId().toString(),
-                AuditAction.CREATE, "Settlement transaction creation failed", e);
-            throw new BusinessException;
-        }
+    @Transactional(readOnly = true)
+    public Transaction findById(UUID id) {
+        return transactionRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Transaction", "id", id));
     }
 
-    @Timed
-    @Transactional
-    public Transaction createAdjustmentTransaction {
-        log.info("Creating adjustment transaction for merchant: {} amount: {} type: {}",
-            merchant.getDocument, amount, type);
-
-        try {
-            // Calculate current balance
-            BigDecimal currentBalance = getMerchantBalance;
-
-            // Create adjustment transaction
-            Transaction transaction = new Transaction;
-            transaction.setMerchant;
-            transaction.setReferenceId.toString()));
-            transaction.setType;
-            transaction.setCategory;
-            transaction.setAmount); // Always positive
-            transaction.setCurrency;
-            transaction.setDescription;
-            transaction.setBalanceBefore;
-
-            if  {
-                transaction.setBalanceAfter));
-            } else {
-                transaction.setBalanceAfter));
-            }
-
-            transaction.setProcessedAt);
-            transaction.setSettled; // Adjustments are immediately settled
-
-            Transaction savedTransaction = transactionRepository.save;
-
-            // Audit log
-            auditService.logAction.toString(),
-                AuditAction.CREATE, "Adjustment transaction created: " + reason);
-
-            log.info("Adjustment transaction created: {} for merchant: {}",
-                savedTransaction.getReferenceId, merchant.getDocument());
-
-            return savedTransaction;
-
-        } catch  {
-            log.error, e);
-            auditService.logFailure.toString(),
-                AuditAction.CREATE, "Adjustment transaction creation failed", e);
-            throw new BusinessException;
-        }
+    @Transactional(readOnly = true)
+    public Transaction findByReferenceId(String referenceId) {
+        return transactionRepository.findByReferenceId(referenceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Transaction", "referenceId", referenceId));
     }
 
-    @Cacheable
-    @Transactional
-    @Timed
-    public BigDecimal getMerchantBalance {
-        log.debug);
+    @Transactional(readOnly = true)
+    public Page<Transaction> findByMerchant(Merchant merchant, Pageable pageable) {
+        return transactionRepository.findByMerchant(merchant, pageable);
+    }
 
-        BigDecimal balance = transactionRepository.calculateMerchantBalance;
+    @Transactional(readOnly = true)
+    public Page<Transaction> findByAccount(Account account, Pageable pageable) {
+        return transactionRepository.findByAccount(account, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Transaction> findByMerchantAndType(Merchant merchant, TransactionType type, Pageable pageable) {
+        return transactionRepository.findByMerchantAndType(merchant, type, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Transaction> findByMerchantAndStatus(Merchant merchant, TransactionStatus status, Pageable pageable) {
+        return transactionRepository.findByMerchantAndStatus(merchant, status, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Transaction> findByMerchantAndCreatedAtBetween(Merchant merchant, Instant start, Instant end, Pageable pageable) {
+        return transactionRepository.findByMerchantAndCreatedAtBetween(merchant, start, end, pageable);
+    }
+
+    @Transactional
+    public Transaction updateStatus(UUID id, TransactionStatus status) {
+        Transaction transaction = findById(id);
+        transaction.setStatus(status);
+        if (status == TransactionStatus.COMPLETED || status == TransactionStatus.FAILED) {
+            transaction.setProcessedAt(Instant.now());
+        }
+        return transactionRepository.save(transaction);
+    }
+
+    @Transactional
+    public Transaction completeTransaction(UUID id) {
+        Transaction transaction = findById(id);
+        if (transaction.getStatus() != TransactionStatus.PENDING) {
+            throw new BusinessException("INVALID_TRANSACTION_STATUS",
+                "Transaction must be in PENDING status to complete");
+        }
+        transaction.setStatus(TransactionStatus.COMPLETED);
+        transaction.setProcessedAt(Instant.now());
+        return transactionRepository.save(transaction);
+    }
+
+    @Transactional
+    public Transaction failTransaction(UUID id, String errorMessage) {
+        Transaction transaction = findById(id);
+        transaction.setStatus(TransactionStatus.FAILED);
+        transaction.setProcessedAt(Instant.now());
+        transaction.setErrorMessage(errorMessage);
+        return transactionRepository.save(transaction);
+    }
+
+    @Transactional
+    public Transaction reverseTransaction(UUID id, String reason) {
+        Transaction originalTransaction = findById(id);
+
+        if (originalTransaction.getStatus() != TransactionStatus.COMPLETED) {
+            throw new BusinessException("INVALID_TRANSACTION_STATUS",
+                "Only completed transactions can be reversed");
+        }
+
+        Transaction reversal = new Transaction();
+        reversal.setReferenceId(generateReferenceId());
+        reversal.setMerchant(originalTransaction.getMerchant());
+        reversal.setAccount(originalTransaction.getAccount());
+        reversal.setPayment(originalTransaction.getPayment());
+        reversal.setType(TransactionType.REVERSAL);
+        reversal.setAmount(originalTransaction.getAmount());
+        reversal.setCurrency(originalTransaction.getCurrency());
+        reversal.setStatus(TransactionStatus.COMPLETED);
+        reversal.setDescription("Reversal of transaction: " + originalTransaction.getReferenceId() + " - " + reason);
+        reversal.setCreatedAt(Instant.now());
+        reversal.setProcessedAt(Instant.now());
+        reversal.setOriginalTransactionId(originalTransaction.getId());
+
+        originalTransaction.setStatus(TransactionStatus.REVERSED);
+        transactionRepository.save(originalTransaction);
+
+        return transactionRepository.save(reversal);
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal getAccountBalance(Account account) {
+        BigDecimal credits = transactionRepository.sumCreditsByAccount(account);
+        BigDecimal debits = transactionRepository.sumDebitsByAccount(account);
+
+        credits = credits != null ? credits : BigDecimal.ZERO;
+        debits = debits != null ? debits : BigDecimal.ZERO;
+
+        return credits.subtract(debits);
+    }
+
+    @Transactional(readOnly = true)
+    public long countByMerchantAndCreatedAtBetween(Merchant merchant, Instant start, Instant end) {
+        return transactionRepository.countByMerchantAndCreatedAtBetween(merchant, start, end);
+    }
+
+    private String generateReferenceId() {
+        return "TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal getMerchantBalance(Merchant merchant) {
+        log.debug("Getting balance for merchant: {}", merchant.getId());
+        BigDecimal balance = transactionRepository.calculateMerchantBalance(merchant);
         return balance != null ? balance : BigDecimal.ZERO;
     }
 
-    @Transactional
-    public BigDecimal getMerchantBalanceUpTo {
-        BigDecimal balance = transactionRepository.calculateMerchantBalanceUpTo;
-        return balance != null ? balance : BigDecimal.ZERO;
-    }
-
-    @Transactional
-    public List<Transaction> getUnsettledTransactions {
-        return transactionRepository.findUnsettledCreditsByMerchant;
-    }
-
-    @Transactional
-    public List<Transaction> getUnsettledTransactionsBefore {
-        return transactionRepository.findUnsettledCreditsCreatedBefore;
-    }
-
-    @Cacheable
-    @Transactional
-    public Optional<Transaction> findById {
-        return transactionRepository.findById;
-    }
-
-    @Transactional
-    public Optional<Transaction> findByReferenceId {
-        return transactionRepository.findByReferenceId;
-    }
-
-    @Transactional
-    public Page<Transaction> findByMerchant {
-        return transactionRepository.findByMerchant;
-    }
-
-    @Transactional
-    public Page<Transaction> findAll {
-        return transactionRepository.findAll;
-    }
-
-    @CacheEvict
-    private void invalidateMerchantBalanceCache {
-        log.debug);
-    }
-
-    private Transaction createFeeTransaction {
-        log.debug);
-
-        try {
-            BigDecimal currentBalance = getMerchantBalance);
-
-            Transaction feeTransaction = new Transaction;
-            feeTransaction.setMerchant);
-            feeTransaction.setPayment;
-            feeTransaction.setReferenceId));
-            feeTransaction.setType;
-            feeTransaction.setCategory;
-            feeTransaction.setAmount);
-            feeTransaction.setCurrency);
-            feeTransaction.setDescription);
-            feeTransaction.setParentTransactionId);
-            feeTransaction.setBalanceBefore));
-            feeTransaction.setBalanceAfter).subtract(payment.getFeeAmount()));
-            feeTransaction.setProcessedAt);
-            feeTransaction.setSettlementDate);
-
-            return transactionRepository.save;
-
-        } catch  {
-            log.warn, e.getMessage());
-            throw e;
-        }
-    }
-
-    private void markTransactionsAsSettled {
-        try {
-            for  {
-                transaction.setSettled;
-                transaction.setSettlement;
-                transactionRepository.save;
-            }
-        } catch  {
-            log.error, e);
-            throw new BusinessException;
-        }
-    }
-
-    private String generateTransactionReference {
-        String timestamp = String.valueOf);
-        return prefix + "_" + timestamp + "_" + reference.replaceAll.substring(0, Math.min(reference.length(), 10));
-    }
 }

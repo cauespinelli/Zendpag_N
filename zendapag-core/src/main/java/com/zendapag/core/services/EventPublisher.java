@@ -84,27 +84,19 @@ public class EventPublisher {
 
             asyncPublisher.send(topic, key, event, onSuccess, onFailure);
 
-            publishCounter.increment(
-                "event_type", event.getEventType(),
-                "topic", topic,
-                "publish_mode", "async"
-            );
+            publishCounter.increment();
 
         } catch (Exception e) {
             log.error("Failed to publish event asynchronously: type={}, id={}, error={}",
                      event.getEventType(), event.getEventId(), e.getMessage(), e);
 
-            errorCounter.increment(
-                "event_type", event.getEventType(),
-                "error_type", e.getClass().getSimpleName(),
-                "publish_mode", "async"
-            );
+            errorCounter.increment();
 
             if (onFailure != null) {
                 onFailure.accept(e);
             }
         } finally {
-            sample.stop(publishTimer.tag("publish_mode", "async"));
+            sample.stop(publishTimer);
         }
     }
 
@@ -130,11 +122,7 @@ public class EventPublisher {
 
             SendResult<String, Object> result = syncPublisher.send(topic, key, event, timeoutSeconds);
 
-            publishCounter.increment(
-                "event_type", event.getEventType(),
-                "topic", topic,
-                "publish_mode", "sync"
-            );
+            publishCounter.increment();
 
             log.debug("Event published successfully: type={}, id={}, partition={}, offset={}",
                      event.getEventType(), event.getEventId(),
@@ -147,15 +135,11 @@ public class EventPublisher {
             log.error("Failed to publish event synchronously: type={}, id={}, error={}",
                      event.getEventType(), event.getEventId(), e.getMessage(), e);
 
-            errorCounter.increment(
-                "event_type", event.getEventType(),
-                "error_type", e.getClass().getSimpleName(),
-                "publish_mode", "sync"
-            );
+            errorCounter.increment();
 
             throw e;
         } finally {
-            sample.stop(publishTimer.tag("publish_mode", "sync"));
+            sample.stop(publishTimer);
         }
     }
 
@@ -183,11 +167,7 @@ public class EventPublisher {
                 kafkaTemplate.send(topic, key, event);
             });
 
-            publishCounter.increment(
-                "event_type", event.getEventType(),
-                "topic", topic,
-                "publish_mode", "transactional"
-            );
+            publishCounter.increment();
 
             log.debug("Event published in transaction: type={}, id={}",
                      event.getEventType(), event.getEventId());
@@ -196,15 +176,11 @@ public class EventPublisher {
             log.error("Failed to publish event in transaction: type={}, id={}, error={}",
                      event.getEventType(), event.getEventId(), e.getMessage(), e);
 
-            errorCounter.increment(
-                "event_type", event.getEventType(),
-                "error_type", e.getClass().getSimpleName(),
-                "publish_mode", "transactional"
-            );
+            errorCounter.increment();
 
             throw new RuntimeException("Failed to publish event in transaction", e);
         } finally {
-            sample.stop(publishTimer.tag("publish_mode", "transactional"));
+            sample.stop(publishTimer);
         }
     }
 
@@ -227,9 +203,9 @@ public class EventPublisher {
                 .whenComplete((result, throwable) -> {
                     if (throwable != null) {
                         log.error("Bulk publish failed: {}", throwable.getMessage(), throwable);
-                        errorCounter.increment("publish_mode", "bulk_async");
+                        errorCounter.increment();
                     } else {
-                        publishCounter.increment("publish_mode", "bulk_async", "count", String.valueOf(events.length));
+                        publishCounter.increment();
                         log.debug("Bulk published {} events successfully", events.length);
                     }
                 });

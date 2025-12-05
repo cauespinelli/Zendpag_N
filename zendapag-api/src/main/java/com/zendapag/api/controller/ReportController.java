@@ -12,7 +12,6 @@ import io.micrometer.core.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.responses.ApiResponse as SwaggerApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -45,17 +44,16 @@ public class ReportController {
 
     @Operation(
         summary = "Get financial summary",
-        description = "Returns a comprehensive financial summary report for the specified date range."
-    )
+        description = "Returns a comprehensive financial summary report for the specified date range.")
     @ApiResponses(value = {
-        @SwaggerApiResponse(responseCode = "200", description = "Financial summary retrieved"),
-        @SwaggerApiResponse(responseCode = "400", description = "Invalid date range"),
-        @SwaggerApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Financial summary retrieved"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid date range"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Rate limit exceeded")
     })
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/financial-summary")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.financial.summary", description = "Time taken to generate financial summary")
+    @Timed(value = "api.reports.financial.summary", description = "Time taken to generate financial summary")
     public ResponseEntity<ApiResponse<ReportService.FinancialSummaryReport>> getFinancialSummary(
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -77,12 +75,11 @@ public class ReportController {
 
     @Operation(
         summary = "Get payment details report",
-        description = "Returns detailed payment information with pagination and filtering options."
-    )
+        description = "Returns detailed payment information with pagination and filtering options.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/payments")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.payments", description = "Time taken to generate payment details report")
+    @Timed(value = "api.reports.payments", description = "Time taken to generate payment details report")
     public ResponseEntity<ApiResponse<ReportService.PaymentDetailsReport>> getPaymentDetailsReport(
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -111,12 +108,11 @@ public class ReportController {
 
     @Operation(
         summary = "Get settlement history",
-        description = "Returns settlement history report for the specified date range."
-    )
+        description = "Returns settlement history report for the specified date range.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/settlements")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.settlements", description = "Time taken to generate settlement history")
+    @Timed(value = "api.reports.settlements", description = "Time taken to generate settlement history")
     public ResponseEntity<ApiResponse<ReportService.SettlementHistoryReport>> getSettlementHistory(
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -135,12 +131,11 @@ public class ReportController {
 
     @Operation(
         summary = "Get transaction ledger",
-        description = "Returns transaction ledger report with detailed transaction history."
-    )
+        description = "Returns transaction ledger report with detailed transaction history.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/transactions")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.transactions", description = "Time taken to generate transaction ledger")
+    @Timed(value = "api.reports.transactions", description = "Time taken to generate transaction ledger")
     public ResponseEntity<ApiResponse<ReportService.TransactionLedgerReport>> getTransactionLedger(
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -169,12 +164,11 @@ public class ReportController {
 
     @Operation(
         summary = "Export financial summary to CSV",
-        description = "Exports financial summary report to CSV format for download."
-    )
+        description = "Exports financial summary report to CSV format for download.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/financial-summary/export/csv")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.export.csv", description = "Time taken to export CSV")
+    @Timed(value = "api.reports.export.csv", description = "Time taken to export CSV")
     public CompletableFuture<ResponseEntity<byte[]>> exportFinancialSummaryCsv(
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -209,12 +203,11 @@ public class ReportController {
 
     @Operation(
         summary = "Export payments to CSV",
-        description = "Exports payment details report to CSV format for download."
-    )
+        description = "Exports payment details report to CSV format for download.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/payments/export/csv")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.payments.export.csv", description = "Time taken to export payments CSV")
+    @Timed(value = "api.reports.payments.export.csv", description = "Time taken to export payments CSV")
     public CompletableFuture<ResponseEntity<byte[]>> exportPaymentsCsv(
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -249,12 +242,11 @@ public class ReportController {
 
     @Operation(
         summary = "Export settlements to CSV",
-        description = "Exports settlement history report to CSV format for download."
-    )
+        description = "Exports settlement history report to CSV format for download.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/settlements/export/csv")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.settlements.export.csv", description = "Time taken to export settlements CSV")
+    @Timed(value = "api.reports.settlements.export.csv", description = "Time taken to export settlements CSV")
     public CompletableFuture<ResponseEntity<byte[]>> exportSettlementsCsv(
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -286,12 +278,11 @@ public class ReportController {
 
     @Operation(
         summary = "Export transactions to CSV",
-        description = "Exports transaction ledger report to CSV format for download."
-    )
+        description = "Exports transaction ledger report to CSV format for download.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/transactions/export/csv")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.transactions.export.csv", description = "Time taken to export transactions CSV")
+    @Timed(value = "api.reports.transactions.export.csv", description = "Time taken to export transactions CSV")
     public CompletableFuture<ResponseEntity<byte[]>> exportTransactionsCsv(
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -326,15 +317,13 @@ public class ReportController {
 
     @Operation(
         summary = "Export report to JSON",
-        description = "Exports any report to JSON format for programmatic consumption."
-    )
+        description = "Exports any report to JSON format for programmatic consumption.")
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/{reportType}/export/json")
     @RateLimiter(name = "reports-api")
-    @Timed(name = "api.reports.export.json", description = "Time taken to export JSON")
+    @Timed(value = "api.reports.export.json", description = "Time taken to export JSON")
     public CompletableFuture<ResponseEntity<byte[]>> exportReportJson(
-            @Parameter(description = "Report type", example = "financial-summary",
-                      allowableValues = {"financial-summary", "payments", "settlements", "transactions"})
+            @Parameter(description = "Report type", example = "financial-summary")
             @PathVariable String reportType,
             @Parameter(description = "Start date (YYYY-MM-DD)", example = "2024-01-01")
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -369,13 +358,7 @@ public class ReportController {
 
     private Merchant getMerchantFromAuth(Authentication authentication) {
         String merchantDocument = authentication.getName();
-        Optional<Merchant> merchantOpt = merchantService.findByDocument(merchantDocument);
-
-        if (merchantOpt.isEmpty()) {
-            throw new BusinessException.InvalidMerchantException("Merchant not found");
-        }
-
-        return merchantOpt.get();
+        return merchantService.findByDocument(merchantDocument);
     }
 
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {

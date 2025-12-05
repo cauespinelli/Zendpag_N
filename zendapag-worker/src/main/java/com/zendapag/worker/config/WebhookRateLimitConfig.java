@@ -1,30 +1,24 @@
 package com.zendapag.worker.config;
 
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.BucketConfiguration;
-import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
-import io.github.bucket4j.distributed.proxy.ProxyManager;
-import io.github.bucket4j.redis.jedis.cas.JedisBasedProxyManager;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-import redis.clients.jedis.JedisPool;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Rate limiting configuration for webhook delivery per merchant
- * Implements distributed rate limiting using Redis and Bucket4j
+ * Implements in-memory rate limiting with sliding window
  */
 @Configuration
 @ConfigurationProperties(prefix = "zendapag.webhook.rate-limit")
@@ -42,26 +36,18 @@ public class WebhookRateLimitConfig {
     private String redisPrefix;
 
     /**
-     * ProxyManager for distributed rate limiting with Redis
-     */
-    @Bean
-    public ProxyManager<String> proxyManager(JedisPool jedisPool) {
-        return JedisBasedProxyManager.builderFor(jedisPool)
-            .withExpirationStrategy(ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(bucketExpiration))
-            .build();
-    }
-
-    /**
-     * Webhook rate limiter component
+     * Webhook rate limiter component - simplified in-memory implementation
      */
     @Component
     public static class WebhookRateLimiter {
         private static final Logger limiterLogger = LoggerFactory.getLogger("WebhookRateLimiter");
 
-        private final ProxyManager<String> proxyManager;
         private final RedisTemplate<String, Object> redisTemplate;
         private final MeterRegistry meterRegistry;
         private final String redisPrefix;
+
+        // In-memory rate limiting using sliding window
+        private final Map<String, RateLimitBucket> merchantBuckets = new ConcurrentHashMap<>();
 
         // Merchant-specific configurations cache
         private final Map<String, MerchantRateConfig> merchantConfigs = new ConcurrentHashMap<>();
@@ -71,14 +57,12 @@ public class WebhookRateLimitConfig {
         private final int burstCapacity;
         private final Duration refillPeriod;
 
-        public WebhookRateLimiter(ProxyManager<String> proxyManager,
-                                 RedisTemplate<String, Object> redisTemplate,
+        public WebhookRateLimiter(RedisTemplate<String, Object> redisTemplate,
                                  MeterRegistry meterRegistry,
                                  @Value("${zendapag.webhook.rate-limit.redis-prefix:webhook:ratelimit}") String redisPrefix,
                                  @Value("${zendapag.webhook.rate-limit.default-rate-per-minute:100}") int defaultRatePerMinute,
                                  @Value("${zendapag.webhook.rate-limit.burst-capacity:200}") int burstCapacity,
                                  @Value("${zendapag.webhook.rate-limit.refill-period:PT1M}") Duration refillPeriod) {
-            this.proxyManager = proxyManager;
             this.redisTemplate = redisTemplate;
             this.meterRegistry = meterRegistry;
             this.redisPrefix = redisPrefix;
@@ -93,11 +77,7 @@ public class WebhookRateLimitConfig {
         public RateLimitResult isAllowed(String merchantId, int tokensRequested) {
             try {
                 MerchantRateConfig config = getMerchantRateConfig(merchantId);
-                String bucketKey = generateBucketKey(merchantId);
-
-                // Get or create bucket for merchant
-                Bucket bucket = proxyManager.builder()
-                    .build(bucketKey, () -> createBucketConfiguration(config));
+                RateLimitBucket bucket = getOrCreateBucket(merchantId, config);
 
                 // Try to consume tokens
                 boolean allowed = bucket.tryConsume(tokensRequested);
@@ -118,7 +98,7 @@ public class WebhookRateLimitConfig {
                     .availableTokens(bucket.getAvailableTokens())
                     .capacity(config.getBurstCapacity())
                     .refillRate(config.getRatePerMinute())
-                    .resetTime(calculateResetTime(bucket))
+                    .resetTime(bucket.getResetTime())
                     .build();
 
             } catch (Exception e) {
@@ -151,17 +131,14 @@ public class WebhookRateLimitConfig {
         public RateLimitStatus getStatus(String merchantId) {
             try {
                 MerchantRateConfig config = getMerchantRateConfig(merchantId);
-                String bucketKey = generateBucketKey(merchantId);
-
-                Bucket bucket = proxyManager.builder()
-                    .build(bucketKey, () -> createBucketConfiguration(config));
+                RateLimitBucket bucket = getOrCreateBucket(merchantId, config);
 
                 return RateLimitStatus.builder()
                     .merchantId(merchantId)
                     .availableTokens(bucket.getAvailableTokens())
                     .capacity(config.getBurstCapacity())
                     .refillRate(config.getRatePerMinute())
-                    .resetTime(calculateResetTime(bucket))
+                    .resetTime(bucket.getResetTime())
                     .lastRefill(Instant.now())
                     .build();
 
@@ -176,12 +153,8 @@ public class WebhookRateLimitConfig {
          */
         public void configureMerchant(String merchantId, int ratePerMinute, int burstCapacity) {
             MerchantRateConfig config = new MerchantRateConfig(merchantId, ratePerMinute, burstCapacity);
-
-            // Cache configuration
             merchantConfigs.put(merchantId, config);
-
-            // Store in Redis for persistence
-            saveConfigToRedis(config);
+            merchantBuckets.remove(merchantId); // Force bucket recreation
 
             limiterLogger.info("Configured rate limit for merchant {}: {} req/min, burst: {}",
                 merchantId, ratePerMinute, burstCapacity);
@@ -191,111 +164,20 @@ public class WebhookRateLimitConfig {
          * Reset rate limit for merchant (emergency use)
          */
         public void resetMerchantRateLimit(String merchantId) {
-            try {
-                String bucketKey = generateBucketKey(merchantId);
-
-                // Remove bucket from distributed cache
-                proxyManager.removeProxy(bucketKey);
-
-                limiterLogger.info("Reset rate limit for merchant: {}", merchantId);
-
-            } catch (Exception e) {
-                limiterLogger.error("Error resetting rate limit for merchant: {}", merchantId, e);
-            }
+            merchantBuckets.remove(merchantId);
+            limiterLogger.info("Reset rate limit for merchant: {}", merchantId);
         }
 
-        /**
-         * Get merchant rate configuration
-         */
+        private RateLimitBucket getOrCreateBucket(String merchantId, MerchantRateConfig config) {
+            return merchantBuckets.computeIfAbsent(merchantId,
+                k -> new RateLimitBucket(config.getBurstCapacity(), config.getRatePerMinute(), refillPeriod));
+        }
+
         private MerchantRateConfig getMerchantRateConfig(String merchantId) {
-            return merchantConfigs.computeIfAbsent(merchantId, this::loadConfigFromRedis);
+            return merchantConfigs.getOrDefault(merchantId,
+                new MerchantRateConfig(merchantId, defaultRatePerMinute, burstCapacity));
         }
 
-        /**
-         * Load merchant configuration from Redis
-         */
-        private MerchantRateConfig loadConfigFromRedis(String merchantId) {
-            try {
-                String configKey = redisPrefix + ":config:" + merchantId;
-                Map<Object, Object> configData = redisTemplate.opsForHash().entries(configKey);
-
-                if (!configData.isEmpty()) {
-                    int ratePerMinute = (Integer) configData.getOrDefault("ratePerMinute", defaultRatePerMinute);
-                    int burstCapacity = (Integer) configData.getOrDefault("burstCapacity", this.burstCapacity);
-
-                    return new MerchantRateConfig(merchantId, ratePerMinute, burstCapacity);
-                }
-            } catch (Exception e) {
-                limiterLogger.warn("Error loading config for merchant {}, using defaults", merchantId, e);
-            }
-
-            // Return default configuration
-            return new MerchantRateConfig(merchantId, defaultRatePerMinute, burstCapacity);
-        }
-
-        /**
-         * Save merchant configuration to Redis
-         */
-        private void saveConfigToRedis(MerchantRateConfig config) {
-            try {
-                String configKey = redisPrefix + ":config:" + config.getMerchantId();
-
-                Map<String, Object> configData = Map.of(
-                    "merchantId", config.getMerchantId(),
-                    "ratePerMinute", config.getRatePerMinute(),
-                    "burstCapacity", config.getBurstCapacity(),
-                    "updatedAt", Instant.now().getEpochSecond()
-                );
-
-                redisTemplate.opsForHash().putAll(configKey, configData);
-                redisTemplate.expire(configKey, Duration.ofDays(30));
-
-            } catch (Exception e) {
-                limiterLogger.error("Error saving config for merchant: {}", config.getMerchantId(), e);
-            }
-        }
-
-        /**
-         * Create bucket configuration for merchant
-         */
-        private BucketConfiguration createBucketConfiguration(MerchantRateConfig config) {
-            Bandwidth bandwidth = Bandwidth.builder()
-                .capacity(config.getBurstCapacity())
-                .refillGreedy(config.getRatePerMinute(), refillPeriod)
-                .build();
-
-            return BucketConfiguration.builder()
-                .addLimit(bandwidth)
-                .build();
-        }
-
-        /**
-         * Generate unique bucket key for merchant
-         */
-        private String generateBucketKey(String merchantId) {
-            return redisPrefix + ":bucket:" + merchantId;
-        }
-
-        /**
-         * Calculate next reset time for bucket
-         */
-        private Instant calculateResetTime(Bucket bucket) {
-            // This is an approximation since Bucket4j doesn't provide exact reset time
-            long availableTokens = bucket.getAvailableTokens();
-            long missingTokens = burstCapacity - availableTokens;
-
-            if (missingTokens <= 0) {
-                return Instant.now();
-            }
-
-            // Estimate time for bucket to refill
-            long secondsToRefill = (missingTokens * 60) / defaultRatePerMinute;
-            return Instant.now().plusSeconds(secondsToRefill);
-        }
-
-        /**
-         * Update rate limiting metrics
-         */
         private void updateMetrics(String merchantId, int tokensRequested, boolean allowed) {
             meterRegistry.counter("webhook.rate_limit.requests",
                 "merchant", merchantId,
@@ -307,9 +189,58 @@ public class WebhookRateLimitConfig {
                     "merchant", merchantId
                 ).increment();
             }
+        }
+    }
 
-            meterRegistry.gauge("webhook.rate_limit.tokens_requested",
-                tokensRequested);
+    /**
+     * Simple token bucket implementation
+     */
+    public static class RateLimitBucket {
+        private final int capacity;
+        private final int refillTokens;
+        private final long refillIntervalMillis;
+        private final AtomicInteger tokens;
+        private final AtomicLong lastRefillTime;
+
+        public RateLimitBucket(int capacity, int refillTokens, Duration refillPeriod) {
+            this.capacity = capacity;
+            this.refillTokens = refillTokens;
+            this.refillIntervalMillis = refillPeriod.toMillis();
+            this.tokens = new AtomicInteger(capacity);
+            this.lastRefillTime = new AtomicLong(System.currentTimeMillis());
+        }
+
+        public synchronized boolean tryConsume(int tokensToConsume) {
+            refill();
+            if (tokens.get() >= tokensToConsume) {
+                tokens.addAndGet(-tokensToConsume);
+                return true;
+            }
+            return false;
+        }
+
+        public long getAvailableTokens() {
+            refill();
+            return tokens.get();
+        }
+
+        public Instant getResetTime() {
+            long elapsed = System.currentTimeMillis() - lastRefillTime.get();
+            long remaining = refillIntervalMillis - elapsed;
+            return Instant.now().plusMillis(Math.max(0, remaining));
+        }
+
+        private void refill() {
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastRefillTime.get();
+
+            if (elapsed >= refillIntervalMillis) {
+                int intervalsElapsed = (int) (elapsed / refillIntervalMillis);
+                int tokensToAdd = intervalsElapsed * refillTokens;
+                int newTokens = Math.min(capacity, tokens.get() + tokensToAdd);
+                tokens.set(newTokens);
+                lastRefillTime.set(now - (elapsed % refillIntervalMillis));
+            }
         }
     }
 
@@ -349,7 +280,6 @@ public class WebhookRateLimitConfig {
             return new Builder();
         }
 
-        // Getters
         public boolean isAllowed() { return allowed; }
         public String getMerchantId() { return merchantId; }
         public int getTokensRequested() { return tokensRequested; }
@@ -362,49 +292,15 @@ public class WebhookRateLimitConfig {
         public static class Builder {
             private RateLimitResult result = new RateLimitResult();
 
-            public Builder allowed(boolean allowed) {
-                result.allowed = allowed;
-                return this;
-            }
-
-            public Builder merchantId(String merchantId) {
-                result.merchantId = merchantId;
-                return this;
-            }
-
-            public Builder tokensRequested(int tokensRequested) {
-                result.tokensRequested = tokensRequested;
-                return this;
-            }
-
-            public Builder availableTokens(long availableTokens) {
-                result.availableTokens = availableTokens;
-                return this;
-            }
-
-            public Builder capacity(int capacity) {
-                result.capacity = capacity;
-                return this;
-            }
-
-            public Builder refillRate(int refillRate) {
-                result.refillRate = refillRate;
-                return this;
-            }
-
-            public Builder resetTime(Instant resetTime) {
-                result.resetTime = resetTime;
-                return this;
-            }
-
-            public Builder error(String error) {
-                result.error = error;
-                return this;
-            }
-
-            public RateLimitResult build() {
-                return result;
-            }
+            public Builder allowed(boolean allowed) { result.allowed = allowed; return this; }
+            public Builder merchantId(String merchantId) { result.merchantId = merchantId; return this; }
+            public Builder tokensRequested(int tokensRequested) { result.tokensRequested = tokensRequested; return this; }
+            public Builder availableTokens(long availableTokens) { result.availableTokens = availableTokens; return this; }
+            public Builder capacity(int capacity) { result.capacity = capacity; return this; }
+            public Builder refillRate(int refillRate) { result.refillRate = refillRate; return this; }
+            public Builder resetTime(Instant resetTime) { result.resetTime = resetTime; return this; }
+            public Builder error(String error) { result.error = error; return this; }
+            public RateLimitResult build() { return result; }
         }
     }
 
@@ -423,7 +319,6 @@ public class WebhookRateLimitConfig {
             return new Builder();
         }
 
-        // Getters
         public String getMerchantId() { return merchantId; }
         public long getAvailableTokens() { return availableTokens; }
         public int getCapacity() { return capacity; }
@@ -434,39 +329,13 @@ public class WebhookRateLimitConfig {
         public static class Builder {
             private RateLimitStatus status = new RateLimitStatus();
 
-            public Builder merchantId(String merchantId) {
-                status.merchantId = merchantId;
-                return this;
-            }
-
-            public Builder availableTokens(long availableTokens) {
-                status.availableTokens = availableTokens;
-                return this;
-            }
-
-            public Builder capacity(int capacity) {
-                status.capacity = capacity;
-                return this;
-            }
-
-            public Builder refillRate(int refillRate) {
-                status.refillRate = refillRate;
-                return this;
-            }
-
-            public Builder resetTime(Instant resetTime) {
-                status.resetTime = resetTime;
-                return this;
-            }
-
-            public Builder lastRefill(Instant lastRefill) {
-                status.lastRefill = lastRefill;
-                return this;
-            }
-
-            public RateLimitStatus build() {
-                return status;
-            }
+            public Builder merchantId(String merchantId) { status.merchantId = merchantId; return this; }
+            public Builder availableTokens(long availableTokens) { status.availableTokens = availableTokens; return this; }
+            public Builder capacity(int capacity) { status.capacity = capacity; return this; }
+            public Builder refillRate(int refillRate) { status.refillRate = refillRate; return this; }
+            public Builder resetTime(Instant resetTime) { status.resetTime = resetTime; return this; }
+            public Builder lastRefill(Instant lastRefill) { status.lastRefill = lastRefill; return this; }
+            public RateLimitStatus build() { return status; }
         }
     }
 

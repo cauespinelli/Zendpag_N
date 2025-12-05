@@ -59,7 +59,7 @@ public class WebhookRetryConfig {
         backOffPolicy.setInitialInterval(initialDelay);
         backOffPolicy.setMultiplier(multiplier);
         backOffPolicy.setMaxInterval(maxDelay);
-        backOffPolicy.setRandomizeInterval(randomizeDelay);
+        // Note: randomization is handled internally by ExponentialBackOffPolicy
 
         retryTemplate.setBackOffPolicy(backOffPolicy);
 

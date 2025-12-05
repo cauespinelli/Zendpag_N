@@ -588,4 +588,9 @@ public class Settlement extends BaseEntity {
     public void setTransactions(Set<Transaction> transactions) {
         this.transactions = transactions;
     }
+
+    // Alias for settledAt - used by ReportService
+    public Instant getCompletedAt() {
+        return settledAt;
+    }
 }

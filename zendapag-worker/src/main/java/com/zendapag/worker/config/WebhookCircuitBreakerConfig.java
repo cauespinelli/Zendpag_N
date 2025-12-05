@@ -195,7 +195,7 @@ public class WebhookCircuitBreakerConfig {
                 .state(state.name())
                 .failureRate(circuitBreaker.getMetrics().getFailureRate())
                 .slowCallRate(circuitBreaker.getMetrics().getSlowCallRate())
-                .numberOfCalls(circuitBreaker.getMetrics().getNumberOfCalls())
+                .numberOfCalls(circuitBreaker.getMetrics().getNumberOfBufferedCalls())
                 .numberOfFailedCalls(circuitBreaker.getMetrics().getNumberOfFailedCalls())
                 .numberOfSlowCalls(circuitBreaker.getMetrics().getNumberOfSlowCalls())
                 .numberOfNotPermittedCalls(circuitBreaker.getMetrics().getNumberOfNotPermittedCalls())
@@ -206,7 +206,7 @@ public class WebhookCircuitBreakerConfig {
         /**
          * Handle state transition events
          */
-        private void handleStateTransition(CircuitBreakerEvent.StateTransitionEvent event) {
+        private void handleStateTransition(io.github.resilience4j.circuitbreaker.event.CircuitBreakerOnStateTransitionEvent event) {
             managerLogger.info("Circuit breaker state transition: {} -> {} for: {}",
                 event.getStateTransition().getFromState(),
                 event.getStateTransition().getToState(),
@@ -228,7 +228,7 @@ public class WebhookCircuitBreakerConfig {
         /**
          * Handle call not permitted events
          */
-        private void handleCallNotPermitted(CircuitBreakerEvent.CallNotPermittedEvent event) {
+        private void handleCallNotPermitted(io.github.resilience4j.circuitbreaker.event.CircuitBreakerOnCallNotPermittedEvent event) {
             managerLogger.debug("Call not permitted by circuit breaker: {}", event.getCircuitBreakerName());
 
             meterRegistry.counter("webhook.circuit_breaker.calls_not_permitted",
@@ -239,7 +239,7 @@ public class WebhookCircuitBreakerConfig {
         /**
          * Handle error events
          */
-        private void handleError(CircuitBreakerEvent.ErrorEvent event) {
+        private void handleError(io.github.resilience4j.circuitbreaker.event.CircuitBreakerOnErrorEvent event) {
             managerLogger.debug("Circuit breaker recorded error for {}: {}",
                 event.getCircuitBreakerName(), event.getThrowable().getMessage());
 
@@ -252,7 +252,7 @@ public class WebhookCircuitBreakerConfig {
         /**
          * Handle success events
          */
-        private void handleSuccess(CircuitBreakerEvent.SuccessEvent event) {
+        private void handleSuccess(io.github.resilience4j.circuitbreaker.event.CircuitBreakerOnSuccessEvent event) {
             managerLogger.debug("Circuit breaker recorded success for {} (duration: {}ms)",
                 event.getCircuitBreakerName(), event.getElapsedDuration().toMillis());
 
@@ -308,7 +308,7 @@ public class WebhookCircuitBreakerConfig {
                     .state(state.name())
                     .failureRate(circuitBreaker.getMetrics().getFailureRate())
                     .slowCallRate(circuitBreaker.getMetrics().getSlowCallRate())
-                    .numberOfCalls(circuitBreaker.getMetrics().getNumberOfCalls())
+                    .numberOfCalls(circuitBreaker.getMetrics().getNumberOfBufferedCalls())
                     .numberOfFailedCalls(circuitBreaker.getMetrics().getNumberOfFailedCalls())
                     .numberOfSlowCalls(circuitBreaker.getMetrics().getNumberOfSlowCalls())
                     .numberOfNotPermittedCalls(circuitBreaker.getMetrics().getNumberOfNotPermittedCalls())
@@ -345,7 +345,7 @@ public class WebhookCircuitBreakerConfig {
         public String getState() { return state; }
         public float getFailureRate() { return failureRate; }
         public float getSlowCallRate() { return slowCallRate; }
-        public int getNumberOfCalls() { return numberOfCalls; }
+        public int getNumberOfBufferedCalls() { return numberOfCalls; }
         public int getNumberOfFailedCalls() { return numberOfFailedCalls; }
         public int getNumberOfSlowCalls() { return numberOfSlowCalls; }
         public long getNumberOfNotPermittedCalls() { return numberOfNotPermittedCalls; }

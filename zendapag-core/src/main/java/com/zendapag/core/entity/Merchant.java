@@ -408,6 +408,34 @@ public class Merchant extends BaseEntity {
     public void setLastLoginAt(Instant lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
     }
+// Alias for phone field (compatibility with PixQrCodeGenerator)
+    public String getPhoneNumber() {
+        return phone;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phone = phoneNumber;
+    }
+
+    // Website URL alias
+    public String getWebsiteUrl() {
+        return website;
+    }
+
+    public void setWebsiteUrl(String websiteUrl) {
+        this.website = websiteUrl;
+    }
+
+    // Address as Map (compatibility with PixQrCodeGenerator)
+    public java.util.Map<String, Object> getAddressAsMap() {
+        java.util.Map<String, Object> addressMap = new java.util.HashMap<>();
+        if (address != null) addressMap.put("street", address);
+        if (city != null) addressMap.put("city", city);
+        if (state != null) addressMap.put("state", state);
+        if (postalCode != null) addressMap.put("postalCode", postalCode);
+        if (country != null) addressMap.put("country", country);
+        return addressMap;
+    }
 
     public Set<ApiKey> getApiKeys() {
         return apiKeys;

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -17,4 +18,10 @@ public class PaymentWebhookEvent {
     private String currency;
     private LocalDateTime timestamp;
     private String merchantId;
+
+    public PaymentWebhookEvent(Object source, UUID paymentId, Object payload) {
+        this.transactionId = paymentId != null ? paymentId.toString() : null;
+        this.status = "WEBHOOK_RECEIVED";
+        this.timestamp = LocalDateTime.now();
+    }
 }
