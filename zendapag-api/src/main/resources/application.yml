@@ -38,6 +38,9 @@ spring:
   main:
     allow-bean-definition-overriding: true
     allow-circular-references: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
   config:
     activate:
       on-profile: dev

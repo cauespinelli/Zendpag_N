@@ -223,10 +223,10 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, UUID>, JpaSp
     List<Object[]> getUserTypeStats(@Param("startDate") Instant startDate,
                                    @Param("endDate") Instant endDate);
 
-    @Query(value = "SELECT DATE_TRUNC('hour', al.timestamp) as hour, COUNT(*) as count " +
+    @Query(value = "SELECT DATETRUNC('hour', al.timestamp) as hour, COUNT(*) as count " +
            "FROM audit_logs al " +
            "WHERE al.timestamp >= :startDate AND al.timestamp < :endDate " +
-           "GROUP BY DATE_TRUNC('hour', al.timestamp) " +
+           "GROUP BY DATETRUNC('hour', al.timestamp) " +
            "ORDER BY hour",
            nativeQuery = true)
     List<Object[]> getHourlyAuditVolume(@Param("startDate") Instant startDate,

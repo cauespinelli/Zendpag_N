@@ -13,6 +13,7 @@ import com.zendapag.core.pix.webhook.PixWebhookProcessor;
 import com.zendapag.core.pix.reconciliation.PixReconciliationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -31,7 +32,8 @@ public class PixService {
     private final AuditService auditService;
 
     @Autowired
-    public PixService(PixClient pixClient, PixQrCodeGenerator qrCodeGenerator, PixCertificateManager certificateManager, PixWebhookProcessor webhookProcessor, PixReconciliationService reconciliationService, AuditService auditService) {
+    public PixService(PixClient pixClient, PixQrCodeGenerator qrCodeGenerator, PixCertificateManager certificateManager,
+                      @Nullable PixWebhookProcessor webhookProcessor, PixReconciliationService reconciliationService, AuditService auditService) {
         this.pixClient = pixClient;
         this.qrCodeGenerator = qrCodeGenerator;
         this.certificateManager = certificateManager;
@@ -93,6 +95,10 @@ public class PixService {
     }
 
     public PixWebhookProcessor.WebhookProcessingResult processWebhook(Map<String, Object> payload, String signature) {
+        if (webhookProcessor == null) {
+            log.warn("Webhook processor not available in dev profile");
+            return null;
+        }
         return webhookProcessor.processWebhook(payload != null ? payload.toString() : "", signature, java.util.UUID.randomUUID().toString());
     }
 

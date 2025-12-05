@@ -8,6 +8,7 @@ import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.function.Consumer;
  * Provides reliable, transactional event publishing with metrics and error handling.
  */
 @Service
+@Profile({"staging", "prod"})
 public class EventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(EventPublisher.class);

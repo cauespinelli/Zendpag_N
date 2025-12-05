@@ -106,10 +106,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .mediaType("xml", org.springframework.http.MediaType.APPLICATION_XML);
     }
 
-    @Override
-    public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
-        configurer.enable();
-    }
+    // Removed: configureDefaultServletHandling not compatible with embedded Tomcat
+    // @Override
+    // public void configureDefaultServletHandling(DefaultServletHandlerConfigurer configurer) {
+    //     configurer.enable();
+    // }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

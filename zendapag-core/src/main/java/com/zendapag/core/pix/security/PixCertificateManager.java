@@ -3,6 +3,7 @@ package com.zendapag.core.pix.security;
 import com.zendapag.core.pix.config.PixConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.net.ssl.*;
@@ -20,6 +21,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class PixCertificateManager {
 
     private final PixConfig pixConfig;
+    private final boolean mockMode;
     private KeyStore keyStore;
     private KeyStore trustStore;
     private PrivateKey privateKey;
@@ -27,9 +29,27 @@ public class PixCertificateManager {
     private SSLContext sslContext;
 
     @Autowired
-    public PixCertificateManager(PixConfig pixConfig) {
+    public PixCertificateManager(PixConfig pixConfig,
+                                  @Value("${spring.profiles.active:dev}") String activeProfile) {
         this.pixConfig = pixConfig;
-        initializeCertificates();
+        this.mockMode = "dev".equals(activeProfile) || "test".equals(activeProfile);
+
+        if (mockMode) {
+            log.info("PIX Certificate Manager running in MOCK mode (profile: {})", activeProfile);
+            initializeMockMode();
+        } else {
+            initializeCertificates();
+        }
+    }
+
+    private void initializeMockMode() {
+        try {
+            // Create a default SSLContext for mock mode
+            sslContext = SSLContext.getDefault();
+            log.info("PIX certificates initialized in MOCK mode - no real certificates loaded");
+        } catch (Exception e) {
+            log.warn("Failed to initialize mock SSL context: {}", e.getMessage());
+        }
     }
 
     private void initializeCertificates() {
@@ -149,6 +169,10 @@ public class PixCertificateManager {
     }
 
     public String signData(byte[] data) throws Exception {
+        if (mockMode) {
+            log.debug("Mock mode: returning mock signature");
+            return Base64.getEncoder().encodeToString("mock-signature".getBytes());
+        }
         Signature signature = Signature.getInstance("SHA256withRSA");
         signature.initSign(privateKey);
         signature.update(data);
@@ -162,6 +186,10 @@ public class PixCertificateManager {
     }
 
     public boolean verifySignature(byte[] data, String signatureBase64) throws Exception {
+        if (mockMode) {
+            log.debug("Mock mode: returning true for signature verification");
+            return true;
+        }
         Signature signature = Signature.getInstance("SHA256withRSA");
         signature.initVerify(certificate);
         signature.update(data);

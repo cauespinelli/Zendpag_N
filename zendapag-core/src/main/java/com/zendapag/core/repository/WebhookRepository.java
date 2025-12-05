@@ -131,19 +131,20 @@ public interface WebhookRepository extends JpaRepository<Webhook, UUID>, JpaSpec
     List<Object[]> getEventTypeStats(@Param("startDate") Instant startDate,
                                     @Param("endDate") Instant endDate);
 
-    @Query("SELECT DATE(w.createdAt), w.status, COUNT(w) FROM Webhook w WHERE " +
+    @Query("SELECT CAST(w.createdAt AS DATE), w.status, COUNT(w) FROM Webhook w WHERE " +
            "w.createdAt >= :startDate AND w.createdAt < :endDate " +
            "AND w.deleted = false " +
-           "GROUP BY DATE(w.createdAt), w.status " +
-           "ORDER BY DATE(w.createdAt), w.status")
+           "GROUP BY CAST(w.createdAt AS DATE), w.status " +
+           "ORDER BY CAST(w.createdAt AS DATE), w.status")
     List<Object[]> getDailyWebhookStats(@Param("startDate") Instant startDate,
                                        @Param("endDate") Instant endDate);
 
-    @Query("SELECT AVG(EXTRACT(EPOCH FROM (w.deliveredAt - w.createdAt)) * 1000) FROM Webhook w WHERE " +
+    // H2 compatible: using native query with DATEDIFF
+    @Query(value = "SELECT AVG(DATEDIFF(MILLISECOND, w.created_at, w.delivered_at)) FROM webhooks w WHERE " +
            "w.status = 'SUCCESS' " +
-           "AND w.deliveredAt IS NOT NULL " +
-           "AND w.createdAt >= :startDate AND w.createdAt < :endDate " +
-           "AND w.deleted = false")
+           "AND w.delivered_at IS NOT NULL " +
+           "AND w.created_at >= :startDate AND w.created_at < :endDate " +
+           "AND w.deleted = false", nativeQuery = true)
     Double getAverageDeliveryTime(@Param("startDate") Instant startDate,
                                  @Param("endDate") Instant endDate);
 
@@ -165,16 +166,17 @@ public interface WebhookRepository extends JpaRepository<Webhook, UUID>, JpaSpec
            "ORDER BY w.responseTime DESC, w.createdAt DESC")
     Page<Webhook> findSlowWebhooks(@Param("threshold") Long threshold, Pageable pageable);
 
-    @Query("SELECT " +
-           "COUNT(w) as totalWebhooks, " +
+    // H2 compatible: using native query with DATEDIFF
+    @Query(value = "SELECT " +
+           "COUNT(*) as totalWebhooks, " +
            "COUNT(CASE WHEN w.status = 'SUCCESS' THEN 1 END) as successWebhooks, " +
            "COUNT(CASE WHEN w.status = 'FAILED' THEN 1 END) as failedWebhooks, " +
            "COUNT(CASE WHEN w.status = 'PENDING' THEN 1 END) as pendingWebhooks, " +
-           "AVG(CASE WHEN w.deliveredAt IS NOT NULL THEN EXTRACT(EPOCH FROM (w.deliveredAt - w.createdAt)) * 1000 END) as avgDeliveryTime " +
-           "FROM Webhook w WHERE " +
-           "w.merchant = :merchant " +
-           "AND w.createdAt >= :startDate AND w.createdAt < :endDate " +
-           "AND w.deleted = false")
+           "AVG(CASE WHEN w.delivered_at IS NOT NULL THEN DATEDIFF(MILLISECOND, w.created_at, w.delivered_at) END) as avgDeliveryTime " +
+           "FROM webhooks w WHERE " +
+           "w.merchant_id = :#{#merchant.id} " +
+           "AND w.created_at >= :startDate AND w.created_at < :endDate " +
+           "AND w.deleted = false", nativeQuery = true)
     Object getWebhookSummaryByMerchant(@Param("merchant") Merchant merchant,
                                       @Param("startDate") Instant startDate,
                                       @Param("endDate") Instant endDate);
@@ -201,12 +203,12 @@ public interface WebhookRepository extends JpaRepository<Webhook, UUID>, JpaSpec
                                                 @Param("eventType") WebhookEventType eventType,
                                                 @Param("entityId") String entityId);
 
-    @Query(value = "SELECT DATE_TRUNC('hour', w.created_at) as hour, " +
+    @Query(value = "SELECT DATETRUNC('HOUR', w.created_at) as hour, " +
            "w.status, COUNT(*) as count " +
            "FROM webhooks w " +
            "WHERE w.created_at >= :startDate AND w.created_at < :endDate " +
            "AND w.deleted = false " +
-           "GROUP BY DATE_TRUNC('hour', w.created_at), w.status " +
+           "GROUP BY DATETRUNC('HOUR', w.created_at), w.status " +
            "ORDER BY hour, w.status",
            nativeQuery = true)
     List<Object[]> getHourlyWebhookVolume(@Param("startDate") Instant startDate,
