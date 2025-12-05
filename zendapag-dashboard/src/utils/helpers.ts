@@ -404,3 +404,31 @@ export const storage = {
     localStorage.clear();
   },
 };
+// ============================================
+// HELPERS ADICIONAIS PARA NOVOS MÓDULOS
+// ============================================
+
+// Formatar CNPJ
+export const formatCNPJ = (cnpj: string): string => {
+  if (!cnpj) return '';
+  const cleaned = cnpj.replace(/\D/g, '');
+  if (cleaned.length !== 14) return cnpj;
+  return cleaned.replace(
+    /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+    '$1.$2.$3/$4-$5'
+  );
+};
+
+// Formatar DateTime
+export const formatDateTime = (date: string | Date): string => {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+};

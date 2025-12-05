@@ -23,6 +23,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 // Lazy load pages for code splitting
 const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
 const DashboardLayout = React.lazy(() => import('@/components/DashboardLayout'));
+const MainLayout = React.lazy(() => import('@/components/layout/MainLayout'));
 const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'));
 const PaymentsPage = React.lazy(() => import('@/pages/PaymentsPage'));
 const PaymentDetailsPage = React.lazy(() => import('@/pages/PaymentDetailsPage'));
@@ -32,6 +33,16 @@ const ReportsPage = React.lazy(() => import('@/pages/ReportsPage'));
 const ProfilePage = React.lazy(() => import('@/pages/ProfilePage'));
 const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'));
 const NotFoundPage = React.lazy(() => import('@/pages/NotFoundPage'));
+
+// Novos módulos
+const TransactionsPage = React.lazy(() => import('@/pages/TransactionsPage'));
+const WithdrawalsPage = React.lazy(() => import('@/pages/WithdrawalsPage'));
+const EstablishmentsPage = React.lazy(() => import('@/pages/EstablishmentsPage'));
+const DisputesPage = React.lazy(() => import('@/pages/DisputesPage'));
+const AffiliatesPage = React.lazy(() => import('@/pages/AffiliatesPage'));
+const StatementsPage = React.lazy(() => import('@/pages/StatementsPage'));
+const MedAnalyticsPage = React.lazy(() => import('@/pages/MedAnalyticsPage'));
+const CheckoutPage = React.lazy(() => import('@/pages/CheckoutPage'));
 
 // React Query client configuration
 const queryClient = new QueryClient({
@@ -119,12 +130,12 @@ const App: React.FC = () => {
                     }
                   />
 
-                  {/* Protected routes */}
+                  {/* Protected routes - New Layout */}
                   <Route
                     path="/"
                     element={
                       <ProtectedRoute>
-                        <DashboardLayout />
+                        <MainLayout />
                       </ProtectedRoute>
                     }
                   >
@@ -140,6 +151,16 @@ const App: React.FC = () => {
                     <Route path="reports" element={<ReportsPage />} />
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="settings" element={<SettingsPage />} />
+                    
+                    {/* Novos módulos */}
+                    <Route path="transactions" element={<TransactionsPage />} />
+                    <Route path="withdrawals" element={<WithdrawalsPage />} />
+                    <Route path="establishments" element={<EstablishmentsPage />} />
+                    <Route path="disputes" element={<DisputesPage />} />
+                    <Route path="affiliates" element={<AffiliatesPage />} />
+                    <Route path="statements" element={<StatementsPage />} />
+                    <Route path="med-analytics" element={<MedAnalyticsPage />} />
+                    <Route path="checkout" element={<CheckoutPage />} />
                   </Route>
 
                   {/* 404 page */}

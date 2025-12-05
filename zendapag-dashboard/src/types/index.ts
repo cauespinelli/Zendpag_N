@@ -268,3 +268,19 @@ export interface Notification {
     action: () => void;
   }>;
 }
+// ============================================
+// TIPOS E LABELS PARA NOVOS MÓDULOS
+// ============================================
+
+// Dispute Reason Labels
+export const DISPUTE_REASON_LABELS: Record<string, string> = {
+  FRAUD: 'Fraude',
+  UNAUTHORIZED: 'Não Autorizado',
+  DUPLICATE: 'Duplicado',
+  NOT_RECEIVED: 'Não Recebido',
+  DEFECTIVE: 'Produto Defeituoso',
+  NOT_AS_DESCRIBED: 'Produto Diferente',
+  CANCELLED: 'Cancelamento',
+  REFUND_NOT_PROCESSED: 'Estorno Não Processado',
+  OTHER: 'Outro',
+};

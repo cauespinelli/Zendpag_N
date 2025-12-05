@@ -11,6 +11,14 @@ import {
   UserOutlined,
   SettingOutlined,
   LogoutOutlined,
+  SwapOutlined,
+  BankOutlined,
+  ShopOutlined,
+  ExclamationCircleOutlined,
+  TeamOutlined,
+  WalletOutlined,
+  MedicineBoxOutlined,
+  ShoppingCartOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons';
@@ -58,6 +66,46 @@ const DashboardLayout: React.FC = () => {
       key: '/payments',
       icon: <CreditCardOutlined />,
       label: 'Pagamentos',
+    },
+    {
+      key: '/transactions',
+      icon: <SwapOutlined />,
+      label: 'Transações',
+    },
+    {
+      key: '/withdrawals',
+      icon: <BankOutlined />,
+      label: 'Saques',
+    },
+    {
+      key: '/establishments',
+      icon: <ShopOutlined />,
+      label: 'Estabelecimentos',
+    },
+    {
+      key: '/disputes',
+      icon: <ExclamationCircleOutlined />,
+      label: 'Disputas',
+    },
+    {
+      key: '/affiliates',
+      icon: <TeamOutlined />,
+      label: 'Afiliados',
+    },
+    {
+      key: '/statements',
+      icon: <WalletOutlined />,
+      label: 'Extratos',
+    },
+    {
+      key: '/med-analytics',
+      icon: <MedicineBoxOutlined />,
+      label: 'MED Analytics',
+    },
+    {
+      key: '/checkout',
+      icon: <ShoppingCartOutlined />,
+      label: 'Checkout',
     },
     {
       key: '/analytics',

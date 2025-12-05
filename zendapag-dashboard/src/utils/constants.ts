@@ -195,3 +195,261 @@ export const ERROR_MESSAGES = {
   VALIDATION_ERROR: 'Dados inválidos. Verifique os campos.',
   TIMEOUT: 'Operação demorou muito. Tente novamente.',
 } as const;
+// ============================================
+// CONSTANTES ADICIONAIS PARA NOVOS MÓDULOS
+// ============================================
+
+// Estados Brasileiros
+export const BRAZILIAN_STATES = [
+  { value: 'AC', label: 'Acre' },
+  { value: 'AL', label: 'Alagoas' },
+  { value: 'AP', label: 'Amapá' },
+  { value: 'AM', label: 'Amazonas' },
+  { value: 'BA', label: 'Bahia' },
+  { value: 'CE', label: 'Ceará' },
+  { value: 'DF', label: 'Distrito Federal' },
+  { value: 'ES', label: 'Espírito Santo' },
+  { value: 'GO', label: 'Goiás' },
+  { value: 'MA', label: 'Maranhão' },
+  { value: 'MT', label: 'Mato Grosso' },
+  { value: 'MS', label: 'Mato Grosso do Sul' },
+  { value: 'MG', label: 'Minas Gerais' },
+  { value: 'PA', label: 'Pará' },
+  { value: 'PB', label: 'Paraíba' },
+  { value: 'PR', label: 'Paraná' },
+  { value: 'PE', label: 'Pernambuco' },
+  { value: 'PI', label: 'Piauí' },
+  { value: 'RJ', label: 'Rio de Janeiro' },
+  { value: 'RN', label: 'Rio Grande do Norte' },
+  { value: 'RS', label: 'Rio Grande do Sul' },
+  { value: 'RO', label: 'Rondônia' },
+  { value: 'RR', label: 'Roraima' },
+  { value: 'SC', label: 'Santa Catarina' },
+  { value: 'SP', label: 'São Paulo' },
+  { value: 'SE', label: 'Sergipe' },
+  { value: 'TO', label: 'Tocantins' },
+] as const;
+
+// Establishment Status
+export const ESTABLISHMENT_STATUS_COLORS = {
+  ACTIVE: '#52c41a',
+  INACTIVE: '#8c8c8c',
+  PENDING: '#faad14',
+  SUSPENDED: '#ff4d4f',
+  BLOCKED: '#ff4d4f',
+} as const;
+
+export const ESTABLISHMENT_STATUS_LABELS = {
+  ACTIVE: 'Ativo',
+  INACTIVE: 'Inativo',
+  PENDING: 'Pendente',
+  SUSPENDED: 'Suspenso',
+  BLOCKED: 'Bloqueado',
+} as const;
+
+// Document Status
+export const DOCUMENT_STATUS_COLORS = {
+  PENDING: '#faad14',
+  APPROVED: '#52c41a',
+  REJECTED: '#ff4d4f',
+  EXPIRED: '#8c8c8c',
+} as const;
+
+export const DOCUMENT_STATUS_LABELS = {
+  PENDING: 'Pendente',
+  APPROVED: 'Aprovado',
+  REJECTED: 'Rejeitado',
+  EXPIRED: 'Expirado',
+} as const;
+
+// Acquirer Providers
+export const ACQUIRER_PROVIDERS = [
+  { value: 'CIELO', label: 'Cielo' },
+  { value: 'REDE', label: 'Rede' },
+  { value: 'STONE', label: 'Stone' },
+  { value: 'PAGSEGURO', label: 'PagSeguro' },
+  { value: 'GETNET', label: 'Getnet' },
+  { value: 'SAFRA', label: 'Safra' },
+  { value: 'MERCADOPAGO', label: 'Mercado Pago' },
+  { value: 'PAGARME', label: 'Pagar.me' },
+] as const;
+
+// Transaction Status
+export const TRANSACTION_STATUS_COLORS = {
+  PENDING: '#faad14',
+  PROCESSING: '#1890ff',
+  COMPLETED: '#52c41a',
+  FAILED: '#ff4d4f',
+  CANCELLED: '#8c8c8c',
+  REFUNDED: '#722ed1',
+} as const;
+
+export const TRANSACTION_STATUS_LABELS = {
+  PENDING: 'Pendente',
+  PROCESSING: 'Processando',
+  COMPLETED: 'Concluído',
+  FAILED: 'Falhou',
+  CANCELLED: 'Cancelado',
+  REFUNDED: 'Estornado',
+} as const;
+
+// Transaction Method
+export const TRANSACTION_METHOD_COLORS = {
+  PIX: '#32BCAD',
+  CREDIT_CARD: '#1890ff',
+  DEBIT_CARD: '#13c2c2',
+  BOLETO: '#faad14',
+  TED: '#722ed1',
+  DOC: '#eb2f96',
+} as const;
+
+export const TRANSACTION_METHOD_LABELS = {
+  PIX: 'PIX',
+  CREDIT_CARD: 'Cartão de Crédito',
+  DEBIT_CARD: 'Cartão de Débito',
+  BOLETO: 'Boleto',
+  TED: 'TED',
+  DOC: 'DOC',
+} as const;
+
+// Withdrawal Status
+export const WITHDRAWAL_STATUS_COLORS = {
+  PENDING: '#faad14',
+  PROCESSING: '#1890ff',
+  COMPLETED: '#52c41a',
+  FAILED: '#ff4d4f',
+  CANCELLED: '#8c8c8c',
+} as const;
+
+export const WITHDRAWAL_STATUS_LABELS = {
+  PENDING: 'Pendente',
+  PROCESSING: 'Processando',
+  COMPLETED: 'Concluído',
+  FAILED: 'Falhou',
+  CANCELLED: 'Cancelado',
+} as const;
+
+// Withdrawal Type
+export const WITHDRAWAL_TYPE_LABELS = {
+  MANUAL: 'Manual',
+  AUTOMATIC: 'Automático',
+  SCHEDULED: 'Agendado',
+} as const;
+
+// PIX Key Type Labels
+export const PIX_KEY_TYPE_LABELS = {
+  CPF: 'CPF',
+  CNPJ: 'CNPJ',
+  EMAIL: 'E-mail',
+  PHONE: 'Telefone',
+  EVP: 'Chave Aleatória',
+} as const;
+
+// Wallet Type
+export const WALLET_TYPE_LABELS = {
+  MAIN: 'Principal',
+  RESERVE: 'Reserva',
+  BLOCKED: 'Bloqueado',
+} as const;
+
+// Dispute Status
+export const DISPUTE_STATUS_COLORS = {
+  OPEN: '#faad14',
+  IN_ANALYSIS: '#1890ff',
+  WAITING_DOCUMENTS: '#722ed1',
+  RESOLVED: '#52c41a',
+  CLOSED: '#8c8c8c',
+  WON: '#52c41a',
+  LOST: '#ff4d4f',
+} as const;
+
+export const DISPUTE_STATUS_LABELS = {
+  OPEN: 'Aberta',
+  IN_ANALYSIS: 'Em Análise',
+  WAITING_DOCUMENTS: 'Aguardando Documentos',
+  RESOLVED: 'Resolvida',
+  CLOSED: 'Fechada',
+  WON: 'Ganha',
+  LOST: 'Perdida',
+} as const;
+
+// Dispute Priority
+export const DISPUTE_PRIORITY_COLORS = {
+  LOW: '#52c41a',
+  MEDIUM: '#faad14',
+  HIGH: '#ff7a45',
+  CRITICAL: '#ff4d4f',
+} as const;
+
+export const DISPUTE_PRIORITY_LABELS = {
+  LOW: 'Baixa',
+  MEDIUM: 'Média',
+  HIGH: 'Alta',
+  CRITICAL: 'Crítica',
+} as const;
+
+// Affiliate Status
+export const AFFILIATE_STATUS_COLORS = {
+  ACTIVE: '#52c41a',
+  INACTIVE: '#8c8c8c',
+  PENDING: '#faad14',
+  SUSPENDED: '#ff4d4f',
+} as const;
+
+export const AFFILIATE_STATUS_LABELS = {
+  ACTIVE: 'Ativo',
+  INACTIVE: 'Inativo',
+  PENDING: 'Pendente',
+  SUSPENDED: 'Suspenso',
+} as const;
+
+// Commission Status
+export const COMMISSION_STATUS_COLORS = {
+  PENDING: '#faad14',
+  APPROVED: '#52c41a',
+  PAID: '#1890ff',
+  CANCELLED: '#8c8c8c',
+} as const;
+
+export const COMMISSION_STATUS_LABELS = {
+  PENDING: 'Pendente',
+  APPROVED: 'Aprovada',
+  PAID: 'Paga',
+  CANCELLED: 'Cancelada',
+} as const;
+
+// Statement Entry Type
+export const STATEMENT_ENTRY_TYPE_COLORS = {
+  CREDIT: '#52c41a',
+  DEBIT: '#ff4d4f',
+  FEE: '#faad14',
+  REFUND: '#722ed1',
+  ADJUSTMENT: '#1890ff',
+} as const;
+
+export const STATEMENT_ENTRY_TYPE_LABELS = {
+  CREDIT: 'Crédito',
+  DEBIT: 'Débito',
+  FEE: 'Taxa',
+  REFUND: 'Estorno',
+  ADJUSTMENT: 'Ajuste',
+} as const;
+
+// Statement Category
+export const STATEMENT_CATEGORY_COLORS = {
+  PAYMENT: '#52c41a',
+  WITHDRAWAL: '#1890ff',
+  FEE: '#faad14',
+  REFUND: '#722ed1',
+  CHARGEBACK: '#ff4d4f',
+  TRANSFER: '#13c2c2',
+} as const;
+
+export const STATEMENT_CATEGORY_LABELS = {
+  PAYMENT: 'Pagamento',
+  WITHDRAWAL: 'Saque',
+  FEE: 'Taxa',
+  REFUND: 'Estorno',
+  CHARGEBACK: 'Chargeback',
+  TRANSFER: 'Transferência',
+} as const;
