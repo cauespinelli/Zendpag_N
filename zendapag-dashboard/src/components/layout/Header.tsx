@@ -19,73 +19,78 @@ const Header: React.FC<HeaderProps> = ({ sidebarCollapsed }) => {
 
   return (
     <header
-      className={`fixed top-0 right-0 h-16 bg-[#0a0a0a] border-b border-gray-800 flex items-center justify-between px-6 z-40 transition-all duration-300 ${
-        sidebarCollapsed ? 'left-[70px]' : 'left-[240px]'
+      className={`fixed top-0 right-0 h-20 bg-[#0D0D0D] border-b border-[#1E1E1E] flex items-center justify-between px-8 z-40 transition-all duration-300 ${
+        sidebarCollapsed ? 'left-20' : 'left-64'
       }`}
     >
       {/* Search */}
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="w-64 bg-gray-900 border border-gray-800 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
-          />
-        </div>
+      <div className="relative flex-1 max-w-md">
+        <Search size={18} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C5C5C]" />
+        <input
+          type="text"
+          placeholder="Buscar..."
+          className="w-full pl-12 pr-4 py-3 bg-[#1A1A1A] border border-[#2D2D2D] rounded-xl text-white placeholder-[#5C5C5C] focus:outline-none focus:border-[#C9A962] transition-colors"
+        />
       </div>
 
-      {/* Right Section */}
-      <div className="flex items-center gap-4">
+      {/* Right side */}
+      <div className="flex items-center gap-6">
         {/* Notifications */}
-        <button className="relative p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
-          <Bell size={20} />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+        <button className="relative p-3 rounded-xl hover:bg-[#1A1A1A] transition-colors">
+          <Bell size={20} strokeWidth={1.5} className="text-[#8C8C8C]" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-[#E53935] rounded-full" />
         </button>
 
         {/* User Menu */}
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+            className="flex items-center gap-4 pl-6 border-l border-[#2D2D2D] hover:bg-[#1A1A1A] rounded-xl py-2 px-4 transition-colors"
           >
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <User size={16} className="text-white" />
+            <div className="text-right hidden sm:block">
+              <p className="text-white text-sm font-medium">{user?.name || 'Admin ZendPag'}</p>
+              <p className="text-[#5C5C5C] text-xs">{user?.email || 'admin@zendpag.com'}</p>
             </div>
-            <div className="text-left hidden sm:block">
-              <p className="text-sm font-medium text-white">{user?.name || 'Admin'}</p>
-              <p className="text-xs text-gray-500">{user?.email || 'admin@zendpag.com'}</p>
+            <div className="w-11 h-11 bg-gradient-to-br from-[#C9A962] to-[#8B6914] rounded-xl flex items-center justify-center">
+              <User size={20} className="text-black" />
             </div>
-            <ChevronDown size={16} className="text-gray-400" />
+            <ChevronDown size={16} strokeWidth={1.5} className="text-[#5C5C5C]" />
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-800 rounded-lg shadow-xl py-1 z-50">
-              <button
-                onClick={() => {
-                  navigate('/profile');
-                  setShowUserMenu(false);
-                }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-              >
-                Meu Perfil
-              </button>
-              <button
-                onClick={() => {
-                  navigate('/settings');
-                  setShowUserMenu(false);
-                }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-              >
-                Configurações
-              </button>
-              <hr className="my-1 border-gray-800" />
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-              >
-                Sair
-              </button>
+            <div className="absolute right-0 top-full mt-2 w-56 bg-[#1A1A1A] border border-[#2D2D2D] rounded-xl shadow-xl py-2 z-50">
+              <div className="px-4 py-3 border-b border-[#2D2D2D]">
+                <p className="text-white text-sm font-medium">{user?.name || 'Admin'}</p>
+                <p className="text-[#5C5C5C] text-xs">{user?.email || 'admin@zendpag.com'}</p>
+              </div>
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    navigate('/profile');
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 text-sm text-[#8C8C8C] hover:bg-[#2D2D2D] hover:text-white transition-colors"
+                >
+                  Meu Perfil
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/settings');
+                    setShowUserMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 text-sm text-[#8C8C8C] hover:bg-[#2D2D2D] hover:text-white transition-colors"
+                >
+                  Configurações
+                </button>
+              </div>
+              <div className="border-t border-[#2D2D2D] py-1">
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-3 text-sm text-[#E53935] hover:bg-[#E53935]/10 transition-colors"
+                >
+                  Sair
+                </button>
+              </div>
             </div>
           )}
         </div>

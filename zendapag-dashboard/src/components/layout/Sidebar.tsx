@@ -5,8 +5,8 @@ import {
   Building2,
   ArrowLeftRight,
   Wallet,
-  AlertTriangle,
-  Activity,
+  AlertCircle,
+  BarChart2,
   Users,
   FileText,
   LogOut,
@@ -24,8 +24,18 @@ interface MenuItem {
   key: string;
   icon: React.ReactNode;
   label: string;
-  onClick?: () => void;
 }
+
+const menuItems: MenuItem[] = [
+  { key: '/dashboard', icon: <LayoutDashboard size={20} strokeWidth={1.5} />, label: 'Dashboard' },
+  { key: '/establishments', icon: <Building2 size={20} strokeWidth={1.5} />, label: 'Estabelecimentos' },
+  { key: '/transactions', icon: <ArrowLeftRight size={20} strokeWidth={1.5} />, label: 'Transações' },
+  { key: '/withdrawals', icon: <Wallet size={20} strokeWidth={1.5} />, label: 'Saques' },
+  { key: '/disputes', icon: <AlertCircle size={20} strokeWidth={1.5} />, label: 'Disputas' },
+  { key: '/med-analytics', icon: <BarChart2 size={20} strokeWidth={1.5} />, label: 'Med Analytics' },
+  { key: '/affiliates', icon: <Users size={20} strokeWidth={1.5} />, label: 'Afiliados' },
+  { key: '/statements', icon: <FileText size={20} strokeWidth={1.5} />, label: 'Extrato' },
+];
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   const navigate = useNavigate();
@@ -37,112 +47,88 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     navigate('/login');
   };
 
-  const menuItems: MenuItem[] = [
-    {
-      key: '/dashboard',
-      icon: <LayoutDashboard size={20} />,
-      label: 'Dashboard',
-    },
-    {
-      key: '/establishments',
-      icon: <Building2 size={20} />,
-      label: 'Estabelecimentos',
-    },
-    {
-      key: '/transactions',
-      icon: <ArrowLeftRight size={20} />,
-      label: 'Transações',
-    },
-    {
-      key: '/withdrawals',
-      icon: <Wallet size={20} />,
-      label: 'Saques',
-    },
-    {
-      key: '/disputes',
-      icon: <AlertTriangle size={20} />,
-      label: 'Disputas',
-    },
-    {
-      key: '/med-analytics',
-      icon: <Activity size={20} />,
-      label: 'Med Analytics',
-    },
-    {
-      key: '/affiliates',
-      icon: <Users size={20} />,
-      label: 'Afiliados',
-    },
-    {
-      key: '/statements',
-      icon: <FileText size={20} />,
-      label: 'Extrato',
-    },
-  ];
-
   const isActive = (path: string) => location.pathname === path;
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-[#0a0a0a] border-r border-gray-800 transition-all duration-300 z-50 flex flex-col ${
-        collapsed ? 'w-[70px]' : 'w-[240px]'
+      className={`fixed left-0 top-0 h-screen bg-[#0D0D0D] transition-all duration-300 z-50 flex flex-col ${
+        collapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center justify-center border-b border-gray-800 px-4">
-        {collapsed ? (
-          <span className="text-2xl font-bold text-blue-500">Z</span>
+      <div className={`h-20 flex items-center border-b border-[#1E1E1E] ${collapsed ? 'justify-center px-2' : 'px-6'}`}>
+        {!collapsed ? (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#C9A962] to-[#8B6914] rounded-xl flex items-center justify-center">
+              <span className="text-black font-bold text-lg">Z</span>
+            </div>
+            <div>
+              <h1 className="text-white font-semibold text-xl tracking-tight">ZendPag</h1>
+              <p className="text-[#5C5C5C] text-xs">Payment Gateway</p>
+            </div>
+          </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-blue-500">Zend</span>
-            <span className="text-2xl font-bold text-white">Pag</span>
+          <div className="w-10 h-10 bg-gradient-to-br from-[#C9A962] to-[#8B6914] rounded-xl flex items-center justify-center">
+            <span className="text-black font-bold text-lg">Z</span>
           </div>
         )}
       </div>
 
-      {/* Menu Items */}
-      <nav className="flex-1 py-4 overflow-y-auto">
-        <ul className="space-y-1 px-3">
-          {menuItems.map((item) => (
-            <li key={item.key}>
+      {/* Navigation */}
+      <nav className="flex-1 py-6 overflow-y-auto">
+        <div className="space-y-1 px-3">
+          {menuItems.map((item) => {
+            const active = isActive(item.key);
+            return (
               <button
+                key={item.key}
                 onClick={() => navigate(item.key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                  isActive(item.key)
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
+                className={`group w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
+                  active
+                    ? 'bg-[#1E1E1E] text-white'
+                    : 'text-[#8C8C8C] hover:text-white hover:bg-[#1A1A1A]'
+                } ${collapsed ? 'justify-center' : ''}`}
                 title={collapsed ? item.label : undefined}
               >
-                <span className="flex-shrink-0">{item.icon}</span>
+                <span className={active ? 'text-[#C9A962]' : 'group-hover:text-white'}>
+                  {item.icon}
+                </span>
                 {!collapsed && (
-                  <span className="text-sm font-medium truncate">{item.label}</span>
+                  <span className="text-sm font-medium">{item.label}</span>
+                )}
+                {active && !collapsed && (
+                  <div className="ml-auto w-1.5 h-1.5 bg-[#C9A962] rounded-full" />
                 )}
               </button>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+        </div>
       </nav>
 
-      {/* Logout Button */}
-      <div className="border-t border-gray-800 p-3">
+      {/* Footer */}
+      <div className="border-t border-[#1E1E1E] p-3">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-200"
+          className={`flex items-center gap-4 px-4 py-3 w-full rounded-xl text-[#8C8C8C] hover:text-[#E53935] hover:bg-[#1A1A1A] transition-all duration-200 ${
+            collapsed ? 'justify-center' : ''
+          }`}
           title={collapsed ? 'Sair' : undefined}
         >
-          <LogOut size={20} />
+          <LogOut size={20} strokeWidth={1.5} />
           {!collapsed && <span className="text-sm font-medium">Sair</span>}
         </button>
-      </div>
 
-      {/* Toggle Button */}
-      <button
-        onClick={onToggle}
-        className="absolute -right-3 top-20 w-6 h-6 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-      >
-        {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-      </button>
+        <button
+          onClick={onToggle}
+          className={`flex items-center gap-4 px-4 py-3 w-full rounded-xl text-[#5C5C5C] hover:text-white hover:bg-[#1A1A1A] transition-all duration-200 mt-2 ${
+            collapsed ? 'justify-center' : ''
+          }`}
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        >
+          {collapsed ? <ChevronRight size={20} strokeWidth={1.5} /> : <ChevronLeft size={20} strokeWidth={1.5} />}
+          {!collapsed && <span className="text-sm">Recolher menu</span>}
+        </button>
+      </div>
     </aside>
   );
 };

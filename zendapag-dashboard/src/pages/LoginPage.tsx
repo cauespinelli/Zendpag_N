@@ -1,13 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Card, Typography, Checkbox, Alert, Space } from 'antd';
-import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { themeSelectors } from '@/store/themeStore';
-import type { LoginRequest } from '@/types';
-
-const { Title, Text, Link } = Typography;
 
 interface LocationState {
   from?: Location;
@@ -15,8 +10,14 @@ interface LocationState {
 }
 
 const LoginPage: React.FC = () => {
-  const [form] = Form.useForm<LoginRequest>();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state as LocationState;
 
   const {
@@ -26,9 +27,6 @@ const LoginPage: React.FC = () => {
     error: authError,
     clearError
   } = useAuthStore();
-
-  const primaryColor = themeSelectors.usePrimaryColor();
-  const [loginError, setLoginError] = useState<string | null>(null);
 
   // Clear errors when component mounts or form values change
   useEffect(() => {
@@ -55,20 +53,20 @@ const LoginPage: React.FC = () => {
     return <Navigate to={redirectTo} replace />;
   }
 
-  const handleSubmit = async (values: LoginRequest) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoginError(null);
     clearError();
 
     try {
-      await login(values);
-      // Navigation will happen automatically via auth state change
+      await login({ email, password, rememberMe });
+      navigate('/dashboard');
     } catch (error) {
-      // Error is already handled in the store and will show via authError
       console.error('Login error:', error);
     }
   };
 
-  const handleFormChange = () => {
+  const handleInputChange = () => {
     if (loginError) {
       setLoginError(null);
     }
@@ -78,214 +76,153 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div
-      className="login-page"
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: `linear-gradient(135deg, ${primaryColor}15 0%, ${primaryColor}05 100%)`,
-        padding: '20px'
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: 400 }}>
-        {/* Logo and branding */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{ marginBottom: 16 }}>
-            <svg
-              width="80"
-              height="80"
-              viewBox="0 0 80 80"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle
-                cx="40"
-                cy="40"
-                r="36"
-                fill={primaryColor}
-                opacity="0.1"
-              />
-              <path
-                d="M25 30L40 45L55 30"
-                stroke={primaryColor}
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M25 50L40 35L55 50"
-                stroke={primaryColor}
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+    <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#C9A962] to-[#8B6914] rounded-2xl mb-4">
+            <span className="text-black font-bold text-2xl">Z</span>
           </div>
-
-          <Title level={2} style={{ margin: 0, color: primaryColor }}>
-            ZendaPag
-          </Title>
-          <Text type="secondary" style={{ fontSize: 16 }}>
-            Plataforma de Pagamentos PIX
-          </Text>
+          <h1 className="text-white text-2xl font-semibold">ZendPag</h1>
+          <p className="text-[#5C5C5C] text-sm mt-1">Acesse sua conta</p>
         </div>
 
-        <Card
-          className="login-card"
-          style={{
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-            borderRadius: 12,
-            border: '1px solid var(--border-color)'
-          }}
-        >
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <Title level={3} style={{ marginBottom: 8 }}>
-              Faça seu login
-            </Title>
-            <Text type="secondary">
-              Acesse sua conta para continuar
-            </Text>
+        {/* Error Alert */}
+        {loginError && (
+          <div className="mb-6 p-4 bg-[#E53935]/10 border border-[#E53935]/20 rounded-xl">
+            <p className="text-[#E53935] text-sm">{loginError}</p>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Email */}
+          <div className="space-y-2">
+            <label className="text-sm text-[#8C8C8C]">Email</label>
+            <div className="relative">
+              <Mail size={18} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C5C5C]" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  handleInputChange();
+                }}
+                placeholder="seu@email.com"
+                className="w-full pl-12 pr-4 py-4 bg-[#1A1A1A] border border-[#2D2D2D] rounded-xl text-white placeholder-[#5C5C5C] focus:outline-none focus:border-[#C9A962] transition-colors"
+                required
+              />
+            </div>
           </div>
 
-          {loginError && (
-            <Alert
-              message={loginError}
-              type="error"
-              showIcon
-              closable
-              onClose={() => setLoginError(null)}
-              style={{ marginBottom: 24 }}
-            />
-          )}
-
-          <Form
-            form={form}
-            name="login"
-            onFinish={handleSubmit}
-            onValuesChange={handleFormChange}
-            layout="vertical"
-            size="large"
-            autoComplete="off"
-          >
-            <Form.Item
-              name="email"
-              label="E-mail"
-              rules={[
-                { required: true, message: 'Digite seu e-mail' },
-                { type: 'email', message: 'Digite um e-mail válido' }
-              ]}
-            >
-              <Input
-                prefix={<UserOutlined />}
-                placeholder="seu@email.com"
-                autoComplete="email"
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="password"
-              label="Senha"
-              rules={[
-                { required: true, message: 'Digite sua senha' },
-                { min: 6, message: 'A senha deve ter pelo menos 6 caracteres' }
-              ]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder="Digite sua senha"
-                autoComplete="current-password"
-                iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-              />
-            </Form.Item>
-
-            <Form.Item name="rememberMe" valuePropName="checked">
-              <Checkbox>Lembrar de mim</Checkbox>
-            </Form.Item>
-
-            <Form.Item style={{ marginBottom: 16 }}>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={isLoading}
-                block
-                style={{
-                  height: 44,
-                  fontSize: 16,
-                  fontWeight: 500
+          {/* Password */}
+          <div className="space-y-2">
+            <label className="text-sm text-[#8C8C8C]">Senha</label>
+            <div className="relative">
+              <Lock size={18} strokeWidth={1.5} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5C5C5C]" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  handleInputChange();
                 }}
+                placeholder="••••••••"
+                className="w-full pl-12 pr-12 py-4 bg-[#1A1A1A] border border-[#2D2D2D] rounded-xl text-white placeholder-[#5C5C5C] focus:outline-none focus:border-[#C9A962] transition-colors"
+                required
+                minLength={6}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5C5C5C] hover:text-white transition-colors"
               >
-                {isLoading ? 'Entrando...' : 'Entrar'}
-              </Button>
-            </Form.Item>
-
-            <div style={{ textAlign: 'center' }}>
-              <Space split={<span style={{ color: 'var(--text-tertiary)' }}>•</span>}>
-                <Link href="#" onClick={(e) => e.preventDefault()}>
-                  Esqueci minha senha
-                </Link>
-                <Link href="#" onClick={(e) => e.preventDefault()}>
-                  Criar conta
-                </Link>
-              </Space>
+                {showPassword ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
+              </button>
             </div>
-          </Form>
-        </Card>
+          </div>
+
+          {/* Remember Me */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-[#2D2D2D] bg-[#1A1A1A] text-[#C9A962] focus:ring-[#C9A962] focus:ring-offset-0"
+              />
+              <span className="text-sm text-[#8C8C8C]">Lembrar de mim</span>
+            </label>
+            <a href="#" className="text-sm text-[#C9A962] hover:underline">
+              Esqueceu a senha?
+            </a>
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-4 bg-gradient-to-r from-[#C9A962] to-[#8B6914] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Entrando...
+              </span>
+            ) : (
+              'Entrar'
+            )}
+          </button>
+        </form>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', marginTop: 24 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            © 2024 ZendaPag. Todos os direitos reservados.
-          </Text>
-        </div>
+        <p className="text-center text-[#5C5C5C] text-sm mt-8">
+          Não tem uma conta?{' '}
+          <a href="#" className="text-[#C9A962] hover:underline">
+            Fale conosco
+          </a>
+        </p>
 
-        {/* Development helper */}
+        {/* Development Helper */}
         {process.env.NODE_ENV === 'development' && (
-          <Card
-            size="small"
-            title="Demo Login"
-            style={{
-              marginTop: 16,
-              background: '#f8f9fa',
-              border: '1px dashed #dee2e6'
-            }}
-          >
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Para desenvolvimento:
-              </Text>
-              <Button
-                size="small"
-                type="link"
+          <div className="mt-6 p-4 bg-[#1A1A1A] border border-[#2D2D2D] rounded-xl">
+            <p className="text-[#5C5C5C] text-xs mb-3">Demo Login (Dev Only)</p>
+            <div className="space-y-2">
+              <button
+                type="button"
                 onClick={() => {
-                  form.setFieldsValue({
-                    email: 'admin@zendapag.com',
-                    password: 'admin123',
-                    rememberMe: true
-                  });
+                  setEmail('admin@zendapag.com');
+                  setPassword('admin123');
+                  setRememberMe(true);
                 }}
-                style={{ padding: 0, height: 'auto' }}
+                className="w-full py-2 text-sm text-[#C9A962] bg-[#2D2D2D] rounded-lg hover:bg-[#3D3D3D] transition-colors"
               >
                 Preencher como Admin
-              </Button>
-              <Button
-                size="small"
-                type="link"
+              </button>
+              <button
+                type="button"
                 onClick={() => {
-                  form.setFieldsValue({
-                    email: 'merchant@example.com',
-                    password: 'merchant123',
-                    rememberMe: false
-                  });
+                  setEmail('merchant@example.com');
+                  setPassword('merchant123');
+                  setRememberMe(false);
                 }}
-                style={{ padding: 0, height: 'auto' }}
+                className="w-full py-2 text-sm text-[#8C8C8C] bg-[#2D2D2D] rounded-lg hover:bg-[#3D3D3D] transition-colors"
               >
                 Preencher como Merchant
-              </Button>
-            </Space>
-          </Card>
+              </button>
+            </div>
+          </div>
         )}
+
+        {/* Copyright */}
+        <div className="text-center mt-8">
+          <p className="text-[#5C5C5C] text-xs">
+            © 2024 ZendPag. Todos os direitos reservados.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ const MainLayout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#050505]">
+    <div className="min-h-screen bg-[#0D0D0D]">
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -15,11 +15,11 @@ const MainLayout: React.FC = () => {
       <Header sidebarCollapsed={sidebarCollapsed} />
 
       <main
-        className={`pt-16 min-h-screen transition-all duration-300 ${
-          sidebarCollapsed ? 'pl-[70px]' : 'pl-[240px]'
+        className={`pt-20 min-h-screen transition-all duration-300 ${
+          sidebarCollapsed ? 'ml-20' : 'ml-64'
         }`}
       >
-        <div className="p-6">
+        <div className="p-8">
           <Outlet />
         </div>
       </main>

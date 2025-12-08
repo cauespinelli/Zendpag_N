@@ -1,127 +1,26 @@
 /**
- * ZENDPAG DESIGN SYSTEM v1.0
+ * ZENDPAG DESIGN SYSTEM - C6 BANK STYLE
  * Component: Button
  *
- * Modern, accessible button component with multiple variants and sizes
- * Based on Zendpag Visual Identity Guidelines
+ * Premium button component with C6 Bank aesthetics
  */
 
 import React, { ButtonHTMLAttributes, forwardRef } from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/cn';
 
-/**
- * Button Variants Configuration
- * Following Zendpag color system and interaction patterns
- */
-const buttonVariants = cva(
-  // Base styles - applied to all buttons
-  [
-    'inline-flex',
-    'items-center',
-    'justify-center',
-    'gap-2',
-    'font-inter',
-    'font-semibold',
-    'transition-all',
-    'duration-base',
-    'disabled:opacity-50',
-    'disabled:cursor-not-allowed',
-    'disabled:hover:transform-none',
-    'focus:outline-none',
-    'focus:ring-3',
-    'focus:ring-primary/20',
-    'focus:ring-offset-2',
-    'active:scale-[0.98]',
-  ].join(' '),
-  {
-    variants: {
-      /**
-       * Visual variants
-       * - primary: Main action button (#0066FF)
-       * - secondary: Outlined button with border
-       * - success: Confirmation actions (#10B981)
-       * - ghost: Transparent with hover effect
-       */
-      variant: {
-        primary: [
-          'bg-primary',
-          'text-white',
-          'border-2',
-          'border-primary',
-          'hover:bg-primary-hover',
-          'hover:border-primary-hover',
-          'hover:shadow-primary',
-          'hover:-translate-y-0.5',
-          'shadow-sm',
-        ].join(' '),
-        secondary: [
-          'bg-transparent',
-          'text-primary',
-          'border-2',
-          'border-primary',
-          'hover:bg-primary',
-          'hover:text-white',
-          'hover:shadow-md',
-          'hover:-translate-y-0.5',
-        ].join(' '),
-        success: [
-          'bg-success',
-          'text-white',
-          'border-2',
-          'border-success',
-          'hover:opacity-90',
-          'hover:shadow-success',
-          'hover:-translate-y-0.5',
-          'shadow-sm',
-        ].join(' '),
-        ghost: [
-          'bg-transparent',
-          'text-dark-neutral',
-          'hover:bg-gray-light',
-          'hover:text-primary',
-        ].join(' '),
-      },
-      /**
-       * Size variants
-       * - sm: 32px height (12px 16px padding)
-       * - md: 40px height (16px 24px padding)
-       * - lg: 48px height (20px 32px padding)
-       */
-      size: {
-        sm: [
-          'h-[32px]',
-          'px-4',
-          'py-2',
-          'text-sm',
-          'rounded-sm',
-        ].join(' '),
-        md: [
-          'h-[40px]',
-          'px-6',
-          'py-3',
-          'text-base',
-          'rounded-md',
-        ].join(' '),
-        lg: [
-          'h-[48px]',
-          'px-8',
-          'py-4',
-          'text-lg',
-          'rounded-lg',
-        ].join(' '),
-      },
-    },
-    defaultVariants: {
-      variant: 'primary',
-      size: 'md',
-    },
-  }
-);
-
-export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /**
+   * Button variant
+   * - primary: Gold gradient button (main actions)
+   * - secondary: Dark button with border
+   * - ghost: Transparent button
+   * - danger: Red button for destructive actions
+   */
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  /**
+   * Button size
+   */
+  size?: 'sm' | 'md' | 'lg';
   /**
    * Loading state - shows spinner and disables interaction
    */
@@ -137,26 +36,31 @@ export interface ButtonProps
 }
 
 /**
- * Button Component
- *
- * @example
- * // Primary button
- * <Button variant="primary" size="md">Criar Conta</Button>
- *
- * @example
- * // Secondary with icon
- * <Button variant="secondary" leftIcon={<ArrowLeft />}>Voltar</Button>
- *
- * @example
- * // Loading state
- * <Button loading>Processando...</Button>
+ * Button variants configuration (exported for external use)
+ */
+export const buttonVariants = {
+  variant: {
+    primary: 'bg-gradient-to-r from-[#C9A962] to-[#8B6914] text-black font-semibold hover:opacity-90',
+    secondary: 'bg-[#1E1E1E] text-white border border-[#2D2D2D] hover:bg-[#2D2D2D] hover:border-[#3D3D3D]',
+    ghost: 'bg-transparent text-[#8C8C8C] hover:text-white hover:bg-[#1A1A1A]',
+    danger: 'bg-[#E53935]/10 text-[#E53935] border border-[#E53935]/20 hover:bg-[#E53935]/20',
+  },
+  size: {
+    sm: 'px-4 py-2 text-xs rounded-lg',
+    md: 'px-6 py-3 text-sm rounded-xl',
+    lg: 'px-8 py-4 text-base rounded-xl',
+  },
+};
+
+/**
+ * Button Component (C6 Bank Style)
  */
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       className,
-      variant,
-      size,
+      variant = 'primary',
+      size = 'md',
       loading = false,
       leftIcon,
       rightIcon,
@@ -171,7 +75,20 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(
+          // Base styles
+          'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'focus:outline-none focus:ring-2 focus:ring-[#C9A962]/50 focus:ring-offset-2 focus:ring-offset-[#0D0D0D]',
+
+          // Variant styles
+          buttonVariants.variant[variant],
+
+          // Size styles
+          buttonVariants.size[size],
+
+          className
+        )}
         disabled={isDisabled}
         {...props}
       >
@@ -207,4 +124,4 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = 'Button';
 
-export { Button, buttonVariants };
+export { Button };

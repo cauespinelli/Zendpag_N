@@ -13,9 +13,6 @@ module.exports = {
   ],
   theme: {
     extend: {
-      /* ============================================
-         COLORS - Zendpag Brand Palette
-         ============================================ */
       colors: {
         primary: {
           DEFAULT: '#0066FF',
@@ -58,10 +55,6 @@ module.exports = {
           light: 'rgba(59, 130, 246, 0.1)',
         },
       },
-
-      /* ============================================
-         TYPOGRAPHY - Font System
-         ============================================ */
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'Courier New', 'monospace'],
@@ -86,38 +79,16 @@ module.exports = {
         bold: '700',
         extrabold: '800',
       },
-
-      /* ============================================
-         SPACING - 8pt Grid System
-         ============================================ */
+      // SPACING - Semantic additions only - Tailwind defaults preserved
       spacing: {
-        '0': '0',
-        '1': '4px',
-        '2': '8px',
-        '3': '12px',
-        '4': '16px',
-        '5': '20px',
-        '6': '24px',
-        '8': '32px',
-        '10': '40px',
-        '12': '48px',
-        '16': '64px',
-        '20': '80px',
-        '24': '96px',
-        '32': '128px',
-        // Semantic spacing
-        'xs': '8px',
-        'sm': '16px',
-        'md': '24px',
-        'lg': '32px',
-        'xl': '48px',
-        '2xl': '64px',
-        '3xl': '96px',
+        'xs': '0.5rem',
+        'sm': '1rem',
+        'md': '1.5rem',
+        'lg': '2rem',
+        'xl': '3rem',
+        '2xl': '4rem',
+        '3xl': '6rem',
       },
-
-      /* ============================================
-         BORDER RADIUS
-         ============================================ */
       borderRadius: {
         'none': '0',
         'sm': '8px',
@@ -127,10 +98,6 @@ module.exports = {
         '2xl': '24px',
         'full': '9999px',
       },
-
-      /* ============================================
-         SHADOWS - Elevation System
-         ============================================ */
       boxShadow: {
         'xs': '0 1px 2px rgba(0, 0, 0, 0.05)',
         'sm': '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -143,10 +110,6 @@ module.exports = {
         'success': '0 4px 12px rgba(16, 185, 129, 0.3)',
         'error': '0 4px 12px rgba(239, 68, 68, 0.3)',
       },
-
-      /* ============================================
-         TRANSITIONS - Animation Timing
-         ============================================ */
       transitionDuration: {
         'fastest': '100ms',
         'fast': '200ms',
@@ -160,10 +123,6 @@ module.exports = {
         'ease-in-out': 'cubic-bezier(0.4, 0, 0.2, 1)',
         'bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
       },
-
-      /* ============================================
-         BREAKPOINTS - Responsive Design
-         ============================================ */
       screens: {
         'xs': '320px',
         'sm': '640px',
@@ -172,10 +131,6 @@ module.exports = {
         'xl': '1280px',
         '2xl': '1440px',
       },
-
-      /* ============================================
-         Z-INDEX - Stacking Order
-         ============================================ */
       zIndex: {
         'base': '0',
         'dropdown': '100',
@@ -188,10 +143,6 @@ module.exports = {
         'toast': '800',
         'maximum': '999',
       },
-
-      /* ============================================
-         CONTAINER - Max Widths
-         ============================================ */
       maxWidth: {
         'container-sm': '640px',
         'container-md': '768px',
@@ -199,20 +150,12 @@ module.exports = {
         'container-xl': '1280px',
         'container-2xl': '1536px',
       },
-
-      /* ============================================
-         GRADIENTS - Brand Gradients
-         ============================================ */
       backgroundImage: {
         'gradient-primary': 'linear-gradient(135deg, #0066FF 0%, #06B6D4 100%)',
         'gradient-dark': 'linear-gradient(135deg, #0A2540 0%, #1A1F36 100%)',
         'gradient-feature': 'linear-gradient(135deg, #0A2540 0%, rgba(6, 182, 212, 0.2) 100%)',
         'gradient-hero': 'linear-gradient(135deg, #0A2540 0%, #0066FF 50%, #06B6D4 100%)',
       },
-
-      /* ============================================
-         OPACITY
-         ============================================ */
       opacity: {
         '0': '0',
         '10': '0.1',
@@ -229,6 +172,5 @@ module.exports = {
     },
   },
   plugins: [],
-  // Enable dark mode via class
   darkMode: 'class',
 }

@@ -1,9 +1,8 @@
 /**
- * ZENDPAG DESIGN SYSTEM v1.0
+ * ZENDPAG DESIGN SYSTEM - C6 BANK STYLE
  * Component: Card
  *
- * Flexible card container with multiple variants
- * Based on Zendpag Visual Identity Guidelines
+ * Premium dark card container with C6 Bank aesthetics
  */
 
 import React, { HTMLAttributes, forwardRef } from 'react';
@@ -16,65 +15,44 @@ import { cn } from '@/utils/cn';
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   /**
    * Card variant
-   * - default: Standard white card with border
-   * - feature: Premium card with gradient background
+   * - default: Standard dark card with subtle border
+   * - elevated: Card with shadow
+   * - gold: Premium card with gold accent
    */
-  variant?: 'default' | 'feature';
+  variant?: 'default' | 'elevated' | 'gold';
   /**
-   * Enable hover effect (lift animation)
+   * Enable hover effect (border highlight)
    */
   hoverable?: boolean;
+  /**
+   * Remove padding (for custom content)
+   */
+  noPadding?: boolean;
 }
 
 /**
- * Card - Main container component
- *
- * @example
- * <Card variant="default">
- *   <CardHeader>
- *     <CardTitle>Dashboard</CardTitle>
- *   </CardHeader>
- *   <CardContent>
- *     Content here
- *   </CardContent>
- * </Card>
+ * Card - Main container component (C6 Bank Style)
  */
 const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant = 'default', hoverable = false, children, ...props }, ref) => {
+  ({ className, variant = 'default', hoverable = false, noPadding = false, children, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn(
-          // Base styles
-          'transition-all duration-base',
+          // Base styles - C6 Bank dark theme
+          'bg-[#1A1A1A] border border-[#2D2D2D] rounded-2xl transition-all duration-200',
 
-          // Default variant - Standard card
-          variant === 'default' && [
-            'bg-white',
-            'border',
-            'border-gray-200',
-            'rounded-md',
-            'p-6',
-            'shadow-sm',
-          ],
+          // Padding
+          !noPadding && 'p-6',
 
-          // Feature variant - Premium gradient card
-          variant === 'feature' && [
-            'bg-gradient-dark',
-            'text-white',
-            'border-2',
-            'border-cyan',
-            'rounded-lg',
-            'p-8',
-            'shadow-md',
-          ],
+          // Elevated variant
+          variant === 'elevated' && 'shadow-lg shadow-black/20',
+
+          // Gold variant - premium look
+          variant === 'gold' && 'border-[#C9A962]/30',
 
           // Hover effect
-          hoverable && [
-            'hover:shadow-lg',
-            'hover:-translate-y-1',
-            'cursor-pointer',
-          ],
+          hoverable && 'hover:border-[#3D3D3D] cursor-pointer',
 
           className
         )}
@@ -101,7 +79,7 @@ const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('mb-4 space-y-1', className)}
+      className={cn('mb-6 space-y-1', className)}
       {...props}
     />
   )
@@ -123,7 +101,7 @@ const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
     <h3
       ref={ref}
       className={cn(
-        'text-xl font-bold font-inter leading-tight',
+        'text-white text-lg font-semibold leading-tight',
         className
       )}
       {...props}
@@ -147,7 +125,7 @@ const CardDescription = forwardRef<HTMLParagraphElement, CardDescriptionProps>(
     <p
       ref={ref}
       className={cn(
-        'text-sm text-gray-medium font-inter leading-normal',
+        'text-sm text-[#5C5C5C] leading-normal',
         className
       )}
       {...props}
@@ -191,7 +169,7 @@ const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('mt-4 flex items-center gap-4', className)}
+      className={cn('mt-6 pt-6 border-t border-[#2D2D2D] flex items-center gap-4', className)}
       {...props}
     />
   )
