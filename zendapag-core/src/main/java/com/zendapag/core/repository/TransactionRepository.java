@@ -111,6 +111,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
            "ORDER BY t.createdAt ASC")
     List<Transaction> findUnsettledCreditsByMerchant(@Param("merchant") Merchant merchant);
 
+    /** Pagamentos aprovados ainda não liquidados (sem settlement) de um estabelecimento. */
+    @Query("SELECT t FROM Transaction t WHERE " +
+           "t.settlement IS NULL " +
+           "AND t.type = 'PAYMENT' " +
+           "AND t.status = 'COMPLETED' " +
+           "AND t.merchant = :merchant " +
+           "AND t.deleted = false " +
+           "ORDER BY t.createdAt ASC")
+    List<Transaction> findUnsettledPaymentsByMerchant(@Param("merchant") Merchant merchant);
+
     @Query("SELECT t FROM Transaction t WHERE " +
            "t.settlement IS NULL " +
            "AND t.type = 'CREDIT' " +
