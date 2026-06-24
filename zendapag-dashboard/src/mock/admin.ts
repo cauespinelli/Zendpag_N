@@ -734,3 +734,63 @@ export const gerentes = [
     status: 'inativo' as GerenteStatus, desde: '2022-11-28', ultimaAtividade: '2026-04-02 10:30',
   },
 ];
+
+// ──────────────────────────────── EXTRATO ────────────────────────────────
+// Razão consolidado do gateway: entradas (taxas/MDR retido) menos saídas
+// (saques pagos, comissões, estornos, devoluções de MED). Saldo corrido.
+
+export type LancTipo = 'credito' | 'debito';
+export type LancCategoria =
+  | 'taxa'
+  | 'comissao_plataforma'
+  | 'saque'
+  | 'comissao_afiliado'
+  | 'comissao_gerente'
+  | 'estorno'
+  | 'med';
+
+export const extratoKpis = {
+  saldoConsolidado: 3_284_910.42,
+  entradasMes: 1_842_300.0,
+  saidasMes: 1_517_880.0,
+  resultadoLiquido: 324_420.0,
+};
+
+// Série diária entradas x saídas (últimos 7 dias)
+export const extratoSerie = [
+  { dia: '17/06', entradas: 248_400, saidas: 196_200 },
+  { dia: '18/06', entradas: 271_900, saidas: 232_700 },
+  { dia: '19/06', entradas: 259_300, saidas: 201_500 },
+  { dia: '20/06', entradas: 288_700, saidas: 244_100 },
+  { dia: '21/06', entradas: 233_100, saidas: 188_900 },
+  { dia: '22/06', entradas: 296_500, saidas: 251_300 },
+  { dia: '23/06', entradas: 244_400, saidas: 203_180 },
+];
+
+// Resumo por categoria (mês)
+export const extratoResumo = [
+  { categoria: 'taxa', valor: 1_642_300.0, tipo: 'credito' as LancTipo },
+  { categoria: 'comissao_plataforma', valor: 200_000.0, tipo: 'credito' as LancTipo },
+  { categoria: 'saque', valor: 1_204_870.0, tipo: 'debito' as LancTipo },
+  { categoria: 'comissao_afiliado', valor: 187_410.0, tipo: 'debito' as LancTipo },
+  { categoria: 'comissao_gerente', valor: 64_180.0, tipo: 'debito' as LancTipo },
+  { categoria: 'estorno', valor: 38_900.0, tipo: 'debito' as LancTipo },
+  { categoria: 'med', valor: 22_520.0, tipo: 'debito' as LancTipo },
+];
+
+export const extratoLancamentos = [
+  { id: 'LN-440219', data: '2026-06-23 14:32', descricao: 'MDR retido — TX-8841290', categoria: 'taxa', contraparte: 'Loja Aurora Digital', tipo: 'credito', valor: 4.6, saldoApos: 3_284_910.42 },
+  { id: 'LN-440218', data: '2026-06-23 14:28', descricao: 'MDR retido — TX-8841289', categoria: 'taxa', contraparte: 'EduMaster Cursos', tipo: 'credito', valor: 45.46, saldoApos: 3_284_905.82 },
+  { id: 'LN-440217', data: '2026-06-23 14:20', descricao: 'Saque aprovado — SAQ-55205', categoria: 'saque', contraparte: 'EduMaster Cursos', tipo: 'debito', valor: 62_400.0, saldoApos: 3_284_860.36 },
+  { id: 'LN-440216', data: '2026-06-23 13:58', descricao: 'MDR retido — TX-8841285', categoria: 'taxa', contraparte: 'GamerZone Store', tipo: 'credito', valor: 0.9, saldoApos: 3_347_260.36 },
+  { id: 'LN-440215', data: '2026-06-23 13:40', descricao: 'Comissão de afiliado — COM-90409', categoria: 'comissao_afiliado', contraparte: 'Diego Nogueira', tipo: 'debito', valor: 13.49, saldoApos: 3_347_259.46 },
+  { id: 'LN-440214', data: '2026-06-23 13:30', descricao: 'Estorno — TX-8841283', categoria: 'estorno', contraparte: 'EduMaster Cursos', tipo: 'debito', valor: 497.0, saldoApos: 3_347_272.95 },
+  { id: 'LN-440213', data: '2026-06-23 11:30', descricao: 'Saque em processamento — SAQ-55205', categoria: 'saque', contraparte: 'EduMaster Cursos', tipo: 'debito', valor: 10_600.0, saldoApos: 3_347_769.95 },
+  { id: 'LN-440212', data: '2026-06-23 10:14', descricao: 'Devolução de MED — MED-7741', categoria: 'med', contraparte: 'FitShop Suplementos', tipo: 'debito', valor: 2_890.0, saldoApos: 3_358_369.95 },
+  { id: 'LN-440211', data: '2026-06-23 09:31', descricao: 'MDR retido — TX-8838540', categoria: 'taxa', contraparte: 'GamerZone Store', tipo: 'credito', valor: 12.9, saldoApos: 3_361_259.95 },
+  { id: 'LN-440210', data: '2026-06-22 21:04', descricao: 'Comissão de gerente — GER-118', categoria: 'comissao_gerente', contraparte: 'Carla Menezes', tipo: 'debito', valor: 9_162.05, saldoApos: 3_361_247.05 },
+  { id: 'LN-440209', data: '2026-06-22 18:40', descricao: 'Comissão de afiliado — COM-90407', categoria: 'comissao_afiliado', contraparte: 'Bruno Carvalho', tipo: 'debito', valor: 65.23, saldoApos: 3_370_409.10 },
+  { id: 'LN-440208', data: '2026-06-22 17:04', descricao: 'Saque aprovado — SAQ-55202', categoria: 'saque', contraparte: 'EduMaster Cursos', tipo: 'debito', valor: 94_200.0, saldoApos: 3_370_474.33 },
+  { id: 'LN-440207', data: '2026-06-22 15:39', descricao: 'Saque aprovado — SAQ-55201', categoria: 'saque', contraparte: 'GamerZone Store', tipo: 'debito', valor: 41_800.0, saldoApos: 3_464_674.33 },
+  { id: 'LN-440206', data: '2026-06-22 11:02', descricao: 'Tarifa de plataforma — assinatura mensal', categoria: 'comissao_plataforma', contraparte: '34 estabelecimentos', tipo: 'credito', valor: 6_766.0, saldoApos: 3_506_474.33 },
+];
