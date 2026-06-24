@@ -1,6 +1,7 @@
 package com.zendapag.core.repository;
 
 import com.zendapag.core.entity.Account;
+import com.zendapag.core.entity.Merchant;
 import com.zendapag.core.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,8 @@ import java.util.Optional;
 public interface AccountRepository extends JpaRepository<Account, Long> {
 
     List<Account> findByUser(User user);
+
+    List<Account> findByMerchant(Merchant merchant);
 
     List<Account> findByUserId(Long userId);
 

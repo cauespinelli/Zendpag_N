@@ -11,6 +11,7 @@ import com.zendapag.core.entity.Payment;
 import com.zendapag.core.entity.enums.PaymentStatus;
 import com.zendapag.core.exception.BusinessException;
 import com.zendapag.core.service.MerchantService;
+import com.zendapag.core.service.PaymentEngineService;
 import com.zendapag.core.service.PaymentService;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.micrometer.core.annotation.Timed;
@@ -51,6 +52,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final MerchantService merchantService;
+    private final PaymentEngineService paymentEngineService;
 
     @Operation(
         summary = "Create PIX payment",
@@ -227,6 +229,23 @@ public class PaymentController {
         Page<PaymentResponse> responses = paymentService.findAll(pageRequest).map(this::convertToPaymentResponse);
 
         return ResponseEntity.ok(ApiResponse.success("Payments retrieved", responses));
+    }
+
+    @Operation(
+        summary = "Approve payment (admin / sandbox)",
+        description = "Aprova um pagamento PENDING simulando a confirmação do PSP: calcula a taxa, "
+            + "credita o líquido no saldo do estabelecimento, registra a receita da plataforma e "
+            + "enfileira o webhook. Admin only."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Timed(value = "api.payments.approve", description = "Time taken to approve a payment")
+    public ResponseEntity<ApiResponse<PaymentResponse>> approvePayment(
+            @PathVariable UUID id) {
+        log.info("Approving payment (sandbox): {}", id);
+        Payment payment = paymentEngineService.approvePayment(id);
+        return ResponseEntity.ok(ApiResponse.success("Payment approved", convertToPaymentResponse(payment)));
     }
 
     @Operation(

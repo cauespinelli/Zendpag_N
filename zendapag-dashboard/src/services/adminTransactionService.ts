@@ -32,6 +32,7 @@ const mapPayment = (p: any) => {
   const liquido = p.netAmount != null ? num(p.netAmount) : bruto - taxa;
   return {
     id: p.referenceId || p.id,
+    uuid: p.id, // id real (UUID) para ações como aprovar
     tipo: 'geral',
     cliente: p.customerName || '—',
     documento: p.customerDocument || '—',
@@ -52,6 +53,12 @@ export const adminTransactionService = {
   async listAll(): Promise<any[]> {
     const res = await adminHttp.get('/payments/all', { params: { page: 0, size: 200 } });
     return unwrapPageContent(res).map(mapPayment);
+  },
+
+  /** Aprova um pagamento PENDING (sandbox: simula a confirmação do PSP). */
+  async approve(uuid: string): Promise<any> {
+    const res = await adminHttp.post(`/payments/${uuid}/approve`);
+    return res?.data?.data ?? res?.data;
   },
 };
 

@@ -20,6 +20,7 @@ import {
   X,
   Send,
   CheckCircle2,
+  Check,
   RefreshCw,
   Loader,
   Inbox,
@@ -56,7 +57,21 @@ const AdminTransactions: React.FC = () => {
   const [disputaTx, setDisputaTx] = useState<any>(null);
   const [disputaMotivo, setDisputaMotivo] = useState('');
   const [toast, setToast] = useState<string | null>(null);
-  const notify = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500); };
+  const notify = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
+  const [aprovando, setAprovando] = useState<string | null>(null);
+
+  const aprovar = async (t: any) => {
+    setAprovando(t.uuid);
+    try {
+      await adminTransactionService.approve(t.uuid);
+      notify(`Pagamento ${t.id} aprovado — taxa descontada e saldo creditado.`);
+      await carregar();
+    } catch (e: any) {
+      notify('Falha ao aprovar: ' + adminHttpError(e));
+    } finally {
+      setAprovando(null);
+    }
+  };
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -195,6 +210,16 @@ const AdminTransactions: React.FC = () => {
                     <td className={`px-5 py-3.5 text-right tabular-nums font-semibold ${t.liquido < 0 ? 'text-rose-600' : 'text-slate-800'}`}>{t.liquido ? brl(t.liquido) : '—'}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1">
+                        {t.status === 'pendente' && (
+                          <button
+                            onClick={() => aprovar(t)}
+                            disabled={aprovando === t.uuid}
+                            className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                            title="Aprovar pagamento (sandbox)"
+                          >
+                            {aprovando === t.uuid ? <Loader size={14} className="animate-spin" /> : <Check size={14} />} Aprovar
+                          </button>
+                        )}
                         <button onClick={() => setDetalhe(t)} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Ver detalhes"><Eye size={16} /></button>
                         <button onClick={() => { setDisputaTx(t); setDisputaMotivo(''); }} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Abrir disputa"><ShieldAlert size={16} /></button>
                         <button onClick={() => setWebhookTx(t)} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Reenviar webhook"><Webhook size={16} /></button>
