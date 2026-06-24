@@ -144,8 +144,15 @@ const App: React.FC = () => {
                     }
                   />
 
-                  {/* Painel Admin Master (mock, sem auth por enquanto) */}
-                  <Route path="/admin" element={<AdminLayout />}>
+                  {/* Painel Admin Master (requer login com papel ADMIN) */}
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute requiredRoles={['ADMIN']}>
+                        <AdminLayout />
+                      </ProtectedRoute>
+                    }
+                  >
                     <Route index element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="establishments" element={<AdminEstablishments />} />

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Spin } from 'antd';
 import { useAuthStore } from '@/store/authStore';
 import LoadingScreen from './LoadingScreen';
@@ -18,6 +18,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRoles = [],
   redirectTo = '/login'
 }) => {
+  const location = useLocation();
   const {
     isAuthenticated,
     user,
@@ -40,9 +41,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <LoadingScreen tip="Verificando autenticação..." />;
   }
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (preserva o destino para voltar após login)
   if (!isAuthenticated || !user) {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to={redirectTo} replace state={{ from: location }} />;
   }
 
   // Check required permissions

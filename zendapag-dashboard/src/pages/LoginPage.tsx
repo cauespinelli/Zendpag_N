@@ -60,7 +60,9 @@ const LoginPage: React.FC = () => {
 
     try {
       await login({ email, password, rememberMe });
-      navigate('/dashboard');
+      // Volta para o destino original (ex.: /admin) quando houver; senão, dashboard
+      const redirectTo = (state?.from as any)?.pathname || '/dashboard';
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       console.error('Login error:', error);
     }

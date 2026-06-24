@@ -4,12 +4,21 @@
  */
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Search, Bell } from 'lucide-react';
+import { Search, Bell, LogOut } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useAuthStore } from '@/store/authStore';
 import AdminSidebar from './AdminSidebar';
+
+const iniciais = (nome?: string) =>
+  (nome || 'Admin Master').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
 
 const AdminLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+
+  const nome = user?.name || 'Admin Master';
+  const papel = user?.roles?.includes('ADMIN') ? 'Acesso total' : (user?.roles?.join(', ') || '—');
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -34,12 +43,19 @@ const AdminLayout: React.FC = () => {
             </button>
             <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center text-white font-semibold text-sm">
-                AM
+                {iniciais(nome)}
               </div>
               <div className="leading-tight hidden sm:block">
-                <p className="text-sm font-semibold text-slate-800">Admin Master</p>
-                <p className="text-[11px] text-slate-400">Acesso total</p>
+                <p className="text-sm font-semibold text-slate-800">{nome}</p>
+                <p className="text-[11px] text-slate-400">{papel}</p>
               </div>
+              <button
+                onClick={() => logout()}
+                title="Sair"
+                className="ml-1 w-10 h-10 rounded-xl hover:bg-rose-50 flex items-center justify-center text-slate-400 hover:text-rose-600 transition-colors"
+              >
+                <LogOut size={18} strokeWidth={1.75} />
+              </button>
             </div>
           </div>
         </header>
