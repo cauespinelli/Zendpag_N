@@ -896,3 +896,64 @@ export const logs = [
     detalhe: 'Saldo retido de R$ 84.300,00. Motivo: picos de MED por golpe relatado.',
   },
 ];
+
+// ───────────────────── USUÁRIOS, PERFIS E PERMISSÕES ─────────────────────
+// Usuários internos do painel (time do gateway), seus perfis de acesso
+// (roles) e a matriz de permissões por perfil.
+
+export type UsuarioStatus = 'ativo' | 'inativo' | 'convidado';
+
+export const acessoKpis = {
+  usuarios: 9,
+  ativos: 7,
+  perfis: 5,
+  com2fa: 6,
+};
+
+// Perfis (roles) disponíveis
+export const perfisAcesso = [
+  { id: 'PF-1', nome: 'Admin Master', descricao: 'Acesso total e irrestrito ao painel', usuarios: 1, cor: 'blue' },
+  { id: 'PF-2', nome: 'Gerente de risco', descricao: 'Disputas, MEDs e bloqueios cautelares', usuarios: 2, cor: 'rose' },
+  { id: 'PF-3', nome: 'Gerente de contas', descricao: 'Carteira de estabelecimentos e saques', usuarios: 3, cor: 'emerald' },
+  { id: 'PF-4', nome: 'Financeiro', descricao: 'Extrato, conciliação e relatórios', usuarios: 2, cor: 'violet' },
+  { id: 'PF-5', nome: 'Suporte', descricao: 'Consulta de transações e estabelecimentos', usuarios: 1, cor: 'amber' },
+];
+
+export const usuariosAdmin = [
+  {
+    id: 'USR-301', nome: 'Admin Master', email: 'admin@zendpag.com', perfil: 'Admin Master',
+    status: 'ativo' as UsuarioStatus, twoFA: true, ultimoAcesso: '2026-06-23 14:50', criadoEm: '2022-09-01',
+  },
+  {
+    id: 'USR-302', nome: 'Carla Menezes', email: 'carla.menezes@zendpag.com', perfil: 'Gerente de risco',
+    status: 'ativo' as UsuarioStatus, twoFA: true, ultimoAcesso: '2026-06-23 14:20', criadoEm: '2023-08-14',
+  },
+  {
+    id: 'USR-303', nome: 'Rafael Tó', email: 'rafael.to@zendpag.com', perfil: 'Gerente de contas',
+    status: 'ativo' as UsuarioStatus, twoFA: true, ultimoAcesso: '2026-06-23 11:48', criadoEm: '2024-01-22',
+  },
+  {
+    id: 'USR-304', nome: 'Beatriz Andrade', email: 'beatriz.andrade@zendpag.com', perfil: 'Gerente de contas',
+    status: 'ativo' as UsuarioStatus, twoFA: false, ultimoAcesso: '2026-06-18 17:02', criadoEm: '2023-05-03',
+  },
+  {
+    id: 'USR-305', nome: 'Júlia Campos', email: 'julia.campos@zendpag.com', perfil: 'Financeiro',
+    status: 'ativo' as UsuarioStatus, twoFA: true, ultimoAcesso: '2026-06-23 10:05', criadoEm: '2023-12-11',
+  },
+  {
+    id: 'USR-306', nome: 'Pedro Tavares', email: 'pedro.tavares@zendpag.com', perfil: 'Financeiro',
+    status: 'ativo' as UsuarioStatus, twoFA: true, ultimoAcesso: '2026-06-22 16:40', criadoEm: '2024-03-18',
+  },
+  {
+    id: 'USR-307', nome: 'Lucas Pereira', email: 'lucas.pereira@zendpag.com', perfil: 'Gerente de risco',
+    status: 'ativo' as UsuarioStatus, twoFA: true, ultimoAcesso: '2026-06-23 09:33', criadoEm: '2024-06-02',
+  },
+  {
+    id: 'USR-308', nome: 'Marina Dias', email: 'marina.dias@zendpag.com', perfil: 'Suporte',
+    status: 'convidado' as UsuarioStatus, twoFA: false, ultimoAcesso: '—', criadoEm: '2026-06-22',
+  },
+  {
+    id: 'USR-309', nome: 'Mônica Vasquez', email: 'monica.vasquez@zendpag.com', perfil: 'Gerente de contas',
+    status: 'inativo' as UsuarioStatus, twoFA: false, ultimoAcesso: '2026-04-02 10:30', criadoEm: '2022-11-28',
+  },
+];
