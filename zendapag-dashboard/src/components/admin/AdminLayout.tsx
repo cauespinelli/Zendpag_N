@@ -21,7 +21,7 @@ const AdminLayout: React.FC = () => {
   const papel = user?.roles?.includes('ADMIN') ? 'Acesso total' : (user?.roles?.join(', ') || '—');
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="admin-shell min-h-screen bg-slate-50">
       <AdminSidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
 
       <div className={cn('transition-all duration-300', collapsed ? 'ml-20' : 'ml-64')}>

@@ -242,6 +242,10 @@ export const estabelecimentos = [
 // Adquirentes disponíveis para a aba do modal
 export const adquirentesDisponiveis = ['Adiq', 'Cielo', 'Pagar.me', 'Stone', 'Rede'];
 
+// Adquirentes separados por fluxo (cash-in vs cash-out) para o roteamento Pix
+export const pixInAdquirentes = ['Adiq', 'Cielo', 'Stone', 'Rede', 'Pagar.me', 'Getnet'];
+export const pixOutAdquirentes = ['Celcoin', 'Dock', 'Matera', 'Iugu', 'Zoop', 'Bankly'];
+
 // ─────────────────────────────── TRANSAÇÕES ───────────────────────────────
 
 export type TxMetodo = 'pix' | 'cartao' | 'boleto';

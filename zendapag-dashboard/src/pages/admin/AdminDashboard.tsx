@@ -81,7 +81,7 @@ const AdminDashboard: React.FC = () => {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-bold text-slate-800">{taxaAprovacao}%</span>
+                <span className="text-2xl font-bold text-slate-800 tabular-nums">{taxaAprovacao}%</span>
                 <span className="text-xs text-slate-400">aprovação</span>
               </div>
             </div>

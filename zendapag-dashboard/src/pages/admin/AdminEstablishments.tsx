@@ -27,7 +27,8 @@ import {
   pct,
   estabelecimentos as estabSeed,
   estabelecimentosKpis as kpis,
-  adquirentesDisponiveis,
+  pixInAdquirentes,
+  pixOutAdquirentes,
 } from '@/mock/admin';
 import {
   StatCard,
@@ -36,6 +37,7 @@ import {
   PageHeader,
   GradientButton,
 } from '@/components/admin/ui';
+import { medService } from '@/services/medService';
 
 const statusMeta: Record<string, { tone: any; label: string }> = {
   ativo: { tone: 'success', label: 'Ativo' },
@@ -117,26 +119,55 @@ const ActionMenu: React.FC<{
 /* ───────────────── Modal de edição (abas) ───────────────── */
 const tabs = ['Básico', 'Empresa', 'Financeiro', 'Adquirentes'] as const;
 
-const Field: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({
+/* Campo somente-leitura (visualização de dados) */
+const ReadField: React.FC<{ label: string; value: React.ReactNode; className?: string }> = ({
   label,
-  children,
+  value,
   className,
 }) => (
   <div className={className}>
     <label className="block text-xs font-medium text-slate-500 mb-1.5">{label}</label>
-    {children}
+    <div className="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 border border-slate-200 text-slate-800 min-h-[38px] break-words">
+      {value ?? '—'}
+    </div>
   </div>
 );
 
-const inputCls =
-  'w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all';
+/* Toggle de adquirente (habilitar/desabilitar) */
+const AcqToggle: React.FC<{ name: string; on: boolean; onToggle: () => void }> = ({ name, on, onToggle }) => (
+  <button
+    onClick={onToggle}
+    className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+      on ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+    }`}
+  >
+    {name}
+    <span className={`w-9 h-5 rounded-full p-0.5 transition-colors ${on ? 'bg-blue-600' : 'bg-slate-300'}`}>
+      <span className={`block w-4 h-4 rounded-full bg-white transition-transform ${on ? 'translate-x-4' : ''}`} />
+    </span>
+  </button>
+);
 
-const EditModal: React.FC<{ estab: any; onClose: () => void }> = ({ estab, onClose }) => {
+const tipoLabel = (t: string) => (t === 'PJ' ? 'Pessoa Jurídica' : 'Pessoa Física');
+
+const EditModal: React.FC<{ estab: any; onClose: () => void; onSave: (id: string, acqIn: string[], acqOut: string[]) => void }> = ({ estab, onClose, onSave }) => {
   const [tab, setTab] = useState<(typeof tabs)[number]>('Básico');
-  const [acq, setAcq] = useState<string[]>(estab.adquirentes);
+  // PIX IN: pré-marca os adquirentes salvos no estabelecimento
+  const [acqIn, setAcqIn] = useState<string[]>(
+    (estab.adquirentes || []).filter((a: string) => pixInAdquirentes.includes(a))
+  );
+  // PIX OUT: pré-marca os provedores salvos (campo próprio, persiste ao reabrir)
+  const [acqOut, setAcqOut] = useState<string[]>(estab.adquirentesOut || []);
 
-  const toggleAcq = (name: string) =>
-    setAcq((cur) => (cur.includes(name) ? cur.filter((a) => a !== name) : [...cur, name]));
+  const salvar = () => {
+    onSave(estab.id, acqIn, acqOut);
+    onClose();
+  };
+
+  const toggleIn = (name: string) =>
+    setAcqIn((cur) => (cur.includes(name) ? cur.filter((a) => a !== name) : [...cur, name]));
+  const toggleOut = (name: string) =>
+    setAcqOut((cur) => (cur.includes(name) ? cur.filter((a) => a !== name) : [...cur, name]));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
@@ -178,47 +209,30 @@ const EditModal: React.FC<{ estab: any; onClose: () => void }> = ({ estab, onClo
         <div className="p-6 overflow-y-auto">
           {tab === 'Básico' && (
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Nome fantasia"><input className={inputCls} defaultValue={estab.nome} /></Field>
-              <Field label="E-mail"><input className={inputCls} defaultValue={estab.email} /></Field>
-              <Field label="Telefone"><input className={inputCls} defaultValue={estab.telefone} /></Field>
-              <Field label="Tipo">
-                <select className={inputCls} defaultValue={estab.tipo}>
-                  <option value="PJ">Pessoa Jurídica</option>
-                  <option value="PF">Pessoa Física</option>
-                </select>
-              </Field>
-              <Field label="Status">
-                <select className={inputCls} defaultValue={estab.status}>
-                  <option value="ativo">Ativo</option>
-                  <option value="analise">Em análise</option>
-                  <option value="restrito">Restrito</option>
-                  <option value="bloqueado">Bloqueado</option>
-                </select>
-              </Field>
-              <Field label="Compliance">
-                <select className={inputCls} defaultValue={estab.compliance}>
-                  <option value="aprovado">Aprovado</option>
-                  <option value="pendente">Pendente</option>
-                  <option value="restrito">Restrito</option>
-                  <option value="reprovado">Reprovado</option>
-                </select>
-              </Field>
+              <ReadField label="Razão social" value={estab.razaoSocial} className="col-span-2" />
+              <ReadField label="Nome fantasia" value={estab.nome} />
+              <ReadField label="E-mail" value={estab.email} />
+              <ReadField label="Telefone" value={estab.telefone} />
+              <ReadField label="Tipo" value={tipoLabel(estab.tipo)} />
+              <ReadField label="Status" value={statusMeta[estab.status]?.label} />
+              <ReadField label="Compliance" value={complianceMeta[estab.compliance]?.label} />
             </div>
           )}
 
           {tab === 'Empresa' && (
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Razão social" className="col-span-2"><input className={inputCls} defaultValue={estab.razaoSocial} /></Field>
-              <Field label="CNPJ / CPF"><input className={inputCls} defaultValue={estab.documento} /></Field>
-              <Field label="Data de cadastro"><input className={inputCls} defaultValue={estab.criadoEm} /></Field>
-              <Field label="CEP"><input className={inputCls} placeholder="00000-000" /></Field>
-              <Field label="Cidade / UF"><input className={inputCls} placeholder="São Paulo / SP" /></Field>
-              <Field label="Endereço" className="col-span-2"><input className={inputCls} placeholder="Logradouro, número, complemento" /></Field>
+              <ReadField label="Razão social" value={estab.razaoSocial} className="col-span-2" />
+              <ReadField label="CNPJ / CPF" value={estab.documento} />
+              <ReadField label="Tipo" value={tipoLabel(estab.tipo)} />
+              <ReadField label="Data de cadastro" value={estab.criadoEm} />
+              <ReadField label="Volume no mês" value={<span className="tabular-nums">{brl(estab.volumeMes)}</span>} />
+              <ReadField label="Adquirentes ativos" value={estab.adquirentes.length ? estab.adquirentes.join(', ') : 'Nenhum'} className="col-span-2" />
             </div>
           )}
 
           {tab === 'Financeiro' && (
             <div className="space-y-5">
+              <p className="text-sm text-slate-500">Saldos do estabelecimento.</p>
               <div className="grid grid-cols-3 gap-4">
                 <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
                   <p className="text-xs text-emerald-700">Saldo disponível</p>
@@ -233,54 +247,34 @@ const EditModal: React.FC<{ estab: any; onClose: () => void }> = ({ estab, onClo
                   <p className="text-lg font-bold text-slate-700 tabular-nums mt-1">{brl(estab.saldoRetido)}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <Field label="% MED">
-                  <div className="relative">
-                    <input className={inputCls} defaultValue={estab.medPct} />
-                    <Percent size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  </div>
-                </Field>
-                <Field label="% Disputa">
-                  <div className="relative">
-                    <input className={inputCls} defaultValue={estab.disputaPct} />
-                    <Percent size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  </div>
-                </Field>
-                <Field label="% Retenção">
-                  <div className="relative">
-                    <input className={inputCls} defaultValue={estab.retencaoPct} />
-                    <Percent size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  </div>
-                </Field>
-              </div>
             </div>
           )}
 
           {tab === 'Adquirentes' && (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-500">Selecione os adquirentes habilitados para roteamento das transações.</p>
-              <div className="grid grid-cols-2 gap-3">
-                {adquirentesDisponiveis.map((name) => {
-                  const on = acq.includes(name);
-                  return (
-                    <button
-                      key={name}
-                      onClick={() => toggleAcq(name)}
-                      className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
-                        on
-                          ? 'border-blue-300 bg-blue-50 text-blue-700'
-                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                      }`}
-                    >
-                      {name}
-                      <span
-                        className={`w-9 h-5 rounded-full p-0.5 transition-colors ${on ? 'bg-blue-600' : 'bg-slate-300'}`}
-                      >
-                        <span className={`block w-4 h-4 rounded-full bg-white transition-transform ${on ? 'translate-x-4' : ''}`} />
-                      </span>
-                    </button>
-                  );
-                })}
+            <div className="space-y-6">
+              {/* PIX IN */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">PIX IN</span>
+                  <p className="text-sm text-slate-500">Adquirentes para recebimento (cash-in).</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {pixInAdquirentes.map((name) => (
+                    <AcqToggle key={name} name={name} on={acqIn.includes(name)} onToggle={() => toggleIn(name)} />
+                  ))}
+                </div>
+              </div>
+              {/* PIX OUT */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-2 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200">PIX OUT</span>
+                  <p className="text-sm text-slate-500">Provedores para pagamento/saque (cash-out).</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {pixOutAdquirentes.map((name) => (
+                    <AcqToggle key={name} name={name} on={acqOut.includes(name)} onToggle={() => toggleOut(name)} />
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -291,7 +285,7 @@ const EditModal: React.FC<{ estab: any; onClose: () => void }> = ({ estab, onClo
           <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-100">
             Cancelar
           </button>
-          <GradientButton onClick={onClose}>Salvar alterações</GradientButton>
+          <GradientButton onClick={salvar}>Salvar alterações</GradientButton>
         </div>
       </div>
     </div>
@@ -304,6 +298,29 @@ const AdminEstablishments: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('todos');
   const [editing, setEditing] = useState<any>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Estabelecimentos em estado (para persistir edições, ex.: adquirentes)
+  const [estabs, setEstabs] = useState(estabSeed);
+
+  // Salva a seleção de adquirentes (PIX IN / PIX OUT) no estabelecimento.
+  const handleSaveAcq = (id: string, acqIn: string[], acqOut: string[]) => {
+    setEstabs((prev) => prev.map((e) => (e.id === id ? { ...e, adquirentes: acqIn, adquirentesOut: acqOut } : e)));
+    setToast('Adquirentes salvos com sucesso');
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  // MED por estabelecimento — vem do medService (mock hoje, API de disputa depois).
+  // Inicia com os valores do seed para não piscar; o service sobrescreve ao carregar.
+  const [medMap, setMedMap] = useState<Record<string, { medPct: number; disputaPct: number }>>(() =>
+    estabSeed.reduce((acc, e) => { acc[e.id] = { medPct: e.medPct, disputaPct: e.disputaPct }; return acc; }, {} as any)
+  );
+
+  useEffect(() => {
+    medService
+      .getMedIndices(estabSeed.map((e) => e.id))
+      .then(setMedMap)
+      .catch(() => {/* mantém os valores do seed em caso de falha */});
+  }, []);
 
   const handleAction = (tipo: string, estab: any) => {
     const labels: Record<string, string> = {
@@ -319,7 +336,7 @@ const AdminEstablishments: React.FC = () => {
 
   const filtered = useMemo(
     () =>
-      estabSeed.filter((e) => {
+      estabs.filter((e) => {
         const q = query.toLowerCase();
         const matchQuery =
           !q ||
@@ -329,7 +346,7 @@ const AdminEstablishments: React.FC = () => {
         const matchStatus = statusFilter === 'todos' || e.status === statusFilter;
         return matchQuery && matchStatus;
       }),
-    [query, statusFilter]
+    [estabs, query, statusFilter]
   );
 
   return (
@@ -337,7 +354,6 @@ const AdminEstablishments: React.FC = () => {
       <PageHeader
         title="Estabelecimentos"
         subtitle={`${kpis.total.toLocaleString('pt-BR')} contas cadastradas`}
-        action={<GradientButton><Building2 size={16} /> Novo estabelecimento</GradientButton>}
       />
 
       {/* Cards */}
@@ -410,8 +426,18 @@ const AdminEstablishments: React.FC = () => {
                     <StatusBadge tone={statusMeta[e.status].tone}>{statusMeta[e.status].label}</StatusBadge>
                   </td>
                   <td className="px-5 py-3.5 text-right tabular-nums font-medium text-slate-700">{brl(e.saldoDisponivel)}</td>
-                  <td className="px-5 py-3.5 text-right tabular-nums text-slate-500">
-                    {pct(e.medPct)} / {pct(e.disputaPct)}
+                  <td className="px-5 py-3.5 text-right tabular-nums">
+                    {(() => {
+                      const med = medMap[e.id]?.medPct ?? e.medPct;
+                      const disp = medMap[e.id]?.disputaPct ?? e.disputaPct;
+                      return (
+                        <span>
+                          <span className={med > 3 ? 'text-rose-600 font-medium' : 'text-slate-600'}>{pct(med)}</span>
+                          <span className="text-slate-300"> / </span>
+                          <span className="text-slate-500">{pct(disp)}</span>
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-5 py-3.5">
                     {e.adquirentes.length ? (
@@ -443,7 +469,7 @@ const AdminEstablishments: React.FC = () => {
         </div>
       </AdminCard>
 
-      {editing && <EditModal estab={editing} onClose={() => setEditing(null)} />}
+      {editing && <EditModal estab={editing} onClose={() => setEditing(null)} onSave={handleSaveAcq} />}
 
       {/* Toast */}
       {toast && (

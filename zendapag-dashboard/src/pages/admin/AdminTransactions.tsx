@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   Search,
   X,
+  Send,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   brl,
@@ -54,6 +56,13 @@ const AdminTransactions: React.FC = () => {
   const [status, setStatus] = useState('todos');
   const [adquirente, setAdquirente] = useState('todos');
   const [erroDetalhe, setErroDetalhe] = useState<any>(null);
+  // Ações da linha (item 9)
+  const [detalhe, setDetalhe] = useState<any>(null);
+  const [webhookTx, setWebhookTx] = useState<any>(null);
+  const [disputaTx, setDisputaTx] = useState<any>(null);
+  const [disputaMotivo, setDisputaMotivo] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
+  const notify = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500); };
 
   const filtered = useMemo(
     () =>
@@ -190,13 +199,13 @@ const AdminTransactions: React.FC = () => {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Ver detalhes">
+                        <button onClick={() => setDetalhe(t)} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Ver detalhes">
                           <Eye size={16} />
                         </button>
-                        <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Abrir disputa">
+                        <button onClick={() => { setDisputaTx(t); setDisputaMotivo(''); }} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Abrir disputa">
                           <ShieldAlert size={16} />
                         </button>
-                        <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Reenviar webhook">
+                        <button onClick={() => setWebhookTx(t)} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Reenviar webhook">
                           <Webhook size={16} />
                         </button>
                       </div>
@@ -258,6 +267,136 @@ const AdminTransactions: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal: detalhes da transação (olho) */}
+      {detalhe && (() => {
+        const MetIcon = metodoMeta[detalhe.metodo].icon;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                  <Eye size={18} className="text-blue-500" /> Detalhes da transação
+                </h3>
+                <button onClick={() => setDetalhe(null)} className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-800">{detalhe.id}</p>
+                    <p className="text-xs text-slate-400 tabular-nums">{detalhe.criadoEm}</p>
+                  </div>
+                  <StatusBadge tone={statusMeta[detalhe.status].tone}>{statusMeta[detalhe.status].label}</StatusBadge>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div><p className="text-xs text-slate-400">Pagador (nome)</p><p className="font-medium text-slate-700">{detalhe.cliente}</p></div>
+                  <div><p className="text-xs text-slate-400">CPF</p><p className="font-medium text-slate-700 tabular-nums">{detalhe.documento}</p></div>
+                  <div><p className="text-xs text-slate-400">Método</p><p className="font-medium text-slate-700 inline-flex items-center gap-1.5"><MetIcon size={15} className="text-slate-400" /> {metodoMeta[detalhe.metodo].label}</p></div>
+                  <div><p className="text-xs text-slate-400">Status</p><div className="mt-0.5"><StatusBadge tone={statusMeta[detalhe.status].tone}>{statusMeta[detalhe.status].label}</StatusBadge></div></div>
+                  <div><p className="text-xs text-slate-400">Data</p><p className="font-medium text-slate-700 tabular-nums">{detalhe.criadoEm}</p></div>
+                  <div><p className="text-xs text-slate-400">Adquirente</p><p className="font-medium text-slate-700">{detalhe.adquirente}</p></div>
+                  <div><p className="text-xs text-slate-400">Estabelecimento</p><p className="font-medium text-slate-700">{detalhe.estabelecimento}</p></div>
+                  <div><p className="text-xs text-slate-400">Tipo</p><p className="font-medium text-slate-700">{detalhe.tipo === 'interna' ? 'Interna' : 'Geral'}</p></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3 pt-1">
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                    <p className="text-xs text-slate-400">Bruto</p>
+                    <p className="font-semibold text-slate-800 tabular-nums mt-0.5">{brl(detalhe.bruto)}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                    <p className="text-xs text-slate-400">Taxa</p>
+                    <p className="font-semibold text-slate-500 tabular-nums mt-0.5">{detalhe.taxa ? `- ${brl(detalhe.taxa)}` : '—'}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                    <p className="text-xs text-slate-400">Líquido</p>
+                    <p className={`font-semibold tabular-nums mt-0.5 ${detalhe.liquido < 0 ? 'text-rose-600' : 'text-slate-800'}`}>{detalhe.liquido ? brl(detalhe.liquido) : '—'}</p>
+                  </div>
+                </div>
+                {detalhe.motivoErro && (
+                  <div className="rounded-xl bg-rose-50 border border-rose-100 p-3 flex gap-2">
+                    <AlertTriangle size={16} className="text-rose-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-rose-700">{detalhe.motivoErro}</p>
+                      <p className="text-xs text-rose-500">Código retornado pelo adquirente {detalhe.adquirente}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100">
+                <button onClick={() => { setWebhookTx(detalhe); setDetalhe(null); }} className="px-4 py-2.5 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-100 inline-flex items-center gap-2"><Webhook size={15} /> Reenviar webhook</button>
+                <button onClick={() => setDetalhe(null)} className="px-4 py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600">Fechar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Modal: abrir disputa (escudo) */}
+      {disputaTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800 flex items-center gap-2"><ShieldAlert size={18} className="text-violet-500" /> Abrir disputa</h3>
+              <button onClick={() => setDisputaTx(null)} className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-slate-400">Transação</p><p className="font-medium text-slate-700">{disputaTx.id}</p></div>
+                <div><p className="text-xs text-slate-400">Valor</p><p className="font-semibold text-slate-800 tabular-nums">{brl(disputaTx.bruto)}</p></div>
+                <div><p className="text-xs text-slate-400">Cliente</p><p className="font-medium text-slate-700">{disputaTx.cliente}</p></div>
+                <div><p className="text-xs text-slate-400">Estabelecimento</p><p className="font-medium text-slate-700">{disputaTx.estabelecimento}</p></div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Motivo da disputa</label>
+                <textarea value={disputaMotivo} onChange={(e) => setDisputaMotivo(e.target.value)} rows={3} placeholder="Descreva o motivo da contestação..." className="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+              <button onClick={() => setDisputaTx(null)} className="px-4 py-2.5 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-100">Cancelar</button>
+              <button onClick={() => { const id = disputaTx.id; setDisputaTx(null); notify(`Disputa aberta para ${id}.`); }} className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl bg-violet-600 hover:bg-violet-700"><ShieldAlert size={16} /> Abrir disputa</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: reenviar webhook */}
+      {webhookTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Webhook size={18} className="text-blue-500" /> Reenviar webhook</h3>
+              <button onClick={() => setWebhookTx(null)} className="w-9 h-9 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-600">Payload do evento que será reenviado ao endpoint do estabelecimento:</p>
+              <pre className="text-xs bg-slate-900 text-slate-100 rounded-xl p-4 overflow-x-auto leading-relaxed">{JSON.stringify({
+                event: 'transaction.updated',
+                id: webhookTx.id,
+                status: webhookTx.status,
+                amount: webhookTx.bruto,
+                fee: webhookTx.taxa,
+                net: webhookTx.liquido,
+                method: webhookTx.metodo,
+                acquirer: webhookTx.adquirente,
+                created_at: webhookTx.criadoEm,
+              }, null, 2)}</pre>
+            </div>
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+              <button onClick={() => setWebhookTx(null)} className="px-4 py-2.5 text-sm font-medium text-slate-600 rounded-xl hover:bg-slate-100">Cancelar</button>
+              <button onClick={() => { const id = webhookTx.id; setWebhookTx(null); notify(`Webhook reenviado para ${id}.`); }} className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600"><Send size={16} /> Reenviar agora</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[60] bg-slate-800 text-white text-sm px-4 py-3 rounded-xl shadow-lg flex items-center gap-2">
+          <CheckCircle2 size={16} className="text-emerald-400" /> {toast}
         </div>
       )}
     </div>

@@ -70,7 +70,7 @@ export const StatCard: React.FC<{
         )}
       </div>
       <p className="text-sm text-slate-500 mt-4">{label}</p>
-      <p className="text-2xl font-bold text-slate-800 mt-1 tabular-nums tracking-tight">{value}</p>
+      <p className="text-xl font-bold text-slate-800 mt-1 tabular-nums tracking-tight leading-tight break-words">{value}</p>
       {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
     </AdminCard>
   );

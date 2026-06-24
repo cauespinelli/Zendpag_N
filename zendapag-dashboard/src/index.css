@@ -545,3 +545,38 @@ body {
   outline: 2px solid #C9A962;
   outline-offset: 2px;
 }
+
+/* =====================================================================
+   PAINEL ADMIN MASTER — tema CLARO isolado do tema escuro global (body).
+   O body do app é escuro (#0D0D0D / texto branco). O painel admin é claro,
+   então qualquer elemento sem cor explícita herdava texto branco e ficava
+   ilegível (ex.: inputs e textos dentro dos popups). Aqui forçamos uma base
+   escura de texto e formulários legíveis, escopado em .admin-shell.
+   ===================================================================== */
+.admin-shell {
+  color: #1e293b; /* slate-800 — base de texto escura, sobrepõe o body branco */
+}
+.admin-shell input,
+.admin-shell select,
+.admin-shell textarea {
+  color: #0f172a; /* slate-900 — texto de formulário sempre legível */
+}
+/* fundo branco só onde NÃO há utilitário bg-* do Tailwind (preserva bg-slate-50 etc.) */
+.admin-shell input:not([class*="bg-"]),
+.admin-shell select:not([class*="bg-"]),
+.admin-shell textarea:not([class*="bg-"]) {
+  background-color: #ffffff;
+}
+.admin-shell input::placeholder,
+.admin-shell textarea::placeholder {
+  color: #94a3b8; /* slate-400 */
+}
+
+/* Garantia anti-transparência: TODA superfície branca do painel (cards e,
+   principalmente, os PAINÉIS dos modais/popups) fica branco SÓLIDO e opaco,
+   vencendo qualquer herança do tema escuro global. Só o FUNDO é forçado —
+   a cor do texto fica por conta da base .admin-shell e das classes text-*,
+   para não quebrar badges/realces coloridos. */
+.admin-shell .bg-white {
+  background-color: #ffffff !important;
+}
