@@ -794,3 +794,105 @@ export const extratoLancamentos = [
   { id: 'LN-440207', data: '2026-06-22 15:39', descricao: 'Saque aprovado — SAQ-55201', categoria: 'saque', contraparte: 'GamerZone Store', tipo: 'debito', valor: 41_800.0, saldoApos: 3_464_674.33 },
   { id: 'LN-440206', data: '2026-06-22 11:02', descricao: 'Tarifa de plataforma — assinatura mensal', categoria: 'comissao_plataforma', contraparte: '34 estabelecimentos', tipo: 'credito', valor: 6_766.0, saldoApos: 3_506_474.33 },
 ];
+
+// ──────────────────────────────── LOGS ────────────────────────────────
+// Trilha de auditoria das ações do Admin Master e do sistema.
+
+export type LogSeveridade = 'info' | 'aviso' | 'critico';
+export type LogModulo =
+  | 'Saques' | 'Risco' | 'Estabelecimentos' | 'Ações em Massa'
+  | 'Afiliados' | 'Gerentes' | 'Acesso' | 'Autenticação' | 'Financeiro';
+
+export const logsKpis = {
+  eventosHoje: 1284,
+  acoesSensiveis: 23,
+  usuariosAtivos: 9,
+  falhasAcesso: 4,
+};
+
+export const logs = [
+  {
+    id: 'LOG-99214', timestamp: '2026-06-23 14:50', ator: 'Admin Master', atorTipo: 'admin',
+    acao: 'Aprovou saque', alvo: 'SAQ-55205 · EduMaster Cursos', modulo: 'Saques' as LogModulo,
+    severidade: 'aviso' as LogSeveridade, ip: '177.92.14.3', userAgent: 'Chrome 126 · macOS',
+    detalhe: 'Saque de R$ 62.400,00 via Pix aprovado e enviado para processamento.',
+  },
+  {
+    id: 'LOG-99213', timestamp: '2026-06-23 14:50', ator: 'Admin Master', atorTipo: 'admin',
+    acao: 'Aplicou bloqueio cautelar', alvo: 'BLQ-3012 · MegaImports Eletro', modulo: 'Risco' as LogModulo,
+    severidade: 'critico' as LogSeveridade, ip: '177.92.14.3', userAgent: 'Chrome 126 · macOS',
+    detalhe: 'Saldo retido de R$ 198.420,00. Motivo: índice de MED em 6,4% (limite 3%).',
+  },
+  {
+    id: 'LOG-99212', timestamp: '2026-06-23 09:10', ator: 'Admin Master', atorTipo: 'admin',
+    acao: 'Executou ação em massa', alvo: 'LOTE-2208 · comunicado p/ 1.107 estab.', modulo: 'Ações em Massa' as LogModulo,
+    severidade: 'info' as LogSeveridade, ip: '177.92.14.3', userAgent: 'Chrome 126 · macOS',
+    detalhe: 'Comunicado "Manutenção programada do Pix em 25/06" enviado a 1.107 estabelecimentos ativos.',
+  },
+  {
+    id: 'LOG-99211', timestamp: '2026-06-23 08:31', ator: 'Carla Menezes', atorTipo: 'gerente',
+    acao: 'Editou retenção', alvo: 'EST-10247 · FitShop Suplementos', modulo: 'Estabelecimentos' as LogModulo,
+    severidade: 'aviso' as LogSeveridade, ip: '189.45.201.88', userAgent: 'Firefox 127 · Windows',
+    detalhe: 'Retenção alterada de 5% para 15% após apuração de disputas.',
+  },
+  {
+    id: 'LOG-99210', timestamp: '2026-06-23 08:02', ator: 'Sistema', atorTipo: 'sistema',
+    acao: 'Conciliação concluída', alvo: 'Adiq · ciclo 2026-06-23', modulo: 'Financeiro' as LogModulo,
+    severidade: 'info' as LogSeveridade, ip: '—', userAgent: 'Job agendado',
+    detalhe: 'Conciliação automática sem divergências para 4.120 transações.',
+  },
+  {
+    id: 'LOG-99209', timestamp: '2026-06-22 21:40', ator: 'desconhecido', atorTipo: 'sistema',
+    acao: 'Falha de login', alvo: 'admin@zendpag.com', modulo: 'Autenticação' as LogModulo,
+    severidade: 'critico' as LogSeveridade, ip: '45.230.118.7', userAgent: 'curl/8.4',
+    detalhe: '3ª tentativa de senha incorreta. IP bloqueado temporariamente por rate limit.',
+  },
+  {
+    id: 'LOG-99208', timestamp: '2026-06-22 19:12', ator: 'Rafael Tó', atorTipo: 'gerente',
+    acao: 'Bloqueou afiliado', alvo: 'AFL-2047 · Henrique Sales', modulo: 'Afiliados' as LogModulo,
+    severidade: 'aviso' as LogSeveridade, ip: '201.17.92.44', userAgent: 'Chrome 126 · Windows',
+    detalhe: 'Afiliado bloqueado por suspeita de autocompra. Comissões retidas.',
+  },
+  {
+    id: 'LOG-99207', timestamp: '2026-06-22 17:25', ator: 'Carla Menezes', atorTipo: 'gerente',
+    acao: 'Executou ação em massa', alvo: 'LOTE-2207 · ajuste de retenção (12)', modulo: 'Ações em Massa' as LogModulo,
+    severidade: 'aviso' as LogSeveridade, ip: '189.45.201.88', userAgent: 'Firefox 127 · Windows',
+    detalhe: 'Retenção definida em 10% para 12 estabelecimentos de alto risco.',
+  },
+  {
+    id: 'LOG-99206', timestamp: '2026-06-22 15:48', ator: 'Rafael Tó', atorTipo: 'gerente',
+    acao: 'Trocou adquirente', alvo: 'LOTE-2205 · roteamento → Stone (8)', modulo: 'Ações em Massa' as LogModulo,
+    severidade: 'aviso' as LogSeveridade, ip: '201.17.92.44', userAgent: 'Chrome 126 · Windows',
+    detalhe: 'Migração parcial: 6 de 8 estabelecimentos migrados. 2 falharam por contrato ativo.',
+  },
+  {
+    id: 'LOG-99205', timestamp: '2026-06-22 11:15', ator: 'Admin Master', atorTipo: 'admin',
+    acao: 'Alterou permissões', alvo: 'Perfil "Gerente de risco"', modulo: 'Acesso' as LogModulo,
+    severidade: 'critico' as LogSeveridade, ip: '177.92.14.3', userAgent: 'Chrome 126 · macOS',
+    detalhe: 'Permissão "Liberar bloqueio cautelar" concedida ao perfil Gerente de risco.',
+  },
+  {
+    id: 'LOG-99204', timestamp: '2026-06-22 10:48', ator: 'Beatriz Andrade', atorTipo: 'gerente',
+    acao: 'Recusou saque', alvo: 'SAQ-55200 · MegaImports Eletro', modulo: 'Saques' as LogModulo,
+    severidade: 'aviso' as LogSeveridade, ip: '187.33.10.5', userAgent: 'Safari 17 · macOS',
+    detalhe: 'Saque recusado: conta com bloqueio cautelar por índice de MED.',
+  },
+  {
+    id: 'LOG-99203', timestamp: '2026-06-22 09:40', ator: 'Admin Master', atorTipo: 'admin',
+    acao: 'Cadastrou gerente', alvo: 'GER-115 · Thiago Brandão', modulo: 'Gerentes' as LogModulo,
+    severidade: 'info' as LogSeveridade, ip: '177.92.14.3', userAgent: 'Chrome 126 · macOS',
+    detalhe: 'Novo gerente cadastrado com override de 0,7%.',
+  },
+  {
+    id: 'LOG-99202', timestamp: '2026-06-21 16:55', ator: 'Sistema', atorTipo: 'sistema',
+    acao: 'Webhook reenviado', alvo: 'TX-8835190 · MegaImports Eletro', modulo: 'Financeiro' as LogModulo,
+    severidade: 'info' as LogSeveridade, ip: '—', userAgent: 'Job agendado',
+    detalhe: 'Reenvio automático após falha de entrega (3ª tentativa, HTTP 200).',
+  },
+  {
+    id: 'LOG-99201', timestamp: '2026-06-21 09:40', ator: 'Carla Menezes', atorTipo: 'gerente',
+    acao: 'Aplicou bloqueio cautelar', alvo: 'BLQ-3011 · FitShop Suplementos', modulo: 'Risco' as LogModulo,
+    severidade: 'critico' as LogSeveridade, ip: '189.45.201.88', userAgent: 'Firefox 127 · Windows',
+    detalhe: 'Saldo retido de R$ 84.300,00. Motivo: picos de MED por golpe relatado.',
+  },
+];
