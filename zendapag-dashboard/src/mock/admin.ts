@@ -590,3 +590,101 @@ export const lotesExecutados = [
     qtd: 1284, executadoPor: 'Admin Master', executadoEm: '2026-06-20 08:30', status: 'concluido',
   },
 ];
+
+// ──────────────────────────────── AFILIADOS ────────────────────────────────
+// Visão do Admin Master sobre o programa de afiliados da plataforma inteira.
+
+export type AfiliadoStatus = 'ativo' | 'pendente' | 'bloqueado';
+export type ComissaoStatus = 'paga' | 'pendente' | 'retida';
+
+export const afiliadosKpis = {
+  ativos: 342,
+  comissoesPagasMes: 287_410.0,
+  comissoesPendentes: 64_820.0,
+  vendasViaAfiliados: 2_184_900.0,
+  vendasQtd: 9840,
+};
+
+export const afiliados = [
+  {
+    id: 'AFL-2051', nome: 'Bruno Carvalho', documento: '187.654.321-00', email: 'bruno.afiliado@gmail.com',
+    promove: ['EduMaster Cursos', 'FitShop Suplementos'], vendas: 1284, comissaoTotal: 84_210.0,
+    taxaMedia: 22.5, status: 'ativo' as AfiliadoStatus, entrouEm: '2024-02-18', ultimaVenda: '2026-06-23 13:40',
+  },
+  {
+    id: 'AFL-2050', nome: 'Camila Ferraz', documento: '298.765.432-00', email: 'camila.f@outlook.com',
+    promove: ['Bella Cosméticos'], vendas: 942, comissaoTotal: 51_870.0,
+    taxaMedia: 18.0, status: 'ativo' as AfiliadoStatus, entrouEm: '2024-05-02', ultimaVenda: '2026-06-23 11:18',
+  },
+  {
+    id: 'AFL-2049', nome: 'Diego Nogueira', documento: '345.678.912-00', email: 'diego.nog@gmail.com',
+    promove: ['GamerZone Store', 'TechParts BR'], vendas: 778, comissaoTotal: 43_120.0,
+    taxaMedia: 15.0, status: 'ativo' as AfiliadoStatus, entrouEm: '2023-11-10', ultimaVenda: '2026-06-22 19:55',
+  },
+  {
+    id: 'AFL-2048', nome: 'Patrícia Lemos', documento: '456.789.123-00', email: 'pati.lemos@gmail.com',
+    promove: ['EduMaster Cursos'], vendas: 0, comissaoTotal: 0,
+    taxaMedia: 20.0, status: 'pendente' as AfiliadoStatus, entrouEm: '2026-06-21', ultimaVenda: '—',
+  },
+  {
+    id: 'AFL-2047', nome: 'Henrique Sales', documento: '567.891.234-00', email: 'h.sales@hotmail.com',
+    promove: ['MegaImports Eletro'], vendas: 210, comissaoTotal: 12_440.0,
+    taxaMedia: 12.0, status: 'bloqueado' as AfiliadoStatus, entrouEm: '2024-09-30', ultimaVenda: '2026-06-10 08:22',
+  },
+  {
+    id: 'AFL-2046', nome: 'Aline Prado', documento: '678.912.345-00', email: 'aline.prado@gmail.com',
+    promove: ['FitShop Suplementos', 'Pet Amigo Online'], vendas: 654, comissaoTotal: 33_980.0,
+    taxaMedia: 17.5, status: 'ativo' as AfiliadoStatus, entrouEm: '2024-07-14', ultimaVenda: '2026-06-23 09:31',
+  },
+  {
+    id: 'AFL-2045', nome: 'Rodrigo Teles', documento: '789.123.456-00', email: 'rodrigo.teles@gmail.com',
+    promove: ['Loja Aurora Digital'], vendas: 489, comissaoTotal: 27_600.0,
+    taxaMedia: 16.0, status: 'ativo' as AfiliadoStatus, entrouEm: '2025-01-08', ultimaVenda: '2026-06-22 21:04',
+  },
+  {
+    id: 'AFL-2044', nome: 'Vanessa Ribeiro', documento: '891.234.567-00', email: 'vah.ribeiro@outlook.com',
+    promove: ['Bella Cosméticos', 'EduMaster Cursos'], vendas: 0, comissaoTotal: 0,
+    taxaMedia: 20.0, status: 'pendente' as AfiliadoStatus, entrouEm: '2026-06-22', ultimaVenda: '—',
+  },
+];
+
+export const comissoes = [
+  {
+    id: 'COM-90412', afiliado: 'Bruno Carvalho', estabelecimento: 'EduMaster Cursos', txId: 'TX-8841289',
+    valorVenda: 1_299.0, percentual: 22.5, valorComissao: 292.28, status: 'pendente' as ComissaoStatus, data: '2026-06-23 14:28',
+  },
+  {
+    id: 'COM-90411', afiliado: 'Camila Ferraz', estabelecimento: 'Bella Cosméticos', txId: 'TX-8841286',
+    valorVenda: 159.9, percentual: 18.0, valorComissao: 28.78, status: 'retida' as ComissaoStatus, data: '2026-06-23 14:09',
+  },
+  {
+    id: 'COM-90410', afiliado: 'Aline Prado', estabelecimento: 'Pet Amigo Online', txId: 'TX-8841282',
+    valorVenda: 124.5, percentual: 17.5, valorComissao: 21.79, status: 'pendente' as ComissaoStatus, data: '2026-06-23 13:12',
+  },
+  {
+    id: 'COM-90409', afiliado: 'Diego Nogueira', estabelecimento: 'GamerZone Store', txId: 'TX-8841285',
+    valorVenda: 89.9, percentual: 15.0, valorComissao: 13.49, status: 'paga' as ComissaoStatus, data: '2026-06-23 13:58',
+  },
+  {
+    id: 'COM-90408', afiliado: 'Rodrigo Teles', estabelecimento: 'Loja Aurora Digital', txId: 'TX-8841290',
+    valorVenda: 459.9, percentual: 16.0, valorComissao: 73.58, status: 'paga' as ComissaoStatus, data: '2026-06-23 14:32',
+  },
+  {
+    id: 'COM-90407', afiliado: 'Bruno Carvalho', estabelecimento: 'FitShop Suplementos', txId: 'TX-8838221',
+    valorVenda: 289.9, percentual: 22.5, valorComissao: 65.23, status: 'paga' as ComissaoStatus, data: '2026-06-22 18:40',
+  },
+  {
+    id: 'COM-90406', afiliado: 'Henrique Sales', estabelecimento: 'MegaImports Eletro', txId: 'TX-8835190',
+    valorVenda: 2_150.0, percentual: 12.0, valorComissao: 258.0, status: 'retida' as ComissaoStatus, data: '2026-06-21 16:11',
+  },
+];
+
+// Ranking de afiliados por comissão (derivado, top 6)
+export const rankingAfiliados = [
+  { nome: 'Bruno Carvalho', comissao: 84_210.0, vendas: 1284 },
+  { nome: 'Camila Ferraz', comissao: 51_870.0, vendas: 942 },
+  { nome: 'Diego Nogueira', comissao: 43_120.0, vendas: 778 },
+  { nome: 'Aline Prado', comissao: 33_980.0, vendas: 654 },
+  { nome: 'Rodrigo Teles', comissao: 27_600.0, vendas: 489 },
+  { nome: 'Henrique Sales', comissao: 12_440.0, vendas: 210 },
+];
