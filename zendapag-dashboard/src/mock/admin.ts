@@ -688,3 +688,49 @@ export const rankingAfiliados = [
   { nome: 'Rodrigo Teles', comissao: 27_600.0, vendas: 489 },
   { nome: 'Henrique Sales', comissao: 12_440.0, vendas: 210 },
 ];
+
+// ──────────────────────────────── GERENTES ────────────────────────────────
+// Gerentes de conta da Zendpag: cada um cuida de uma carteira de
+// estabelecimentos e recebe comissão de override sobre o volume.
+
+export type GerenteStatus = 'ativo' | 'inativo' | 'ferias';
+
+export const gerentesKpis = {
+  ativos: 14,
+  estabelecimentosGeridos: 1107,
+  volumeCarteira: 38_420_900.0,
+  comissaoMes: 192_104.5,
+};
+
+export const gerentes = [
+  {
+    id: 'GER-118', nome: 'Carla Menezes', email: 'carla.menezes@zendpag.com', telefone: '(11) 99812-3344',
+    carteira: ['Loja Aurora Digital', 'EduMaster Cursos', 'GamerZone Store'],
+    volumeCarteira: 1_832_410.0, comissaoPct: 0.5, comissaoAcum: 9_162.05,
+    status: 'ativo' as GerenteStatus, desde: '2023-08-14', ultimaAtividade: '2026-06-23 14:20',
+  },
+  {
+    id: 'GER-117', nome: 'Rafael Tó', email: 'rafael.to@zendpag.com', telefone: '(21) 99765-8821',
+    carteira: ['FitShop Suplementos', 'Pet Amigo Online'],
+    volumeCarteira: 672_310.0, comissaoPct: 0.6, comissaoAcum: 4_033.86,
+    status: 'ativo' as GerenteStatus, desde: '2024-01-22', ultimaAtividade: '2026-06-23 11:48',
+  },
+  {
+    id: 'GER-116', nome: 'Beatriz Andrade', email: 'beatriz.andrade@zendpag.com', telefone: '(31) 98654-1209',
+    carteira: ['TechParts BR', 'MegaImports Eletro', 'Bella Cosméticos'],
+    volumeCarteira: 909_800.0, comissaoPct: 0.5, comissaoAcum: 4_549.0,
+    status: 'ferias' as GerenteStatus, desde: '2023-05-03', ultimaAtividade: '2026-06-18 17:02',
+  },
+  {
+    id: 'GER-115', nome: 'Thiago Brandão', email: 'thiago.brandao@zendpag.com', telefone: '(41) 99123-4567',
+    carteira: ['Aurora Express', 'NeoShop'],
+    volumeCarteira: 414_220.0, comissaoPct: 0.7, comissaoAcum: 2_899.54,
+    status: 'ativo' as GerenteStatus, desde: '2024-09-10', ultimaAtividade: '2026-06-23 09:15',
+  },
+  {
+    id: 'GER-114', nome: 'Mônica Vasquez', email: 'monica.vasquez@zendpag.com', telefone: '(51) 98432-7766',
+    carteira: [],
+    volumeCarteira: 0, comissaoPct: 0.6, comissaoAcum: 0,
+    status: 'inativo' as GerenteStatus, desde: '2022-11-28', ultimaAtividade: '2026-04-02 10:30',
+  },
+];
