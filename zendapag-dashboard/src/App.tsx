@@ -44,6 +44,12 @@ const StatementsPage = React.lazy(() => import('@/pages/StatementsPage'));
 const MedAnalyticsPage = React.lazy(() => import('@/pages/MedAnalyticsPage'));
 const CheckoutPage = React.lazy(() => import('@/pages/CheckoutPage'));
 
+// Painel Admin Master (telas mock — motor real depois)
+const AdminLayout = React.lazy(() => import('@/components/admin/AdminLayout'));
+const AdminDashboard = React.lazy(() => import('@/pages/admin/AdminDashboard'));
+const AdminEstablishments = React.lazy(() => import('@/pages/admin/AdminEstablishments'));
+const AdminTransactions = React.lazy(() => import('@/pages/admin/AdminTransactions'));
+
 // React Query client configuration
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -129,6 +135,14 @@ const App: React.FC = () => {
                       )
                     }
                   />
+
+                  {/* Painel Admin Master (mock, sem auth por enquanto) */}
+                  <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="establishments" element={<AdminEstablishments />} />
+                    <Route path="transactions" element={<AdminTransactions />} />
+                  </Route>
 
                   {/* Protected routes - New Layout */}
                   <Route
