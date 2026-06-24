@@ -65,9 +65,10 @@ public class ApiSecurityConfig {
                         // Webhook endpoints (should be secured separately with webhook signatures)
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/receive/**").permitAll()
 
-                        // Protected API endpoints
-                        .requestMatchers("/api/v1/payments/**").hasRole("MERCHANT")
-                        .requestMatchers("/api/v1/merchants/**").hasRole("MERCHANT")
+                        // Protected API endpoints (ADMIN também passa no filtro;
+                        // os métodos admin têm @PreAuthorize("hasRole('ADMIN')") próprio)
+                        .requestMatchers("/api/v1/payments/**").hasAnyRole("MERCHANT", "ADMIN")
+                        .requestMatchers("/api/v1/merchants/**").hasAnyRole("MERCHANT", "ADMIN")
                         .requestMatchers("/api/v1/webhooks/**").hasRole("MERCHANT")
                         .requestMatchers("/api/v1/reports/**").hasRole("MERCHANT")
 

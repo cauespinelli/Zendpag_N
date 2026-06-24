@@ -25,6 +25,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -60,6 +64,31 @@ public class MerchantController {
         MerchantResponse response = convertToMerchantResponse(merchant);
 
         return ResponseEntity.ok(ApiResponse.success("Merchant profile retrieved", response));
+    }
+
+    @Operation(
+        summary = "List all merchants (admin)",
+        description = "Lists all merchants, paginated. Admin only."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Timed(value = "api.merchants.list", description = "Time taken to list merchants")
+    public ResponseEntity<ApiResponse<Page<MerchantResponse>>> listMerchants(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir) {
+
+        if (page < 0) page = 0;
+        if (size <= 0 || size > 200) size = 20;
+
+        Sort sort = sortDir.equalsIgnoreCase("ASC") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        PageRequest pageRequest = PageRequest.of(page, size, sort);
+
+        Page<MerchantResponse> responses = merchantService.findAll(pageRequest).map(this::convertToMerchantResponse);
+
+        return ResponseEntity.ok(ApiResponse.success("Merchants retrieved", responses));
     }
 
     @Operation(

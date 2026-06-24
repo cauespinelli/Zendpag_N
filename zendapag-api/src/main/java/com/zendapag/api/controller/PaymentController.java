@@ -205,6 +205,31 @@ public class PaymentController {
     }
 
     @Operation(
+        summary = "List all payments (admin)",
+        description = "Lists payments from all merchants, paginated. Admin only."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Timed(value = "api.payments.list.all", description = "Time taken to list all payments")
+    public ResponseEntity<ApiResponse<Page<PaymentResponse>>> listAllPayments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+
+        if (page < 0) page = 0;
+        if (size <= 0 || size > 200) size = 50;
+
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
+        PageRequest pageRequest = PageRequest.of(page, size, sort);
+
+        Page<PaymentResponse> responses = paymentService.findAll(pageRequest).map(this::convertToPaymentResponse);
+
+        return ResponseEntity.ok(ApiResponse.success("Payments retrieved", responses));
+    }
+
+    @Operation(
         summary = "Cancel payment",
         description = "Cancels a pending payment. Only pending payments can be cancelled."
     )

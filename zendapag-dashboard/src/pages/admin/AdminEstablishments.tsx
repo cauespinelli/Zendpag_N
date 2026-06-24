@@ -5,7 +5,7 @@
  * (Básico / Empresa / Financeiro / Adquirentes) e menu de ações
  * (% MED, % disputa, retenção, bloquear, ativar). Dados mock.
  */
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import {
   Building2,
   CheckCircle2,
@@ -21,12 +21,14 @@ import {
   PauseCircle,
   PlayCircle,
   X,
+  RefreshCw,
+  Loader,
+  Inbox,
+  WifiOff,
 } from 'lucide-react';
 import {
   brl,
   pct,
-  estabelecimentos as estabSeed,
-  estabelecimentosKpis as kpis,
   pixInAdquirentes,
   pixOutAdquirentes,
 } from '@/mock/admin';
@@ -38,6 +40,11 @@ import {
   GradientButton,
 } from '@/components/admin/ui';
 import { medService } from '@/services/medService';
+import { adminMerchantService } from '@/services/adminMerchantService';
+import { adminHttpError } from '@/services/adminHttp';
+
+// formata dinheiro, ou "—" quando o backend não fornece o valor
+const money = (v: any) => (v != null ? brl(v) : '—');
 
 const statusMeta: Record<string, { tone: any; label: string }> = {
   ativo: { tone: 'success', label: 'Ativo' },
@@ -225,7 +232,7 @@ const EditModal: React.FC<{ estab: any; onClose: () => void; onSave: (id: string
               <ReadField label="CNPJ / CPF" value={estab.documento} />
               <ReadField label="Tipo" value={tipoLabel(estab.tipo)} />
               <ReadField label="Data de cadastro" value={estab.criadoEm} />
-              <ReadField label="Volume no mês" value={<span className="tabular-nums">{brl(estab.volumeMes)}</span>} />
+              <ReadField label="Volume no mês" value={<span className="tabular-nums">{money(estab.volumeMes)}</span>} />
               <ReadField label="Adquirentes ativos" value={estab.adquirentes.length ? estab.adquirentes.join(', ') : 'Nenhum'} className="col-span-2" />
             </div>
           )}
@@ -236,15 +243,15 @@ const EditModal: React.FC<{ estab: any; onClose: () => void; onSave: (id: string
               <div className="grid grid-cols-3 gap-4">
                 <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
                   <p className="text-xs text-emerald-700">Saldo disponível</p>
-                  <p className="text-lg font-bold text-emerald-800 tabular-nums mt-1">{brl(estab.saldoDisponivel)}</p>
+                  <p className="text-lg font-bold text-emerald-800 tabular-nums mt-1">{money(estab.saldoDisponivel)}</p>
                 </div>
                 <div className="rounded-xl bg-amber-50 border border-amber-100 p-4">
                   <p className="text-xs text-amber-700">Saldo pendente</p>
-                  <p className="text-lg font-bold text-amber-800 tabular-nums mt-1">{brl(estab.saldoPendente)}</p>
+                  <p className="text-lg font-bold text-amber-800 tabular-nums mt-1">{money(estab.saldoPendente)}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
                   <p className="text-xs text-slate-500">Saldo retido</p>
-                  <p className="text-lg font-bold text-slate-700 tabular-nums mt-1">{brl(estab.saldoRetido)}</p>
+                  <p className="text-lg font-bold text-slate-700 tabular-nums mt-1">{money(estab.saldoRetido)}</p>
                 </div>
               </div>
             </div>
@@ -299,28 +306,39 @@ const AdminEstablishments: React.FC = () => {
   const [editing, setEditing] = useState<any>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Estabelecimentos em estado (para persistir edições, ex.: adquirentes)
-  const [estabs, setEstabs] = useState(estabSeed);
+  // Estabelecimentos vindos do backend (GET /merchants, ADMIN)
+  const [estabs, setEstabs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
-  // Salva a seleção de adquirentes (PIX IN / PIX OUT) no estabelecimento.
+  const carregar = useCallback(async () => {
+    setLoading(true); setErro(null);
+    try { setEstabs(await adminMerchantService.listAll()); }
+    catch (e: any) { setErro(adminHttpError(e)); setEstabs([]); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { carregar(); }, [carregar]);
+
+  // Persistência local da seleção de adquirentes (backend ainda não tem endpoint)
   const handleSaveAcq = (id: string, acqIn: string[], acqOut: string[]) => {
     setEstabs((prev) => prev.map((e) => (e.id === id ? { ...e, adquirentes: acqIn, adquirentesOut: acqOut } : e)));
-    setToast('Adquirentes salvos com sucesso');
-    setTimeout(() => setToast(null), 2500);
+    setToast('Adquirentes salvos (apenas nesta sessão — sem endpoint no backend ainda)');
+    setTimeout(() => setToast(null), 3000);
   };
 
-  // MED por estabelecimento — vem do medService (mock hoje, API de disputa depois).
-  // Inicia com os valores do seed para não piscar; o service sobrescreve ao carregar.
-  const [medMap, setMedMap] = useState<Record<string, { medPct: number; disputaPct: number }>>(() =>
-    estabSeed.reduce((acc, e) => { acc[e.id] = { medPct: e.medPct, disputaPct: e.disputaPct }; return acc; }, {} as any)
-  );
-
+  // MED por estabelecimento — via medService (mock/API de disputa). Para ids reais
+  // do backend ainda não há índice, então fica "—".
+  const [medMap, setMedMap] = useState<Record<string, { medPct: number; disputaPct: number }>>({});
   useEffect(() => {
-    medService
-      .getMedIndices(estabSeed.map((e) => e.id))
-      .then(setMedMap)
-      .catch(() => {/* mantém os valores do seed em caso de falha */});
-  }, []);
+    if (!estabs.length) return;
+    medService.getMedIndices(estabs.map((e) => e.id)).then(setMedMap).catch(() => {});
+  }, [estabs]);
+
+  // KPIs calculados a partir dos dados carregados
+  const kpis = useMemo(() => {
+    const by = (s: string) => estabs.filter((e) => e.status === s).length;
+    return { total: estabs.length, ativos: by('ativo'), emAnalise: by('analise'), bloqueados: by('bloqueado'), restritos: by('restrito') };
+  }, [estabs]);
 
   const handleAction = (tipo: string, estab: any) => {
     const labels: Record<string, string> = {
@@ -353,15 +371,20 @@ const AdminEstablishments: React.FC = () => {
     <div>
       <PageHeader
         title="Estabelecimentos"
-        subtitle={`${kpis.total.toLocaleString('pt-BR')} contas cadastradas`}
+        subtitle={`${kpis.total.toLocaleString('pt-BR')} cadastrados`}
+        action={
+          <button onClick={carregar} disabled={loading} className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors disabled:opacity-50">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Atualizar
+          </button>
+        }
       />
 
-      {/* Cards */}
+      {/* Cards (calculados dos dados carregados) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Ativos" value={kpis.ativos.toLocaleString('pt-BR')} accent="emerald" icon={<CheckCircle2 size={20} />} hint={`${kpis.total.toLocaleString('pt-BR')} no total`} />
-        <StatCard label="Em análise (compliance)" value={kpis.emAnalise.toLocaleString('pt-BR')} accent="amber" icon={<Clock size={20} />} hint={`${kpis.documentosPendentes} docs pendentes`} />
-        <StatCard label="Bloqueados" value={kpis.bloqueados.toLocaleString('pt-BR')} accent="rose" icon={<Ban size={20} />} />
-        <StatCard label="Saldo retido total" value={brl(kpis.saldoRetido)} accent="violet" icon={<Lock size={20} />} hint={`Saldo total: ${brl(kpis.saldoTotal)}`} />
+        <StatCard label="Total" value={kpis.total.toLocaleString('pt-BR')} accent="blue" icon={<Building2 size={20} />} />
+        <StatCard label="Ativos" value={kpis.ativos.toLocaleString('pt-BR')} accent="emerald" icon={<CheckCircle2 size={20} />} />
+        <StatCard label="Em análise" value={kpis.emAnalise.toLocaleString('pt-BR')} accent="amber" icon={<Clock size={20} />} hint="Aguardando compliance" />
+        <StatCard label="Bloqueados" value={kpis.bloqueados.toLocaleString('pt-BR')} accent="rose" icon={<Ban size={20} />} hint={`${kpis.restritos} restritos`} />
       </div>
 
       {/* Tabela */}
@@ -392,6 +415,19 @@ const AdminEstablishments: React.FC = () => {
           ))}
         </div>
 
+        {loading ? (
+          <div className="px-5 py-16 flex flex-col items-center justify-center text-center">
+            <Loader size={26} className="text-blue-500 animate-spin mb-3" />
+            <p className="text-sm text-slate-500">Carregando estabelecimentos do backend...</p>
+          </div>
+        ) : erro ? (
+          <div className="px-5 py-16 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 mb-3"><WifiOff size={22} /></div>
+            <p className="text-sm font-medium text-slate-700">Não foi possível carregar os estabelecimentos</p>
+            <p className="text-xs text-slate-400 mt-1 max-w-md">{erro}</p>
+            <button onClick={carregar} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg"><RefreshCw size={15} /> Tentar novamente</button>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -425,16 +461,17 @@ const AdminEstablishments: React.FC = () => {
                   <td className="px-5 py-3.5">
                     <StatusBadge tone={statusMeta[e.status].tone}>{statusMeta[e.status].label}</StatusBadge>
                   </td>
-                  <td className="px-5 py-3.5 text-right tabular-nums font-medium text-slate-700">{brl(e.saldoDisponivel)}</td>
+                  <td className="px-5 py-3.5 text-right tabular-nums font-medium text-slate-700">{e.saldoDisponivel != null ? brl(e.saldoDisponivel) : <span className="text-slate-300">—</span>}</td>
                   <td className="px-5 py-3.5 text-right tabular-nums">
                     {(() => {
                       const med = medMap[e.id]?.medPct ?? e.medPct;
                       const disp = medMap[e.id]?.disputaPct ?? e.disputaPct;
+                      if (med == null && disp == null) return <span className="text-slate-300">—</span>;
                       return (
                         <span>
-                          <span className={med > 3 ? 'text-rose-600 font-medium' : 'text-slate-600'}>{pct(med)}</span>
+                          <span className={med > 3 ? 'text-rose-600 font-medium' : 'text-slate-600'}>{med != null ? pct(med) : '—'}</span>
                           <span className="text-slate-300"> / </span>
-                          <span className="text-slate-500">{pct(disp)}</span>
+                          <span className="text-slate-500">{disp != null ? pct(disp) : '—'}</span>
                         </span>
                       );
                     })()}
@@ -459,14 +496,18 @@ const AdminEstablishments: React.FC = () => {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-slate-400 text-sm">
-                    Nenhum estabelecimento encontrado.
+                  <td colSpan={7} className="px-5 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-400">
+                      <Inbox size={26} className="mb-2 text-slate-300" />
+                      <p className="text-sm">{estabs.length === 0 ? 'Nenhum estabelecimento no backend.' : 'Nenhum estabelecimento com os filtros atuais.'}</p>
+                    </div>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        )}
       </AdminCard>
 
       {editing && <EditModal estab={editing} onClose={() => setEditing(null)} onSave={handleSaveAcq} />}

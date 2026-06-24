@@ -68,6 +68,12 @@ public class PaymentService {
         return paymentRepository.findByMerchant(merchant, pageable);
     }
 
+    /** Lista todos os pagamentos (uso administrativo). */
+    @Transactional(readOnly = true)
+    public Page<Payment> findAll(Pageable pageable) {
+        return paymentRepository.findAll(pageable);
+    }
+
     @Transactional(readOnly = true)
     public Page<Payment> findByMerchantAndStatus(Merchant merchant, PaymentStatus status, Pageable pageable) {
         return paymentRepository.findByMerchantAndStatus(merchant, status, pageable);
