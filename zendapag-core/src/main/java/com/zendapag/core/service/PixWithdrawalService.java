@@ -82,6 +82,20 @@ public class PixWithdrawalService {
         return convertToResponse(withdrawalRepository.save(w));
     }
 
+    /**
+     * Aprova um saque pendente (ação do Admin Master), movendo-o para processamento.
+     */
+    @Transactional
+    public PixWithdrawalResponse approveWithdrawal(UUID id) {
+        PixWithdrawal w = withdrawalRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Withdrawal not found: " + id));
+        if (w.getStatus() != WithdrawalStatus.PENDING) {
+            throw new BusinessException("Only PENDING withdrawals can be approved");
+        }
+        w.startProcessing();
+        return convertToResponse(withdrawalRepository.save(w));
+    }
+
     @Transactional
     public void processPixWithdrawal(String wid) throws BusinessException {
         PixWithdrawal w = withdrawalRepository.findByReferenceId(wid).orElseThrow(() -> new ResourceNotFoundException("Not found"));

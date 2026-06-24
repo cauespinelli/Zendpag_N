@@ -229,6 +229,7 @@ public class PixWithdrawalController {
     })
     @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MERCHANT') or hasRole('USER')")
     @Timed(value = "api.withdrawals.cancel", description = "Time taken to cancel withdrawal")
     public ResponseEntity<ApiResponse<PixWithdrawalResponse>> cancelWithdrawal(
             @PathVariable @Parameter(description = "Withdrawal ID") UUID id,
@@ -249,6 +250,42 @@ public class PixWithdrawalController {
         } catch (Exception e) {
             log.error("Unexpected error cancelling withdrawal: {}", e.getMessage(), e);
             throw new BusinessException("Failed to cancel withdrawal: " + e.getMessage());
+        }
+    }
+
+    @Operation(
+        summary = "Approve withdrawal",
+        description = "Approves a pending withdrawal, moving it to processing. Admin only."
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Withdrawal approved successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Withdrawal cannot be approved"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Withdrawal not found"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Authentication required"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Timed(value = "api.withdrawals.approve", description = "Time taken to approve withdrawal")
+    public ResponseEntity<ApiResponse<PixWithdrawalResponse>> approveWithdrawal(
+            @PathVariable @Parameter(description = "Withdrawal ID") UUID id) {
+
+        log.info("Approving withdrawal: {}", id);
+
+        try {
+            PixWithdrawalResponse response = withdrawalService.approveWithdrawal(id);
+
+            log.info("Withdrawal approved successfully: {}", id);
+
+            return ResponseEntity.ok(ApiResponse.success("Withdrawal approved successfully", response));
+
+        } catch (BusinessException e) {
+            log.warn("Business error approving withdrawal: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error approving withdrawal: {}", e.getMessage(), e);
+            throw new BusinessException("Failed to approve withdrawal: " + e.getMessage());
         }
     }
 }
