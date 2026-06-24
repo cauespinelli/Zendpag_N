@@ -143,7 +143,7 @@ public class PixWithdrawal extends BaseEntity {
 
     // Metadata
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(name = "metadata")
     private Map<String, Object> metadata = new HashMap<>();
 
     // Security fields

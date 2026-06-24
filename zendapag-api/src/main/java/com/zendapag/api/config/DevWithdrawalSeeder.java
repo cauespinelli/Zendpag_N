@@ -45,6 +45,18 @@ public class DevWithdrawalSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        try {
+            seed();
+        } catch (Exception e) {
+            // Um seeder de dev NUNCA deve impedir o app de subir. Causa comum:
+            // Redis fora do ar (consultas @Cacheable). O app segue normalmente.
+            log.warn("[DevWithdrawalSeeder] Não foi possível criar o saque de teste: {} "
+                + "(geralmente Redis fora do ar — suba o Redis e reinicie). App segue normalmente.",
+                e.getMessage());
+        }
+    }
+
+    private void seed() {
         if (withdrawalRepository.findByReferenceId(SEED_REF).isPresent()) {
             log.info("[DevWithdrawalSeeder] Saque de teste já existe ({}) — nada a fazer.", SEED_REF);
             return;

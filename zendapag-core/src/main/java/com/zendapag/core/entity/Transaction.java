@@ -132,7 +132,7 @@ public class Transaction extends BaseEntity {
 
     // Metadata
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(name = "metadata")
     private Map<String, Object> metadata = new HashMap<>();
 
     // Additional transaction details

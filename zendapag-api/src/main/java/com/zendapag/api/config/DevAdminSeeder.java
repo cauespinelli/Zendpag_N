@@ -47,6 +47,15 @@ public class DevAdminSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        try {
+            seed();
+        } catch (Exception e) {
+            // Um seeder de dev NUNCA deve impedir o app de subir.
+            log.warn("[DevAdminSeeder] Não foi possível criar o usuário admin: {}. App segue normalmente.", e.getMessage());
+        }
+    }
+
+    private void seed() {
         if (userRepository.existsByEmail(adminEmail)) {
             log.info("[DevAdminSeeder] Usuário admin de dev já existe: {} — nada a fazer.", adminEmail);
             return;

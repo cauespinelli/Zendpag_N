@@ -60,11 +60,11 @@ public class Webhook extends BaseEntity {
 
     // Request Information
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", columnDefinition = "jsonb")
+    @Column(name = "payload")
     private Map<String, Object> payload = new HashMap<>();
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "headers", columnDefinition = "jsonb")
+    @Column(name = "headers")
     private Map<String, String> headers = new HashMap<>();
 
     @Size(max = 255, message = "Signature must be at most 255 characters")
@@ -79,7 +79,7 @@ public class Webhook extends BaseEntity {
     private String responseBody;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "response_headers", columnDefinition = "jsonb")
+    @Column(name = "response_headers")
     private Map<String, String> responseHeaders = new HashMap<>();
 
     @Column(name = "response_time_ms")
@@ -122,7 +122,7 @@ public class Webhook extends BaseEntity {
 
     // Metadata
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(name = "metadata")
     private Map<String, Object> metadata = new HashMap<>();
 
     // External References

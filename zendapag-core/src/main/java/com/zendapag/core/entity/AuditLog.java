@@ -89,15 +89,15 @@ public class AuditLog {
     private String description;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "old_values", columnDefinition = "jsonb")
+    @Column(name = "old_values")
     private Map<String, Object> oldValues = new HashMap<>();
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "new_values", columnDefinition = "jsonb")
+    @Column(name = "new_values")
     private Map<String, Object> newValues = new HashMap<>();
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(name = "metadata")
     private Map<String, Object> metadata = new HashMap<>();
 
     // Risk and Security

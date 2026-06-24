@@ -127,7 +127,7 @@ public class Customer extends BaseEntity {
 
     // Additional Data
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(name = "metadata")
     private Map<String, Object> metadata = new HashMap<>();
 
     @Size(max = 1000, message = "Notes must be at most 1000 characters")

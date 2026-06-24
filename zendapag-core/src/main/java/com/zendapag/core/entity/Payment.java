@@ -139,7 +139,7 @@ public class Payment extends BaseEntity {
 
     // Additional Data
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(name = "metadata")
     private Map<String, Object> metadata = new HashMap<>();
 
     // Customer Information (for anonymous payments)
