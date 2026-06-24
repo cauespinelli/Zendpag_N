@@ -452,3 +452,114 @@ export const saques = [
     prazo: '15-30 min', solicitadoEm: '2026-06-22 11:25', motivoRecusa: null,
   },
 ];
+
+// ───────────────────── PAINEL UNIFICADO (RISCO) ─────────────────────
+// Disputas (chargeback de cartão) + MEDs (Mecanismo Especial de Devolução
+// do Pix) numa fila única, mais os bloqueios cautelares aplicados pelo
+// Admin Master sobre estabelecimentos de risco.
+
+export type RiscoTipo = 'med' | 'disputa';
+export type RiscoStatus =
+  | 'aberto'
+  | 'em_analise'
+  | 'contestado'
+  | 'devolvido'
+  | 'ganha'
+  | 'perdida'
+  | 'encerrado';
+
+export const painelKpis = {
+  medsAbertos: 5,
+  medsValor: 96_840.0,
+  disputasAbertas: 4,
+  disputasValor: 41_790.0,
+  taxaMedPlataforma: 1.4,
+  bloqueiosAtivos: 3,
+  saldoBloqueado: 480_940.0,
+};
+
+export const riscoItens = [
+  {
+    id: 'MED-7741', tipo: 'med' as RiscoTipo, estabelecimento: 'FitShop Suplementos', documento: '45.612.378/0001-55',
+    cliente: 'Renata Aguiar', valor: 2_890.0, metodo: 'pix', adquirente: 'Cielo', txId: 'TX-8839102',
+    motivo: 'Golpe/fraude relatada pelo recebedor', status: 'aberto' as RiscoStatus,
+    prazoResposta: '2026-06-26', abertoEm: '2026-06-23 10:14',
+  },
+  {
+    id: 'MED-7740', tipo: 'med' as RiscoTipo, estabelecimento: 'MegaImports Eletro', documento: '22.333.444/0001-55',
+    cliente: 'Eduardo Pinto', valor: 38_400.0, metodo: 'pix', adquirente: 'Adiq', txId: 'TX-8838771',
+    motivo: 'Cliente desconhece a transação', status: 'em_analise' as RiscoStatus,
+    prazoResposta: '2026-06-25', abertoEm: '2026-06-22 16:40',
+  },
+  {
+    id: 'MED-7739', tipo: 'med' as RiscoTipo, estabelecimento: 'GamerZone Store', documento: '11.222.333/0001-44',
+    cliente: 'Paula Martins', valor: 1_290.0, metodo: 'pix', adquirente: 'Stone', txId: 'TX-8838540',
+    motivo: 'Suspeita de coação', status: 'aberto' as RiscoStatus,
+    prazoResposta: '2026-06-24', abertoEm: '2026-06-22 09:05',
+  },
+  {
+    id: 'MED-7738', tipo: 'med' as RiscoTipo, estabelecimento: 'FitShop Suplementos', documento: '45.612.378/0001-55',
+    cliente: 'Tiago Barros', valor: 4_560.0, metodo: 'pix', adquirente: 'Cielo', txId: 'TX-8837912',
+    motivo: 'Golpe/fraude relatada pelo recebedor', status: 'devolvido' as RiscoStatus,
+    prazoResposta: '2026-06-21', abertoEm: '2026-06-19 14:22',
+  },
+  {
+    id: 'MED-7737', tipo: 'med' as RiscoTipo, estabelecimento: 'Loja Aurora Digital', documento: '12.345.678/0001-90',
+    cliente: 'Sandra Lima', valor: 980.0, metodo: 'pix', adquirente: 'Adiq', txId: 'TX-8837004',
+    motivo: 'Cliente desconhece a transação', status: 'contestado' as RiscoStatus,
+    prazoResposta: '2026-06-24', abertoEm: '2026-06-21 11:48',
+  },
+  {
+    id: 'DSP-4419', tipo: 'disputa' as RiscoTipo, estabelecimento: 'EduMaster Cursos', documento: '98.765.432/0001-21',
+    cliente: 'Marcos Vieira', valor: 1_299.0, metodo: 'cartao', adquirente: 'Cielo', txId: 'TX-8836650',
+    motivo: 'Não reconhece a compra', status: 'aberto' as RiscoStatus,
+    prazoResposta: '2026-06-27', abertoEm: '2026-06-23 08:30',
+  },
+  {
+    id: 'DSP-4418', tipo: 'disputa' as RiscoTipo, estabelecimento: 'Bella Cosméticos', documento: '78.945.612/0001-33',
+    cliente: 'Larissa Gomes', valor: 459.9, metodo: 'cartao', adquirente: 'Pagar.me', txId: 'TX-8836120',
+    motivo: 'Produto não recebido', status: 'em_analise' as RiscoStatus,
+    prazoResposta: '2026-06-26', abertoEm: '2026-06-22 13:10',
+  },
+  {
+    id: 'DSP-4417', tipo: 'disputa' as RiscoTipo, estabelecimento: 'TechParts BR', documento: '321.987.650-12',
+    cliente: 'André Souza', valor: 899.0, metodo: 'cartao', adquirente: 'Rede', txId: 'TX-8835880',
+    motivo: 'Cobrança duplicada', status: 'ganha' as RiscoStatus,
+    prazoResposta: '2026-06-20', abertoEm: '2026-06-18 10:02',
+  },
+  {
+    id: 'DSP-4416', tipo: 'disputa' as RiscoTipo, estabelecimento: 'MegaImports Eletro', documento: '22.333.444/0001-55',
+    cliente: 'Fernanda Reis', valor: 2_150.0, metodo: 'cartao', adquirente: 'Adiq', txId: 'TX-8835411',
+    motivo: 'Não reconhece a compra', status: 'perdida' as RiscoStatus,
+    prazoResposta: '2026-06-19', abertoEm: '2026-06-17 15:33',
+  },
+];
+
+export type BloqueioStatus = 'ativo' | 'liberado';
+
+export const bloqueiosCautelares = [
+  {
+    id: 'BLQ-3012', estabelecimento: 'MegaImports Eletro', documento: '22.333.444/0001-55',
+    motivo: 'Índice de MED em 6,4% (limite 3%) + disputa perdida de alto valor',
+    saldoRetido: 198_420.0, medPct: 6.4, aplicadoEm: '2026-06-22 16:55', aplicadoPor: 'Admin Master',
+    status: 'ativo' as BloqueioStatus,
+  },
+  {
+    id: 'BLQ-3011', estabelecimento: 'FitShop Suplementos', documento: '45.612.378/0001-55',
+    motivo: 'Picos de MED por golpe relatado; retenção preventiva durante apuração',
+    saldoRetido: 84_300.0, medPct: 3.8, aplicadoEm: '2026-06-21 09:40', aplicadoPor: 'Carla Menezes',
+    status: 'ativo' as BloqueioStatus,
+  },
+  {
+    id: 'BLQ-3010', estabelecimento: 'Loja Aurora Digital', documento: '12.345.678/0001-90',
+    motivo: 'Verificação de KYB após mudança de sócio',
+    saldoRetido: 198_220.0, medPct: 0.8, aplicadoEm: '2026-06-20 11:15', aplicadoPor: 'Admin Master',
+    status: 'ativo' as BloqueioStatus,
+  },
+  {
+    id: 'BLQ-3009', estabelecimento: 'GamerZone Store', documento: '11.222.333/0001-44',
+    motivo: 'Suspeita de chargeback em série — apuração concluída sem irregularidade',
+    saldoRetido: 0, medPct: 1.0, aplicadoEm: '2026-06-15 14:00', aplicadoPor: 'Carla Menezes',
+    status: 'liberado' as BloqueioStatus,
+  },
+];
