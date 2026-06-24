@@ -4,9 +4,9 @@
  * Endpoint real: GET /payments/all (ADMIN) — listagem paginada de todos os
  * pagamentos. Mapeia PaymentResponse -> forma da tela.
  *
- * Observações de impedância: o PaymentResponse não traz o nome do
- * estabelecimento nem o adquirente; pagamentos aqui são Pix. Esses campos
- * vêm como "—"/Pix.
+ * Observações de impedância: o PaymentResponse não traz o adquirente e os
+ * pagamentos aqui são Pix (vêm como "—"/Pix). O nome do estabelecimento
+ * (merchantName) já é retornado pelo backend.
  */
 import { adminHttp, unwrapPageContent } from './adminHttp';
 
@@ -35,7 +35,7 @@ const mapPayment = (p: any) => {
     tipo: 'geral',
     cliente: p.customerName || '—',
     documento: p.customerDocument || '—',
-    estabelecimento: '—', // backend não retorna o nome do merchant no PaymentResponse
+    estabelecimento: p.merchantName || '—',
     metodo: 'pix',
     status: statusMap[p.status] || 'pendente',
     statusRaw: p.status,

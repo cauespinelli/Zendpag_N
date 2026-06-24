@@ -176,7 +176,7 @@ const AdminTransactions: React.FC = () => {
                   <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50/60">
                     <td className="px-5 py-3.5">
                       <p className="font-medium text-slate-700">{t.id}</p>
-                      <p className="text-xs text-slate-400">{t.cliente} · {t.documento}</p>
+                      <p className="text-xs text-slate-400">{t.cliente} · {t.estabelecimento}</p>
                       <p className="text-[11px] text-slate-300 tabular-nums">{t.criadoEm}</p>
                     </td>
                     <td className="px-5 py-3.5">

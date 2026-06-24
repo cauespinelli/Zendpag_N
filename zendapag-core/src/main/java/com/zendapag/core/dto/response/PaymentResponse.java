@@ -14,6 +14,10 @@ public class PaymentResponse {
     private String status;
     private String description;
 
+    // Merchant (estabelecimento)
+    private String merchantId;
+    private String merchantName;
+
     // PIX specific fields
     private String pixKey;
     private String pixKeyType;
@@ -208,5 +212,21 @@ public class PaymentResponse {
 
     public void setProcessedAt(Instant processedAt) {
         this.processedAt = processedAt;
+    }
+
+    public String getMerchantId() {
+        return merchantId;
+    }
+
+    public void setMerchantId(String merchantId) {
+        this.merchantId = merchantId;
+    }
+
+    public String getMerchantName() {
+        return merchantName;
+    }
+
+    public void setMerchantName(String merchantName) {
+        this.merchantName = merchantName;
     }
 }

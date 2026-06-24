@@ -389,6 +389,11 @@ public class PaymentController {
         response.setCurrency(payment.getCurrency());
         response.setStatus(payment.getStatus().name());
         response.setDescription(payment.getDescription());
+        // Estabelecimento (merchant) — sessão aberta via OSIV permite o acesso lazy
+        if (payment.getMerchant() != null) {
+            response.setMerchantId(payment.getMerchant().getId().toString());
+            response.setMerchantName(payment.getMerchant().getName());
+        }
         response.setPixKey(payment.getPixKey());
         response.setPixQrCode(payment.getPixQrCode());
         response.setPixTransactionId(payment.getPixTransactionId());
