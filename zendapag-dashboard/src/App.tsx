@@ -49,6 +49,7 @@ const AdminLayout = React.lazy(() => import('@/components/admin/AdminLayout'));
 const AdminDashboard = React.lazy(() => import('@/pages/admin/AdminDashboard'));
 const AdminEstablishments = React.lazy(() => import('@/pages/admin/AdminEstablishments'));
 const AdminTransactions = React.lazy(() => import('@/pages/admin/AdminTransactions'));
+const AdminWithdrawals = React.lazy(() => import('@/pages/admin/AdminWithdrawals'));
 
 // React Query client configuration
 const queryClient = new QueryClient({
@@ -142,6 +143,7 @@ const App: React.FC = () => {
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="establishments" element={<AdminEstablishments />} />
                     <Route path="transactions" element={<AdminTransactions />} />
+                    <Route path="withdrawals" element={<AdminWithdrawals />} />
                   </Route>
 
                   {/* Protected routes - New Layout */}

@@ -346,3 +346,109 @@ export const transacoes = [
     criadoEm: '2026-06-23 09:02',
   },
 ];
+
+// ──────────────────────────────── SAQUES ────────────────────────────────
+// Visão do Admin Master: solicitações de saque de TODOS os estabelecimentos.
+// O admin aprova, recusa ou acompanha o processamento.
+
+export type SaqueMetodo = 'pix' | 'ted' | 'cripto';
+export type SaqueStatus = 'pendente' | 'aprovado' | 'processando' | 'concluido' | 'recusado';
+export type ChaveTipo = 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria' | 'conta' | 'wallet';
+
+export const saquesKpis = {
+  solicitadoHoje: 487_320.0,
+  pendentesQtd: 5,
+  pendentesValor: 318_740.0,
+  processandoQtd: 3,
+  processandoValor: 96_180.0,
+  concluidoMes: 4_812_990.0,
+  taxasArrecadadas: 9_624.5,
+};
+
+const chaveLabel: Record<ChaveTipo, string> = {
+  cpf: 'CPF',
+  cnpj: 'CNPJ',
+  email: 'E-mail',
+  telefone: 'Telefone',
+  aleatoria: 'Chave aleatória',
+  conta: 'Conta bancária',
+  wallet: 'Carteira',
+};
+
+export const chaveTipoLabel = (t: ChaveTipo): string => chaveLabel[t];
+
+export const saques = [
+  {
+    id: 'SAQ-55210', estabelecimento: 'Loja Aurora Digital', documento: '12.345.678/0001-90',
+    metodo: 'pix' as SaqueMetodo, chaveTipo: 'cnpj' as ChaveTipo, chave: '12.345.678/0001-90',
+    bruto: 150_000.0, taxa: 0, liquido: 150_000.0, status: 'pendente' as SaqueStatus,
+    prazo: 'Imediato', solicitadoEm: '2026-06-23 14:40', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55209', estabelecimento: 'FitShop Suplementos', documento: '45.612.378/0001-55',
+    metodo: 'pix' as SaqueMetodo, chaveTipo: 'email' as ChaveTipo, chave: 'adm@fitshop.com.br',
+    bruto: 84_300.0, taxa: 0, liquido: 84_300.0, status: 'pendente' as SaqueStatus,
+    prazo: 'Imediato', solicitadoEm: '2026-06-23 14:12', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55208', estabelecimento: 'TechParts BR', documento: '321.987.650-12',
+    metodo: 'ted' as SaqueMetodo, chaveTipo: 'conta' as ChaveTipo, chave: 'Banco 341 · Ag 1234 · CC 56789-0',
+    bruto: 48_120.0, taxa: 12.9, liquido: 48_107.1, status: 'pendente' as SaqueStatus,
+    prazo: 'D+1', solicitadoEm: '2026-06-23 13:50', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55207', estabelecimento: 'GamerZone Store', documento: '11.222.333/0001-44',
+    metodo: 'pix' as SaqueMetodo, chaveTipo: 'aleatoria' as ChaveTipo, chave: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    bruto: 28_700.0, taxa: 0, liquido: 28_700.0, status: 'pendente' as SaqueStatus,
+    prazo: 'Imediato', solicitadoEm: '2026-06-23 13:22', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55206', estabelecimento: 'Pet Amigo Online', documento: '456.789.120-33',
+    metodo: 'cripto' as SaqueMetodo, chaveTipo: 'wallet' as ChaveTipo, chave: 'TRC20 · TJ8x...9hF2',
+    bruto: 7_620.0, taxa: 38.1, liquido: 7_581.9, status: 'pendente' as SaqueStatus,
+    prazo: '15-30 min', solicitadoEm: '2026-06-23 12:58', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55205', estabelecimento: 'EduMaster Cursos', documento: '98.765.432/0001-21',
+    metodo: 'pix' as SaqueMetodo, chaveTipo: 'cnpj' as ChaveTipo, chave: '98.765.432/0001-21',
+    bruto: 62_400.0, taxa: 0, liquido: 62_400.0, status: 'processando' as SaqueStatus,
+    prazo: 'Imediato', solicitadoEm: '2026-06-23 11:30', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55204', estabelecimento: 'Bella Cosméticos', documento: '78.945.612/0001-33',
+    metodo: 'ted' as SaqueMetodo, chaveTipo: 'conta' as ChaveTipo, chave: 'Banco 237 · Ag 0567 · CC 12345-6',
+    bruto: 23_180.0, taxa: 12.9, liquido: 23_167.1, status: 'processando' as SaqueStatus,
+    prazo: 'D+1', solicitadoEm: '2026-06-23 10:48', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55203', estabelecimento: 'Loja Aurora Digital', documento: '12.345.678/0001-90',
+    metodo: 'pix' as SaqueMetodo, chaveTipo: 'cnpj' as ChaveTipo, chave: '12.345.678/0001-90',
+    bruto: 10_600.0, taxa: 0, liquido: 10_600.0, status: 'processando' as SaqueStatus,
+    prazo: 'Imediato', solicitadoEm: '2026-06-23 09:15', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55202', estabelecimento: 'EduMaster Cursos', documento: '98.765.432/0001-21',
+    metodo: 'pix' as SaqueMetodo, chaveTipo: 'email' as ChaveTipo, chave: 'contato@edumaster.com.br',
+    bruto: 94_200.0, taxa: 0, liquido: 94_200.0, status: 'concluido' as SaqueStatus,
+    prazo: 'Imediato', solicitadoEm: '2026-06-22 17:04', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55201', estabelecimento: 'GamerZone Store', documento: '11.222.333/0001-44',
+    metodo: 'pix' as SaqueMetodo, chaveTipo: 'telefone' as ChaveTipo, chave: '(51) 98432-1199',
+    bruto: 41_800.0, taxa: 0, liquido: 41_800.0, status: 'concluido' as SaqueStatus,
+    prazo: 'Imediato', solicitadoEm: '2026-06-22 15:39', motivoRecusa: null,
+  },
+  {
+    id: 'SAQ-55200', estabelecimento: 'MegaImports Eletro', documento: '22.333.444/0001-55',
+    metodo: 'pix' as SaqueMetodo, chaveTipo: 'cnpj' as ChaveTipo, chave: '22.333.444/0001-55',
+    bruto: 198_420.0, taxa: 0, liquido: 198_420.0, status: 'recusado' as SaqueStatus,
+    prazo: 'Imediato', solicitadoEm: '2026-06-22 14:10',
+    motivoRecusa: 'Conta com bloqueio cautelar por índice de MED acima do limite.',
+  },
+  {
+    id: 'SAQ-55199', estabelecimento: 'TechParts BR', documento: '321.987.650-12',
+    metodo: 'cripto' as SaqueMetodo, chaveTipo: 'wallet' as ChaveTipo, chave: 'TRC20 · TQ2k...4mN8',
+    bruto: 15_900.0, taxa: 79.5, liquido: 15_820.5, status: 'concluido' as SaqueStatus,
+    prazo: '15-30 min', solicitadoEm: '2026-06-22 11:25', motivoRecusa: null,
+  },
+];
