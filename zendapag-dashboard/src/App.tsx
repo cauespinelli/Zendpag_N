@@ -51,6 +51,7 @@ const AdminEstablishments = React.lazy(() => import('@/pages/admin/AdminEstablis
 const AdminTransactions = React.lazy(() => import('@/pages/admin/AdminTransactions'));
 const AdminWithdrawals = React.lazy(() => import('@/pages/admin/AdminWithdrawals'));
 const AdminUnified = React.lazy(() => import('@/pages/admin/AdminUnified'));
+const AdminBulkActions = React.lazy(() => import('@/pages/admin/AdminBulkActions'));
 
 // React Query client configuration
 const queryClient = new QueryClient({
@@ -146,6 +147,7 @@ const App: React.FC = () => {
                     <Route path="transactions" element={<AdminTransactions />} />
                     <Route path="withdrawals" element={<AdminWithdrawals />} />
                     <Route path="management" element={<AdminUnified />} />
+                    <Route path="bulk-actions" element={<AdminBulkActions />} />
                   </Route>
 
                   {/* Protected routes - New Layout */}

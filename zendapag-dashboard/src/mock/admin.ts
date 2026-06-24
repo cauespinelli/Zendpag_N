@@ -563,3 +563,30 @@ export const bloqueiosCautelares = [
     status: 'liberado' as BloqueioStatus,
   },
 ];
+
+// ─────────────────────────── AÇÕES EM MASSA ───────────────────────────
+// Histórico de lotes executados pelo Admin Master sobre vários
+// estabelecimentos de uma vez.
+
+export const lotesExecutados = [
+  {
+    id: 'LOTE-2208', acao: 'Enviar comunicado', detalhe: 'Manutenção programada do Pix em 25/06',
+    qtd: 1107, executadoPor: 'Admin Master', executadoEm: '2026-06-23 09:10', status: 'concluido',
+  },
+  {
+    id: 'LOTE-2207', acao: 'Ajustar retenção', detalhe: 'Retenção definida em 10%',
+    qtd: 12, executadoPor: 'Carla Menezes', executadoEm: '2026-06-22 17:25', status: 'concluido',
+  },
+  {
+    id: 'LOTE-2206', acao: 'Aprovar compliance', detalhe: 'KYB validado em lote',
+    qtd: 34, executadoPor: 'Admin Master', executadoEm: '2026-06-22 11:02', status: 'concluido',
+  },
+  {
+    id: 'LOTE-2205', acao: 'Trocar adquirente', detalhe: 'Roteamento migrado para Stone',
+    qtd: 8, executadoPor: 'Rafael Tó', executadoEm: '2026-06-21 15:48', status: 'parcial',
+  },
+  {
+    id: 'LOTE-2204', acao: 'Exportar selecionados', detalhe: 'CSV com 1.284 estabelecimentos',
+    qtd: 1284, executadoPor: 'Admin Master', executadoEm: '2026-06-20 08:30', status: 'concluido',
+  },
+];
