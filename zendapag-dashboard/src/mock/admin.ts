@@ -957,3 +957,69 @@ export const usuariosAdmin = [
     status: 'inativo' as UsuarioStatus, twoFA: false, ultimoAcesso: '2026-04-02 10:30', criadoEm: '2022-11-28',
   },
 ];
+
+// Catálogo de permissões granulares, agrupadas por área do painel
+export const permissoesCatalogo = [
+  {
+    grupo: 'Operação',
+    permissoes: [
+      { key: 'dashboard.ver', label: 'Ver dashboard' },
+      { key: 'estab.gerenciar', label: 'Gerenciar estabelecimentos' },
+      { key: 'transacoes.ver', label: 'Ver transações' },
+      { key: 'saques.aprovar', label: 'Aprovar / recusar saques' },
+    ],
+  },
+  {
+    grupo: 'Risco',
+    permissoes: [
+      { key: 'risco.ver', label: 'Ver disputas e MEDs' },
+      { key: 'risco.defender', label: 'Defender disputas / MEDs' },
+      { key: 'bloqueio.aplicar', label: 'Aplicar bloqueio cautelar' },
+      { key: 'bloqueio.liberar', label: 'Liberar bloqueio cautelar' },
+    ],
+  },
+  {
+    grupo: 'Gestão',
+    permissoes: [
+      { key: 'massa.executar', label: 'Executar ações em massa' },
+      { key: 'afiliados.gerenciar', label: 'Gerenciar afiliados' },
+      { key: 'gerentes.gerenciar', label: 'Gerenciar gerentes' },
+    ],
+  },
+  {
+    grupo: 'Financeiro',
+    permissoes: [
+      { key: 'extrato.ver', label: 'Ver extrato' },
+      { key: 'relatorios.exportar', label: 'Exportar relatórios' },
+    ],
+  },
+  {
+    grupo: 'Sistema',
+    permissoes: [
+      { key: 'logs.ver', label: 'Ver logs' },
+      { key: 'usuarios.gerenciar', label: 'Gerenciar usuários' },
+      { key: 'permissoes.alterar', label: 'Alterar permissões' },
+    ],
+  },
+];
+
+// Lista linear de todas as chaves (Admin Master recebe todas)
+export const todasPermissoes = permissoesCatalogo.flatMap((g) => g.permissoes.map((p) => p.key));
+
+// Matriz: permissões concedidas por perfil (Admin Master = todas, travado)
+export const permissoesPorPerfil: Record<string, string[]> = {
+  'Admin Master': todasPermissoes,
+  'Gerente de risco': [
+    'dashboard.ver', 'transacoes.ver', 'risco.ver', 'risco.defender',
+    'bloqueio.aplicar', 'bloqueio.liberar', 'logs.ver',
+  ],
+  'Gerente de contas': [
+    'dashboard.ver', 'estab.gerenciar', 'transacoes.ver', 'saques.aprovar', 'afiliados.gerenciar',
+  ],
+  'Financeiro': [
+    'dashboard.ver', 'transacoes.ver', 'extrato.ver', 'relatorios.exportar', 'logs.ver',
+  ],
+  'Suporte': [
+    'dashboard.ver', 'transacoes.ver', 'risco.ver',
+  ],
+};
