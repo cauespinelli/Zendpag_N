@@ -25,7 +25,7 @@ consulta de saldo, webhooks e códigos de erro.
 
 ## 1. Convenções
 
-- **Base URL (exemplo):** `https://api.zendpag.com` — em desenvolvimento, `http://localhost:8080`.
+- **Base URL (exemplo):** `https://api.zendpag.com` — em desenvolvimento, `http://localhost:8093`.
 - **Prefixo de versão:** todas as rotas começam com `/api/v1`.
 - **Formato:** JSON em requisições e respostas (`Content-Type: application/json`).
 - **Moeda:** `BRL` (centavos representados em decimal, ex.: `100.00`).

@@ -1,3 +1,9 @@
+server:
+  # Porta padrão de dev = 8093, alinhada ao proxy do frontend
+  # (zendapag-dashboard/package.json) e ao webhook-sink-url do seeder de dev.
+  # Sobrescrevível por env var em outros ambientes.
+  port: ${SERVER_PORT:8093}
+
 spring:
   main:
     allow-bean-definition-overriding: true
