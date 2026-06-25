@@ -14,6 +14,7 @@ import com.zendapag.core.repository.PixWithdrawalRepository;
 import com.zendapag.core.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
@@ -44,6 +45,10 @@ public class DevDataSeeder implements CommandLineRunner {
     private final PixWithdrawalRepository withdrawalRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /** URL do receptor de webhook em dev (o próprio app). Sobrescrevível por property. */
+    @Value("${zendapag.dev.webhook-sink-url:http://localhost:8093/api/v1/webhooks/receive/dev-sink}")
+    private String webhookSinkUrl;
+
     @Override
     public void run(String... args) {
         try {
@@ -72,10 +77,11 @@ public class DevDataSeeder implements CommandLineRunner {
                 .build()));
 
         // 1) Estabelecimentos (com taxa, webhook e conta)
-        Merchant aurora = merchant("Loja Aurora Digital", "12345678000190", "financeiro@auroradigital.com.br", "0.0199");
-        Merchant edu = merchant("EduMaster Cursos", "98765432000121", "contato@edumaster.com.br", "0.0290");
-        Merchant fit = merchant("FitShop Suplementos", "45612378000155", "adm@fitshop.com.br", "0.0349");
-        Merchant gamer = merchant("GamerZone Store", "11222333000144", "suporte@gamerzone.com.br", "0.0199");
+        // aurora/edu/fit entregam no sink (sucesso); gamer aponta p/ URL morta (falha+retry)
+        Merchant aurora = merchant("Loja Aurora Digital", "12345678000190", "financeiro@auroradigital.com.br", "0.0199", webhookSinkUrl);
+        Merchant edu = merchant("EduMaster Cursos", "98765432000121", "contato@edumaster.com.br", "0.0290", webhookSinkUrl);
+        Merchant fit = merchant("FitShop Suplementos", "45612378000155", "adm@fitshop.com.br", "0.0349", webhookSinkUrl);
+        Merchant gamer = merchant("GamerZone Store", "11222333000144", "suporte@gamerzone.com.br", "0.0199", "http://localhost:59999/dead-endpoint");
 
         Account auroraAcc = account(seller, aurora, "ACC-DEV-0001", new BigDecimal("250000.00"));
         account(seller, edu, "ACC-DEV-0002", BigDecimal.ZERO);
@@ -106,14 +112,14 @@ public class DevDataSeeder implements CommandLineRunner {
         log.warn("[DevDataSeeder] Dados de teste criados: 4 estabelecimentos (c/ conta+taxa), 8 pagamentos e 1 saque PENDING.");
     }
 
-    private Merchant merchant(String name, String document, String email, String feeRate) {
+    private Merchant merchant(String name, String document, String email, String feeRate, String webhookUrl) {
         return merchantRepository.findByDocument(document).orElseGet(() -> {
             Merchant m = new Merchant(name, document, email);
             m.setStatus(MerchantStatus.ACTIVE);
             m.setKycVerified(true);
             m.setTradingName(name);
             m.setFeeRate(new BigDecimal(feeRate));
-            m.setWebhookUrl("https://example.com/zendapag/webhook/" + document);
+            m.setWebhookUrl(webhookUrl);
             m.setWebhookSecret("whsec_dev_" + document);
             return merchantRepository.save(m);
         });
