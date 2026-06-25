@@ -40,6 +40,7 @@ public class PaymentEngineService {
     private final PaymentRepository paymentRepository;
     private final LedgerService ledgerService;
     private final WebhookService webhookService;
+    private final RiskService riskService;
 
     @Transactional
     public Payment approvePayment(UUID id) {
@@ -50,6 +51,18 @@ public class PaymentEngineService {
             throw new BusinessException("Apenas pagamentos PENDING podem ser aprovados (atual: "
                 + payment.getStatus() + ")");
         }
+
+        // 0) Antifraude: HIGH retém o pagamento (fica PENDING para revisão)
+        RiskService.RiskAssessment risk = riskService.assess(payment);
+        if (risk.level() == RiskService.RiskLevel.HIGH) {
+            log.warn("Pagamento {} RETIDO por risco alto (score {}): {}",
+                payment.getReferenceId(), risk.score(), risk.reasons());
+            throw new BusinessException("Pagamento retido por risco alto (score " + risk.score()
+                + "): " + String.join("; ", risk.reasons()));
+        }
+        payment.updateMetadata("risk_level", risk.level().name());
+        payment.updateMetadata("risk_score", risk.score());
+        log.info("Risco do pagamento {}: {} (score {})", payment.getReferenceId(), risk.level(), risk.score());
 
         Merchant merchant = payment.getMerchant();
         BigDecimal gross = payment.getAmount();

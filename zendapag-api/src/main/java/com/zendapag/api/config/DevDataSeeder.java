@@ -97,6 +97,8 @@ public class DevDataSeeder implements CommandLineRunner {
         pay("PAY-SEED-0006", edu, "Camila Reis", "25836914700", "497.00", "17.40", PaymentStatus.REFUNDED);
         pay("PAY-SEED-0007", fit, "Pedro Antunes", "14725836900", "2150.00", "75.25", PaymentStatus.APPROVED);
         pay("PAY-SEED-0008", gamer, "Beatriz Nunes", "74185296300", "899.00", "0.00", PaymentStatus.PENDING);
+        // Alto valor (> R$ 50k) -> risco HIGH -> aprovação é retida
+        pay("PAY-SEED-0009", aurora, "Eduardo Magnata", "11122233344", "60000.00", "0.00", PaymentStatus.PENDING);
 
         // 3) Saque PENDING de teste (conta da Aurora)
         PixWithdrawal w = new PixWithdrawal("WD-SEED-0001", auroraAcc, aurora,

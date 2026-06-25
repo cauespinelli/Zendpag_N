@@ -13,6 +13,7 @@ import com.zendapag.core.exception.BusinessException;
 import com.zendapag.core.service.MerchantService;
 import com.zendapag.core.service.PaymentEngineService;
 import com.zendapag.core.service.PaymentService;
+import com.zendapag.core.service.RiskService;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.micrometer.core.annotation.Timed;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +54,7 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final MerchantService merchantService;
     private final PaymentEngineService paymentEngineService;
+    private final RiskService riskService;
 
     @Operation(
         summary = "Create PIX payment",
@@ -274,6 +276,23 @@ public class PaymentController {
         log.info("Reversing payment (sandbox): {}", id);
         Payment payment = paymentEngineService.refundPayment(id, reason);
         return ResponseEntity.ok(ApiResponse.success("Payment reversed", convertToPaymentResponse(payment)));
+    }
+
+    @Operation(summary = "Risk assessment of a payment (admin)",
+        description = "Retorna nível/score/motivos de risco de um pagamento (sem aprovar).")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/{id}/risk")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> paymentRisk(@PathVariable UUID id) {
+        Payment payment = paymentService.findById(id);
+        RiskService.RiskAssessment a = riskService.assess(payment);
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("paymentId", payment.getId().toString());
+        m.put("referenceId", payment.getReferenceId());
+        m.put("level", a.level().name());
+        m.put("score", a.score());
+        m.put("reasons", a.reasons());
+        return ResponseEntity.ok(ApiResponse.success("Risk assessment", m));
     }
 
     @Operation(
