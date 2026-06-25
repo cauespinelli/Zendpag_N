@@ -30,8 +30,12 @@ export const unwrapPageContent = (res: any): any[] => {
 /** Traduz um erro axios numa mensagem amigável pra tela. */
 export const adminHttpError = (e: any): string => {
   const sc = e?.response?.status;
+  const backendMsg = e?.response?.data?.message;
   if (sc === 401) return 'Sessão não autorizada (401). É necessário login com perfil ADMIN.';
   if (sc === 403) return 'Acesso negado (403). O usuário atual não tem perfil ADMIN.';
   if (!e?.response) return 'Não foi possível alcançar a API. Verifique se o backend está no ar (porta 8093).';
-  return `Erro ao carregar (HTTP ${sc}).`;
+  // Mensagem de negócio vinda do backend (ex.: "Pagamento retido por risco alto...")
+  const generic = ['An unexpected error occurred', 'Internal server error'];
+  if (backendMsg && !generic.includes(backendMsg)) return backendMsg;
+  return `Erro (HTTP ${sc}).`;
 };

@@ -52,6 +52,30 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(status).body(response);
     }
 
+    /**
+     * Exceções de negócio do pacote common (lançadas pelo motor financeiro:
+     * risco, settlement, saque etc.). Retorna 400 com a mensagem real em vez
+     * de cair no catch-all genérico.
+     */
+    @ExceptionHandler(com.zendapag.common.exception.BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCommonBusinessException(
+            com.zendapag.common.exception.BusinessException ex, HttpServletRequest request) {
+
+        log.warn("Business exception: {} at {}", ex.getMessage(), request.getRequestURI());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), "BUSINESS_ERROR");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /** Recurso não encontrado (pacote common) -> 404 com a mensagem real. */
+    @ExceptionHandler(com.zendapag.common.exception.ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCommonResourceNotFound(
+            com.zendapag.common.exception.ResourceNotFoundException ex, HttpServletRequest request) {
+
+        log.warn("Resource not found: {} at {}", ex.getMessage(), request.getRequestURI());
+        ApiResponse<Void> response = ApiResponse.error(ex.getMessage(), "RESOURCE_NOT_FOUND");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(BusinessException.PaymentNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handlePaymentNotFoundException(
             BusinessException.PaymentNotFoundException ex, HttpServletRequest request) {
