@@ -55,6 +55,7 @@ public class PaymentController {
     private final MerchantService merchantService;
     private final PaymentEngineService paymentEngineService;
     private final RiskService riskService;
+    private final com.zendapag.core.service.DisputeService disputeService;
 
     @Operation(
         summary = "Create PIX payment",
@@ -276,6 +277,30 @@ public class PaymentController {
         log.info("Reversing payment (sandbox): {}", id);
         Payment payment = paymentEngineService.refundPayment(id, reason);
         return ResponseEntity.ok(ApiResponse.success("Payment reversed", convertToPaymentResponse(payment)));
+    }
+
+    @Operation(summary = "Open dispute / chargeback (admin/sandbox)",
+        description = "Abre uma disputa (chargeback) sobre um pagamento APROVADO — simula a notificação "
+            + "do PSP/adquirente — e dispara o webhook DISPUTE_CREATED ao estabelecimento.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{id}/dispute")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Timed(value = "api.payments.dispute", description = "Time taken to open a dispute")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> openDispute(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            @RequestParam(required = false) java.math.BigDecimal amount,
+            @RequestParam(required = false) String externalId) {
+        log.info("Opening dispute (sandbox) for payment: {}", id);
+        com.zendapag.core.entity.Dispute dispute = disputeService.openDispute(id, reason, amount, externalId);
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("disputeId", dispute.getId().toString());
+        body.put("externalId", dispute.getExternalId());
+        body.put("status", dispute.getStatus().name());
+        body.put("reason", dispute.getReasonCode());
+        body.put("amount", dispute.getDisputeAmount());
+        body.put("paymentId", id.toString());
+        return ResponseEntity.ok(ApiResponse.success("Dispute opened", body));
     }
 
     @Operation(summary = "Risk assessment of a payment (admin)",

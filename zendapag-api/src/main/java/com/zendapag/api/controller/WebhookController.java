@@ -273,14 +273,17 @@ public class WebhookController {
 
         Merchant merchant = getMerchantFromAuth(authentication);
 
-        // This would typically use a dedicated stats service
-        // For now, we'll return mock data
+        // Estatísticas reais de entrega (do razão de webhooks deste estabelecimento)
+        WebhookService.WebhookStatistics s = webhookService.getStatistics(merchant);
+        double successRate = s.total() > 0
+            ? Math.round((s.delivered() * 10000.0) / s.total()) / 100.0
+            : 0.0;
         WebhookStatsResponse stats = new WebhookStatsResponse(
-            100L,   // totalWebhooks
-            85L,    // deliveredWebhooks
-            10L,    // failedWebhooks
-            5L,     // retryingWebhooks
-            85.0,   // successRate
+            s.total(),
+            s.delivered(),
+            s.failed(),
+            s.pending(),   // pendentes/aguardando reprocessamento
+            successRate,
             days
         );
 

@@ -2,10 +2,15 @@ package com.zendapag.api.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zendapag.core.entity.Dispute;
 import com.zendapag.core.entity.Merchant;
+import com.zendapag.core.entity.Payment;
 import com.zendapag.core.entity.Webhook;
+import com.zendapag.core.entity.enums.PaymentStatus;
 import com.zendapag.core.repository.MerchantRepository;
+import com.zendapag.core.repository.PaymentRepository;
 import com.zendapag.core.repository.WebhookRepository;
+import com.zendapag.core.service.DisputeService;
 import com.zendapag.core.service.WebhookService;
 import com.zendapag.core.util.HmacUtil;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +41,8 @@ public class DevWebhookSinkController {
     private final MerchantRepository merchantRepository;
     private final WebhookRepository webhookRepository;
     private final WebhookService webhookService;
+    private final PaymentRepository paymentRepository;
+    private final DisputeService disputeService;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/api/v1/webhooks/receive/dev-sink")
@@ -76,6 +83,35 @@ public class DevWebhookSinkController {
     public ResponseEntity<String> forceRetry(@PathVariable UUID id) {
         Webhook w = webhookService.forceRetry(id);
         return ResponseEntity.ok("{\"status\":\"" + w.getStatus() + "\",\"retryCount\":" + w.getRetryCount() + "}");
+    }
+
+    /**
+     * Abre uma disputa (chargeback) sobre um pagamento APROVADO de um merchant
+     * cujo webhook aponta para o dev-sink — disparando DISPUTE_CREATED e fechando
+     * o loop de validação (HTTP + HMAC) sem precisar de token de admin.
+     */
+    @PostMapping("/api/v1/webhooks/receive/dev-fire-dispute")
+    public ResponseEntity<Map<String, Object>> fireDispute() {
+        Payment target = paymentRepository.findAllByStatus(PaymentStatus.APPROVED).stream()
+            .filter(p -> p.getMerchant() != null
+                && p.getMerchant().getWebhookUrl() != null
+                && p.getMerchant().getWebhookUrl().contains("dev-sink"))
+            .findFirst()
+            .orElse(null);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (target == null) {
+            body.put("error", "nenhum pagamento APROVADO com webhook dev-sink encontrado");
+            return ResponseEntity.ok(body);
+        }
+
+        Dispute dispute = disputeService.openDispute(target.getId(), "FRAUD", null, null);
+        body.put("disputeId", dispute.getId().toString());
+        body.put("externalId", dispute.getExternalId());
+        body.put("paymentId", target.getId().toString());
+        body.put("paymentReferenceId", target.getReferenceId());
+        body.put("event", "DISPUTE_CREATED");
+        return ResponseEntity.ok(body);
     }
 
     /** Lista webhooks (dev) para inspeção/teste. POST para casar com o permitAll de /receive/**. */
