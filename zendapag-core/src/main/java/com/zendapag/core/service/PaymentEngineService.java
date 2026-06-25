@@ -73,6 +73,12 @@ public class PaymentEngineService {
         if (fee.compareTo(MIN_FEE) < 0) {
             fee = MIN_FEE;
         }
+        // A taxa nunca pode exceder o valor bruto: em cobranças menores que a
+        // taxa mínima (ex.: R$0,01), a taxa é limitada ao bruto e o líquido
+        // fica em zero — nunca negativo.
+        if (fee.compareTo(gross) > 0) {
+            fee = gross;
+        }
         BigDecimal net = gross.subtract(fee);
 
         // 2) Atualiza o pagamento

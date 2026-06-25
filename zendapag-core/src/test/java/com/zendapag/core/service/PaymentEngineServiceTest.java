@@ -121,16 +121,28 @@ class PaymentEngineServiceTest {
     }
 
     @Test
-    @DisplayName("BORDA R$0,01: a taxa mínima de R$0,50 produz líquido NEGATIVO (−R$0,49) — comportamento atual documentado")
-    void bordaUmCentavoGeraLiquidoNegativo() {
-        // ACHADO reportado ao time: não há piso de líquido em zero; brutos menores
-        // que a taxa mínima resultam em líquido negativo. Teste fixa o comportamento ATUAL.
+    @DisplayName("BORDA R$0,01: a taxa é limitada ao bruto e o líquido fica em ZERO (nunca negativo)")
+    void bordaUmCentavoLiquidoNaoNegativo() {
+        // Correção do achado #1: a taxa nunca excede o bruto. Para R$0,01, a taxa
+        // mínima de R$0,50 seria maior que o bruto, então é limitada a R$0,01 e o
+        // líquido fica em zero — não mais negativo.
         Payment p = pendingPayment(new BigDecimal("0.01"));
 
         Payment result = engine.approvePayment(p.getId());
 
+        assertThat(result.getFeeAmount()).isEqualByComparingTo("0.01");
+        assertThat(result.getNetAmount()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    @DisplayName("BORDA: bruto igual à taxa mínima (R$0,50) → líquido zero, taxa R$0,50")
+    void bordaIgualTaxaMinima() {
+        Payment p = pendingPayment(new BigDecimal("0.50"));
+
+        Payment result = engine.approvePayment(p.getId());
+
         assertThat(result.getFeeAmount()).isEqualByComparingTo("0.50");
-        assertThat(result.getNetAmount()).isEqualByComparingTo("-0.49");
+        assertThat(result.getNetAmount()).isEqualByComparingTo("0.00");
     }
 
     @Test
