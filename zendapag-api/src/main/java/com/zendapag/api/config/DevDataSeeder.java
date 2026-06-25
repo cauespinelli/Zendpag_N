@@ -89,7 +89,7 @@ public class DevDataSeeder implements CommandLineRunner {
         account(seller, gamer, "ACC-DEV-0004", BigDecimal.ZERO);
 
         // 2) Pagamentos
-        pay("PAY-SEED-0001", aurora, "Carlos Henrique", "12345678900", "459.90", "4.60", PaymentStatus.APPROVED);
+        pay("PAY-SEED-0001", aurora, "Carlos Henrique", "12345678900", "459.90", "4.60", PaymentStatus.PENDING);
         pay("PAY-SEED-0002", edu, "Mariana Lopes", "98765432100", "1299.00", "45.46", PaymentStatus.APPROVED);
         pay("PAY-SEED-0003", fit, "Roberto Dias", "45612378900", "289.90", "0.00", PaymentStatus.REJECTED);
         pay("PAY-SEED-0004", aurora, "Ana Beatriz", "32165498700", "749.00", "3.49", PaymentStatus.PENDING);

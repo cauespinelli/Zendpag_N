@@ -74,4 +74,33 @@ public class LedgerService {
         log.info("Lançamentos registrados: PAYMENT {} (líquido {}) + FEE {} (receita)",
             credit.getReferenceId(), net, fee);
     }
+
+    /**
+     * Reverte o crédito de um pagamento estornado: debita o líquido do saldo do
+     * estabelecimento e registra um lançamento REFUND. A taxa (MDR) já cobrada
+     * permanece como receita da plataforma (política comum de estorno).
+     */
+    @Transactional
+    public void reverseRefund(Payment payment, BigDecimal net) {
+        Merchant merchant = payment.getMerchant();
+        Account account = accountRepository.findByMerchant(merchant).stream()
+            .findFirst()
+            .orElseThrow(() -> new BusinessException(
+                "Estabelecimento sem conta para débito: " + merchant.getId()));
+
+        BigDecimal before = account.getBalance() != null ? account.getBalance() : BigDecimal.ZERO;
+        BigDecimal amount = net != null ? net : BigDecimal.ZERO;
+        account.setBalance(before.subtract(amount));
+        accountRepository.save(account);
+        log.info("Estorno — saldo do estabelecimento {}: {} -> {} (-{})",
+            merchant.getId(), before, account.getBalance(), amount);
+
+        Transaction refund = new Transaction("REF-" + payment.getReferenceId(), merchant, payment,
+            TransactionType.REFUND, amount);
+        refund.setAccount(account);
+        refund.setNetAmount(amount.negate());
+        refund.setStatus(TransactionStatus.COMPLETED);
+        refund.setDescription("Estorno do pagamento — débito do líquido ao estabelecimento");
+        transactionRepository.save(refund);
+    }
 }

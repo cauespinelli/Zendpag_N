@@ -60,6 +60,18 @@ export const adminTransactionService = {
     const res = await adminHttp.post(`/payments/${uuid}/approve`);
     return res?.data?.data ?? res?.data;
   },
+
+  /** Recusa um pagamento PENDING (dispara PAYMENT_FAILED). */
+  async reject(uuid: string, reason = 'Recusado pelo Admin Master'): Promise<any> {
+    const res = await adminHttp.post(`/payments/${uuid}/reject`, null, { params: { reason } });
+    return res?.data?.data ?? res?.data;
+  },
+
+  /** Estorna um pagamento APROVADO (reverte o saldo, dispara PAYMENT_REFUNDED). */
+  async refund(uuid: string, reason = 'Estorno pelo Admin Master'): Promise<any> {
+    const res = await adminHttp.post(`/payments/${uuid}/reverse`, null, { params: { reason } });
+    return res?.data?.data ?? res?.data;
+  },
 };
 
 export default adminTransactionService;

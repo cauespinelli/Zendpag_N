@@ -21,6 +21,8 @@ import {
   Send,
   CheckCircle2,
   Check,
+  Ban,
+  RotateCcw,
   RefreshCw,
   Loader,
   Inbox,
@@ -68,6 +70,32 @@ const AdminTransactions: React.FC = () => {
       await carregar();
     } catch (e: any) {
       notify('Falha ao aprovar: ' + adminHttpError(e));
+    } finally {
+      setAprovando(null);
+    }
+  };
+
+  const recusar = async (t: any) => {
+    setAprovando(t.uuid);
+    try {
+      await adminTransactionService.reject(t.uuid);
+      notify(`Pagamento ${t.id} recusado — webhook PAYMENT_FAILED disparado.`);
+      await carregar();
+    } catch (e: any) {
+      notify('Falha ao recusar: ' + adminHttpError(e));
+    } finally {
+      setAprovando(null);
+    }
+  };
+
+  const estornar = async (t: any) => {
+    setAprovando(t.uuid);
+    try {
+      await adminTransactionService.refund(t.uuid);
+      notify(`Pagamento ${t.id} estornado — saldo revertido e webhook PAYMENT_REFUNDED.`);
+      await carregar();
+    } catch (e: any) {
+      notify('Falha ao estornar: ' + adminHttpError(e));
     } finally {
       setAprovando(null);
     }
@@ -211,13 +239,33 @@ const AdminTransactions: React.FC = () => {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1">
                         {t.status === 'pendente' && (
+                          <>
+                            <button
+                              onClick={() => aprovar(t)}
+                              disabled={aprovando === t.uuid}
+                              className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                              title="Aprovar pagamento (sandbox)"
+                            >
+                              {aprovando === t.uuid ? <Loader size={14} className="animate-spin" /> : <Check size={14} />} Aprovar
+                            </button>
+                            <button
+                              onClick={() => recusar(t)}
+                              disabled={aprovando === t.uuid}
+                              className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50"
+                              title="Recusar pagamento (dispara PAYMENT_FAILED)"
+                            >
+                              <Ban size={14} /> Recusar
+                            </button>
+                          </>
+                        )}
+                        {t.status === 'aprovada' && (
                           <button
-                            onClick={() => aprovar(t)}
+                            onClick={() => estornar(t)}
                             disabled={aprovando === t.uuid}
-                            className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors disabled:opacity-50"
-                            title="Aprovar pagamento (sandbox)"
+                            className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                            title="Estornar pagamento (reverte saldo, dispara PAYMENT_REFUNDED)"
                           >
-                            {aprovando === t.uuid ? <Loader size={14} className="animate-spin" /> : <Check size={14} />} Aprovar
+                            {aprovando === t.uuid ? <Loader size={14} className="animate-spin" /> : <RotateCcw size={14} />} Estornar
                           </button>
                         )}
                         <button onClick={() => setDetalhe(t)} className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500" title="Ver detalhes"><Eye size={16} /></button>

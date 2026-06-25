@@ -74,32 +74,60 @@ public class PaymentEngineService {
         // 3) Razão: credita líquido no saldo do merchant + registra taxa como receita
         ledgerService.settleApprovedPayment(payment, gross, fee, net);
 
-        // 4) Webhook do evento (enfileira; entrega HTTP real vem no item 3)
-        enqueueWebhook(merchant, payment, "PAYMENT_COMPLETED");
+        // 4) Webhook do evento
+        webhookService.notifyMerchant(merchant, "PAYMENT_COMPLETED", paymentPayload(payment, "PAYMENT_COMPLETED"));
 
         return payment;
     }
 
-    private void enqueueWebhook(Merchant merchant, Payment payment, String eventType) {
-        try {
-            if (merchant.getWebhookUrl() == null || merchant.getWebhookUrl().isEmpty()) {
-                log.info("Estabelecimento {} sem webhookUrl — webhook não enfileirado.", merchant.getId());
-                return;
-            }
-            Map<String, Object> body = new HashMap<>();
-            body.put("event", eventType);
-            body.put("payment_id", payment.getId().toString());
-            body.put("reference_id", payment.getReferenceId());
-            body.put("status", payment.getStatus().name());
-            body.put("amount", payment.getAmount());
-            body.put("fee", payment.getFeeAmount());
-            body.put("net", payment.getNetAmount());
-            body.put("merchant_id", merchant.getId().toString());
-            webhookService.sendMerchantWebhook(merchant, eventType, body);
-            log.info("Webhook {} enfileirado para o estabelecimento {}.", eventType, merchant.getId());
-        } catch (Exception e) {
-            // Webhook nunca deve impedir a aprovação do pagamento
-            log.warn("Falha ao enfileirar webhook {}: {}", eventType, e.getMessage());
+    /** Recusa um pagamento PENDING (sandbox: simula recusa do PSP). Dispara PAYMENT_FAILED. */
+    @Transactional
+    public Payment rejectPayment(UUID id, String reason) {
+        Payment payment = paymentRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+        if (payment.getStatus() != PaymentStatus.PENDING) {
+            throw new BusinessException("Apenas pagamentos PENDING podem ser recusados (atual: " + payment.getStatus() + ")");
         }
+        payment.setStatus(PaymentStatus.FAILED);
+        payment.setCancelledAt(Instant.now());
+        payment.setCancellationReason(reason != null ? reason : "Recusado");
+        paymentRepository.save(payment);
+        log.info("Pagamento {} recusado (FAILED): {}", payment.getReferenceId(), reason);
+
+        webhookService.notifyMerchant(payment.getMerchant(), "PAYMENT_FAILED", paymentPayload(payment, "PAYMENT_FAILED"));
+        return payment;
+    }
+
+    /** Estorna um pagamento APROVADO: reverte o crédito no razão e dispara PAYMENT_REFUNDED. */
+    @Transactional
+    public Payment refundPayment(UUID id, String reason) {
+        Payment payment = paymentRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+        if (payment.getStatus() != PaymentStatus.APPROVED) {
+            throw new BusinessException("Apenas pagamentos APROVADOS podem ser estornados (atual: " + payment.getStatus() + ")");
+        }
+        payment.setStatus(PaymentStatus.REFUNDED);
+        payment.setRefundedAt(Instant.now());
+        payment.setRefundReason(reason != null ? reason : "Estorno");
+        paymentRepository.save(payment);
+
+        ledgerService.reverseRefund(payment, payment.getNetAmount());
+        log.info("Pagamento {} estornado (REFUNDED) — líquido {} revertido", payment.getReferenceId(), payment.getNetAmount());
+
+        webhookService.notifyMerchant(payment.getMerchant(), "PAYMENT_REFUNDED", paymentPayload(payment, "PAYMENT_REFUNDED"));
+        return payment;
+    }
+
+    private Map<String, Object> paymentPayload(Payment payment, String eventType) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("event", eventType);
+        body.put("payment_id", payment.getId().toString());
+        body.put("reference_id", payment.getReferenceId());
+        body.put("status", payment.getStatus().name());
+        body.put("amount", payment.getAmount());
+        body.put("fee", payment.getFeeAmount());
+        body.put("net", payment.getNetAmount());
+        body.put("merchant_id", payment.getMerchant().getId().toString());
+        return body;
     }
 }

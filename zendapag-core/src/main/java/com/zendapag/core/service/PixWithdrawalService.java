@@ -31,6 +31,7 @@ public class PixWithdrawalService {
     private final PixWithdrawalRepository withdrawalRepository;
     private final AccountRepository accountRepository;
     private final MerchantRepository merchantRepository;
+    private final WebhookService webhookService;
 
     @Transactional
     public PixWithdrawalResponse createWithdrawal(Long accountId, UUID merchantId, CreatePixWithdrawalRequest request) {
@@ -79,11 +80,14 @@ public class PixWithdrawalService {
         PixWithdrawal w = withdrawalRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Not found"));
         if (!w.canBeCancelled()) throw new BusinessException("Cannot cancel");
         w.cancel(reason);
-        return convertToResponse(withdrawalRepository.save(w));
+        PixWithdrawal saved = withdrawalRepository.save(w);
+        webhookService.notifyMerchant(saved.getMerchant(), "WITHDRAWAL_FAILED", withdrawalPayload(saved, "WITHDRAWAL_FAILED"));
+        return convertToResponse(saved);
     }
 
     /**
      * Aprova um saque pendente (ação do Admin Master), movendo-o para processamento.
+     * Dispara o webhook WITHDRAWAL_COMPLETED.
      */
     @Transactional
     public PixWithdrawalResponse approveWithdrawal(UUID id) {
@@ -93,7 +97,21 @@ public class PixWithdrawalService {
             throw new BusinessException("Only PENDING withdrawals can be approved");
         }
         w.startProcessing();
-        return convertToResponse(withdrawalRepository.save(w));
+        PixWithdrawal saved = withdrawalRepository.save(w);
+        webhookService.notifyMerchant(saved.getMerchant(), "WITHDRAWAL_COMPLETED", withdrawalPayload(saved, "WITHDRAWAL_COMPLETED"));
+        return convertToResponse(saved);
+    }
+
+    private java.util.Map<String, Object> withdrawalPayload(PixWithdrawal w, String eventType) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("event", eventType);
+        body.put("withdrawal_id", w.getId().toString());
+        body.put("reference_id", w.getReferenceId());
+        body.put("status", w.getStatus().name());
+        body.put("amount", w.getAmount());
+        body.put("net", w.getNetAmount());
+        body.put("merchant_id", w.getMerchant().getId().toString());
+        return body;
     }
 
     @Transactional

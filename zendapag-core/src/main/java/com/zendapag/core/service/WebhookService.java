@@ -54,6 +54,23 @@ public class WebhookService {
         return webhook;
     }
 
+    /**
+     * Dispara um evento de webhook para o estabelecimento. Nunca lança: se não
+     * houver URL ou a entrega falhar, apenas registra (a falha agenda retry).
+     * Ponto único usado por pagamento (pago/falhou/estornado) e saque.
+     */
+    public void notifyMerchant(Merchant merchant, String eventType, Map<String, Object> payload) {
+        try {
+            if (merchant.getWebhookUrl() == null || merchant.getWebhookUrl().isEmpty()) {
+                log.info("Merchant {} sem webhookUrl — evento {} não enviado.", merchant.getId(), eventType);
+                return;
+            }
+            sendMerchantWebhook(merchant, eventType, payload);
+        } catch (Exception e) {
+            log.warn("Falha ao enviar webhook {} para merchant {}: {}", eventType, merchant.getId(), e.getMessage());
+        }
+    }
+
     /** Entrega de fato um webhook (HTTP POST assinado). Atualiza status e agenda retry em falha. */
     @Transactional
     public void deliver(Webhook webhook) {

@@ -248,6 +248,34 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.success("Payment approved", convertToPaymentResponse(payment)));
     }
 
+    @Operation(summary = "Reject payment (admin/sandbox)",
+        description = "Recusa um pagamento PENDING (simula recusa do PSP) e dispara o webhook PAYMENT_FAILED.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Timed(value = "api.payments.reject", description = "Time taken to reject a payment")
+    public ResponseEntity<ApiResponse<PaymentResponse>> rejectPayment(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        log.info("Rejecting payment (sandbox): {}", id);
+        Payment payment = paymentEngineService.rejectPayment(id, reason);
+        return ResponseEntity.ok(ApiResponse.success("Payment rejected", convertToPaymentResponse(payment)));
+    }
+
+    @Operation(summary = "Reverse/refund payment (admin/sandbox)",
+        description = "Estorna um pagamento APROVADO: reverte o crédito no razão e dispara PAYMENT_REFUNDED.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{id}/reverse")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Timed(value = "api.payments.reverse", description = "Time taken to reverse a payment")
+    public ResponseEntity<ApiResponse<PaymentResponse>> reversePayment(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        log.info("Reversing payment (sandbox): {}", id);
+        Payment payment = paymentEngineService.refundPayment(id, reason);
+        return ResponseEntity.ok(ApiResponse.success("Payment reversed", convertToPaymentResponse(payment)));
+    }
+
     @Operation(
         summary = "Cancel payment",
         description = "Cancels a pending payment. Only pending payments can be cancelled."
