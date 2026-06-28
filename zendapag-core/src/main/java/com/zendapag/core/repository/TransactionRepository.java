@@ -303,4 +303,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     long countByMerchantAndCreatedAtBetween(@Param("merchant") Merchant merchant,
                                             @Param("startDate") Instant startDate,
                                             @Param("endDate") Instant endDate);
+
+    // Motor de saldo: lançamentos PAYMENT pendentes cujo vencimento (availableAt)
+    // já passou — prontos para virar pendente -> disponível.
+    @Query("SELECT t FROM Transaction t WHERE t.type = 'PAYMENT' " +
+           "AND t.released = false AND t.availableAt IS NOT NULL " +
+           "AND t.availableAt <= :now AND t.deleted = false")
+    List<Transaction> findDueForRelease(@Param("now") Instant now);
+
+    // Todos os lançamentos PAYMENT ainda pendentes (não liberados) — usado pela
+    // liberação forçada de DEV (simula a passagem do tempo, ignora availableAt).
+    @Query("SELECT t FROM Transaction t WHERE t.type = 'PAYMENT' " +
+           "AND t.released = false AND t.deleted = false")
+    List<Transaction> findAllPendingUnreleased();
 }

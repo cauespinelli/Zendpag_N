@@ -10,7 +10,11 @@ import com.zendapag.core.entity.enums.PaymentStatus;
 import com.zendapag.core.repository.MerchantRepository;
 import com.zendapag.core.repository.PaymentRepository;
 import com.zendapag.core.repository.WebhookRepository;
+import com.zendapag.core.entity.PayoutRule;
+import com.zendapag.core.entity.enums.PaymentMethodType;
+import com.zendapag.core.service.BalanceReleaseService;
 import com.zendapag.core.service.DisputeService;
+import com.zendapag.core.service.PayoutPolicyService;
 import com.zendapag.core.service.WebhookService;
 import com.zendapag.core.util.HmacUtil;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +47,8 @@ public class DevWebhookSinkController {
     private final WebhookService webhookService;
     private final PaymentRepository paymentRepository;
     private final DisputeService disputeService;
+    private final BalanceReleaseService balanceReleaseService;
+    private final PayoutPolicyService payoutPolicyService;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/api/v1/webhooks/receive/dev-sink")
@@ -69,6 +75,37 @@ public class DevWebhookSinkController {
             log.warn("[DevWebhookSink] erro ao processar corpo: {}", e.getMessage());
         }
         return ResponseEntity.ok("{\"received\":true,\"hmac\":\"" + verdict + "\"}");
+    }
+
+    /**
+     * Força a liberação de TODO saldo pendente, ignorando o vencimento — simula a
+     * passagem do tempo (D+N) para validar o fluxo pendente -> disponível sem esperar.
+     */
+    @PostMapping("/api/v1/webhooks/receive/dev-release-now")
+    public ResponseEntity<String> releaseNow() {
+        int n = balanceReleaseService.forceReleaseAllPending();
+        return ResponseEntity.ok("{\"released\":" + n + "}");
+    }
+
+    /**
+     * DEV: cria/atualiza um override de regra por estabelecimento, para validar
+     * o fluxo de retenção sem depender da API de regras (Item 4).
+     */
+    @PostMapping("/api/v1/webhooks/receive/dev-set-merchant-rule")
+    public ResponseEntity<Map<String, Object>> setMerchantRule(
+            @RequestParam UUID merchantId,
+            @RequestParam PaymentMethodType method,
+            @RequestParam boolean retention,
+            @RequestParam int holdingDays,
+            @RequestParam boolean autoPayout) {
+        PayoutRule rule = payoutPolicyService.upsertMerchantRule(merchantId, method, retention, holdingDays, autoPayout);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("merchantId", merchantId.toString());
+        body.put("method", rule.getMethod().name());
+        body.put("retentionEnabled", rule.isRetentionEnabled());
+        body.put("holdingDays", rule.getHoldingDays());
+        body.put("autoPayoutEnabled", rule.isAutoPayoutEnabled());
+        return ResponseEntity.ok(body);
     }
 
     /** Reprocessa webhooks FAILED devidos (respeita o nextRetryAt). */
