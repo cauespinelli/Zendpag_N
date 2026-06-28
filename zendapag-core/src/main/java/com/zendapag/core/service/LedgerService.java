@@ -36,6 +36,7 @@ public class LedgerService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final PayoutPolicyService payoutPolicyService;
+    private final AutoPayoutService autoPayoutService;
 
     /**
      * Modo rápido de DEV: interpreta o D+N como N SEGUNDOS (em vez de dias), para
@@ -106,6 +107,12 @@ public class LedgerService {
 
         log.info("Lançamentos registrados: PAYMENT {} (líquido {}, retencao={}) + FEE {} (receita)",
             credit.getReferenceId(), net, rule.retentionEnabled(), fee);
+
+        // 3) Auto-payout: só faz sentido quando o saldo já está DISPONÍVEL (D+0).
+        // Com retenção, o disparo acontece na liberação (BalanceReleaseService).
+        if (!rule.retentionEnabled()) {
+            autoPayoutService.maybeAutoPayout(merchant, account, net, method, rule.autoPayoutEnabled());
+        }
     }
 
     /** Tipo do método do pagamento; sem método associado, assume PIX (caso padrão). */

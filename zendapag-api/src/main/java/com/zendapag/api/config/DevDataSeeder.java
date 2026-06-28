@@ -134,6 +134,9 @@ public class DevDataSeeder implements CommandLineRunner {
                 .type(Account.AccountType.PAYMENT)
                 .balance(balance)
                 .pendingBalance(BigDecimal.ZERO)
+                // Chave PIX de destino do auto-payout = documento (CNPJ) do estabelecimento.
+                .pixKey(merchant.getDocument())
+                .pixKeyType(Account.PixKeyType.CNPJ)
                 .status(Account.AccountStatus.ACTIVE)
                 .user(user)
                 .merchant(merchant)

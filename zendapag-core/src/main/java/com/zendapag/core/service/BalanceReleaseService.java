@@ -1,7 +1,10 @@
 package com.zendapag.core.service;
 
 import com.zendapag.core.entity.Account;
+import com.zendapag.core.entity.Merchant;
+import com.zendapag.core.entity.Payment;
 import com.zendapag.core.entity.Transaction;
+import com.zendapag.core.entity.enums.PaymentMethodType;
 import com.zendapag.core.entity.enums.TransactionStatus;
 import com.zendapag.core.entity.enums.TransactionType;
 import com.zendapag.core.repository.AccountRepository;
@@ -30,6 +33,8 @@ public class BalanceReleaseService {
 
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
+    private final PayoutPolicyService payoutPolicyService;
+    private final AutoPayoutService autoPayoutService;
 
     /** Libera os lançamentos cujo availableAt já passou. Retorna quantos foram liberados. */
     @Transactional
@@ -79,7 +84,23 @@ public class BalanceReleaseService {
                 paymentRef, motivo, account.getId(), pending, account.getPendingBalance(),
                 available, account.getBalance());
             released++;
+
+            // Auto-payout do saldo recém-liberado, se a regra do método permitir.
+            Merchant merchant = t.getMerchant();
+            PaymentMethodType method = methodTypeOf(t.getPayment());
+            PayoutPolicyService.EffectiveRule rule = payoutPolicyService.resolve(merchant, method);
+            if (rule.autoPayoutEnabled()) {
+                autoPayoutService.maybeAutoPayout(merchant, account, net, method, true);
+            }
         }
         return released;
+    }
+
+    /** Tipo do método do pagamento; sem método associado, assume PIX (caso padrão). */
+    private PaymentMethodType methodTypeOf(Payment payment) {
+        if (payment != null && payment.getPaymentMethod() != null && payment.getPaymentMethod().getType() != null) {
+            return payment.getPaymentMethod().getType();
+        }
+        return PaymentMethodType.PIX;
     }
 }
