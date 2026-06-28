@@ -17,6 +17,7 @@ import {
   FileText,
   ScrollText,
   KeyRound,
+  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -41,6 +42,7 @@ const sections: NavSection[] = [
       { path: '/admin/establishments', label: 'Estabelecimentos', icon: Building2 },
       { path: '/admin/transactions', label: 'Transações', icon: ArrowLeftRight },
       { path: '/admin/withdrawals', label: 'Saques', icon: Banknote },
+      { path: '/admin/payout-rules', label: 'Regras de Liquidação', icon: SlidersHorizontal },
     ],
   },
   {

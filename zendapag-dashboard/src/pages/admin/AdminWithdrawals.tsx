@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Inbox,
   WifiOff,
+  Zap,
 } from 'lucide-react';
 import { adminWithdrawalService } from '@/services/adminWithdrawalService';
 import { StatCard, AdminCard, StatusBadge, PageHeader } from '@/components/admin/ui';
@@ -266,7 +267,14 @@ const AdminWithdrawals: React.FC = () => {
                 {filtered.map((s) => (
                   <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50/60">
                     <td className="px-5 py-3.5">
-                      <p className="font-medium text-slate-700">{s.referenceId || s.id}</p>
+                      <p className="font-medium text-slate-700 flex items-center gap-1.5">
+                        {s.referenceId || s.id}
+                        {s.triggerType === 'AUTOMATIC' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-100" title="Saque automático (auto-payout)">
+                            <Zap size={10} /> Automático
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-slate-400">{s.recipientName || '—'}</p>
                       <p className="text-[11px] text-slate-300 tabular-nums">{fmt(s.requestedAt || s.createdAt)}</p>
                     </td>

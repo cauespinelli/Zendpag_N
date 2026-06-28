@@ -140,7 +140,7 @@ public class PixWithdrawalService {
         r.setFeeAmount(w.getFeeAmount()); r.setNetAmount(w.getNetAmount()); r.setPixKey(w.getPixKey());
         r.setPixKeyType(w.getPixKeyType()); r.setRecipientName(w.getRecipientName());
         r.setRecipientDocument(w.getRecipientDocument()); r.setRecipientBank(w.getRecipientBank());
-        r.setStatus(w.getStatus()); r.setDescription(w.getDescription());
+        r.setStatus(w.getStatus()); r.setTriggerType(w.getTriggerType()); r.setDescription(w.getDescription());
         r.setRejectionReason(w.getRejectionReason()); r.setPixTransactionId(w.getPixTransactionId());
         r.setPixEndToEndId(w.getPixEndToEndId()); r.setRequestedAt(w.getRequestedAt());
         r.setProcessedAt(w.getProcessedAt()); r.setCompletedAt(w.getCompletedAt());

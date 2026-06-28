@@ -57,6 +57,7 @@ const AdminManagers = React.lazy(() => import('@/pages/admin/AdminManagers'));
 const AdminStatement = React.lazy(() => import('@/pages/admin/AdminStatement'));
 const AdminLogs = React.lazy(() => import('@/pages/admin/AdminLogs'));
 const AdminAccess = React.lazy(() => import('@/pages/admin/AdminAccess'));
+const AdminPayoutRules = React.lazy(() => import('@/pages/admin/AdminPayoutRules'));
 
 // React Query client configuration
 const queryClient = new QueryClient({
@@ -163,6 +164,7 @@ const App: React.FC = () => {
                     <Route path="affiliates" element={<AdminAffiliates />} />
                     <Route path="managers" element={<AdminManagers />} />
                     <Route path="statement" element={<AdminStatement />} />
+                    <Route path="payout-rules" element={<AdminPayoutRules />} />
                     <Route path="logs" element={<AdminLogs />} />
                     <Route path="access" element={<AdminAccess />} />
                   </Route>

@@ -1,6 +1,7 @@
 package com.zendapag.core.dto.response;
 
 import com.zendapag.core.entity.enums.WithdrawalStatus;
+import com.zendapag.core.entity.enums.WithdrawalTriggerType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,6 +24,7 @@ public class PixWithdrawalResponse {
     private String recipientDocument;
     private String recipientBank;
     private WithdrawalStatus status;
+    private WithdrawalTriggerType triggerType;
     private String description;
     private String rejectionReason;
     private String pixTransactionId;
@@ -129,6 +131,14 @@ public class PixWithdrawalResponse {
 
     public void setStatus(WithdrawalStatus status) {
         this.status = status;
+    }
+
+    public WithdrawalTriggerType getTriggerType() {
+        return triggerType;
+    }
+
+    public void setTriggerType(WithdrawalTriggerType triggerType) {
+        this.triggerType = triggerType;
     }
 
     public String getDescription() {
