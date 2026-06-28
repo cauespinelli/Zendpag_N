@@ -114,6 +114,15 @@ public class Transaction extends BaseEntity {
     @Column(name = "settlement_date")
     private LocalDate settlementDate;
 
+    // Retenção pendente -> disponível (motor de saldo).
+    // availableAt: quando o lançamento PAYMENT deixa de ser pendente e vira disponível.
+    // released: marcado true pelo job de liberação após mover pendente -> disponível.
+    @Column(name = "available_at")
+    private Instant availableAt;
+
+    @Column(name = "released", nullable = false)
+    private Boolean released = false;
+
     // External references
     @Size(max = 255, message = "External reference must be at most 255 characters")
     @Column(name = "external_reference")
@@ -418,6 +427,22 @@ public class Transaction extends BaseEntity {
 
     public void setSettlementDate(LocalDate settlementDate) {
         this.settlementDate = settlementDate;
+    }
+
+    public Instant getAvailableAt() {
+        return availableAt;
+    }
+
+    public void setAvailableAt(Instant availableAt) {
+        this.availableAt = availableAt;
+    }
+
+    public Boolean getReleased() {
+        return released;
+    }
+
+    public void setReleased(Boolean released) {
+        this.released = released;
     }
 
     public String getExternalReference() {

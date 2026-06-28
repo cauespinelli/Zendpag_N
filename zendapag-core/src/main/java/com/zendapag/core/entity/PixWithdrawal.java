@@ -1,6 +1,7 @@
 package com.zendapag.core.entity;
 
 import com.zendapag.core.entity.enums.WithdrawalStatus;
+import com.zendapag.core.entity.enums.WithdrawalTriggerType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -95,6 +96,11 @@ public class PixWithdrawal extends BaseEntity {
     @Size(max = 1000, message = "Rejection reason must be at most 1000 characters")
     @Column(name = "rejection_reason", length = 1000)
     private String rejectionReason;
+
+    // Origem do saque: MANUAL (solicitado) ou AUTOMATIC (auto-payout do motor).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trigger_type", nullable = false, length = 20)
+    private WithdrawalTriggerType triggerType = WithdrawalTriggerType.MANUAL;
 
     // PIX specific fields
     @Size(max = 100, message = "PIX transaction ID must be at most 100 characters")
@@ -377,6 +383,14 @@ public class PixWithdrawal extends BaseEntity {
 
     public void setStatus(WithdrawalStatus status) {
         this.status = status;
+    }
+
+    public WithdrawalTriggerType getTriggerType() {
+        return triggerType;
+    }
+
+    public void setTriggerType(WithdrawalTriggerType triggerType) {
+        this.triggerType = triggerType;
     }
 
     public String getDescription() {

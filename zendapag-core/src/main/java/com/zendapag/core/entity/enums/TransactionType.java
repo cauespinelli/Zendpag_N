@@ -6,6 +6,7 @@ public enum TransactionType {
     CHARGEBACK,
     FEE,
     SETTLEMENT,
+    RELEASE,
     REVERSAL,
     ADJUSTMENT,
     CREDIT,
