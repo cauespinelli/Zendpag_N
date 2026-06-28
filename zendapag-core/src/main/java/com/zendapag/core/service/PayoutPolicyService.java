@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -85,11 +86,17 @@ public class PayoutPolicyService {
      */
     @Transactional(readOnly = true)
     public EffectiveRule resolve(Merchant merchant, PaymentMethodType method) {
+        return resolve(merchant != null ? merchant.getId() : null, method);
+    }
+
+    /** Mesma cascata, a partir do id do estabelecimento (id nulo = só global/default). */
+    @Transactional(readOnly = true)
+    public EffectiveRule resolve(UUID merchantId, PaymentMethodType method) {
         PaymentMethodType m = method != null ? method : PaymentMethodType.PIX;
 
-        if (merchant != null && merchant.getId() != null) {
+        if (merchantId != null) {
             EffectiveRule override = payoutRuleRepository
-                .findByScopeAndMerchantIdAndMethod(PayoutScope.MERCHANT, merchant.getId(), m)
+                .findByScopeAndMerchantIdAndMethod(PayoutScope.MERCHANT, merchantId, m)
                 .map(r -> toEffective(r, PayoutScope.MERCHANT))
                 .orElse(null);
             if (override != null) {
@@ -132,5 +139,24 @@ public class PayoutPolicyService {
         rule.setHoldingDays(holdingDays);
         rule.setAutoPayoutEnabled(autoPayoutEnabled);
         return payoutRuleRepository.save(rule);
+    }
+
+    /** Lista as regras GLOBAL (uma por método). */
+    @Transactional(readOnly = true)
+    public List<PayoutRule> globalRules() {
+        return payoutRuleRepository.findByScope(PayoutScope.GLOBAL);
+    }
+
+    /** Lista os overrides de um estabelecimento. */
+    @Transactional(readOnly = true)
+    public List<PayoutRule> merchantRules(UUID merchantId) {
+        return payoutRuleRepository.findByScopeAndMerchantId(PayoutScope.MERCHANT, merchantId);
+    }
+
+    /** Remove o override de um método para um estabelecimento (volta a herdar a global). */
+    @Transactional
+    public void deleteMerchantRule(UUID merchantId, PaymentMethodType method) {
+        payoutRuleRepository.findByScopeAndMerchantIdAndMethod(PayoutScope.MERCHANT, merchantId, method)
+            .ifPresent(payoutRuleRepository::delete);
     }
 }

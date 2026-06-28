@@ -38,8 +38,14 @@ public class PixWithdrawalService {
         log.info("Creating PIX withdrawal");
         Account account = accountRepository.findById(accountId).orElseThrow(() -> new ResourceNotFoundException("Account not found"));
         Merchant merchant = merchantRepository.findById(merchantId).orElseThrow(() -> new ResourceNotFoundException("Merchant not found"));
+        // Só o saldo DISPONÍVEL pode ser sacado — o pendente (em retenção) não conta.
         BigDecimal balance = account.getBalance();
-        if (balance == null || balance.compareTo(request.getAmount()) < 0) throw new BusinessException("Insufficient balance");
+        if (balance == null || balance.compareTo(request.getAmount()) < 0) {
+            BigDecimal pending = account.getPendingBalance() != null ? account.getPendingBalance() : BigDecimal.ZERO;
+            BigDecimal available = balance != null ? balance : BigDecimal.ZERO;
+            throw new BusinessException("Saldo disponível insuficiente: disponível R$ " + available
+                + (pending.signum() > 0 ? " (R$ " + pending + " ainda pendente de liberação)" : ""));
+        }
         validateDailyLimits(account, request.getAmount());
         PixWithdrawal w = new PixWithdrawal(generateReferenceId(), account, merchant, request.getAmount(), request.getPixKey(), request.getPixKeyType());
         w.setDescription(request.getDescription());

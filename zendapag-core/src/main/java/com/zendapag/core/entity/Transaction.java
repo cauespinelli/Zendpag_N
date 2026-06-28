@@ -1,5 +1,6 @@
 package com.zendapag.core.entity;
 
+import com.zendapag.core.entity.enums.PaymentMethodType;
 import com.zendapag.core.entity.enums.TransactionStatus;
 import com.zendapag.core.entity.enums.TransactionType;
 import jakarta.persistence.*;
@@ -122,6 +123,12 @@ public class Transaction extends BaseEntity {
 
     @Column(name = "released", nullable = false)
     private Boolean released = false;
+
+    // Método de pagamento que originou o lançamento (para saldo por método).
+    // Resolvido pelo motor (default PIX quando o pagamento não tem método).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "method_type", length = 20)
+    private PaymentMethodType methodType;
 
     // External references
     @Size(max = 255, message = "External reference must be at most 255 characters")
@@ -443,6 +450,14 @@ public class Transaction extends BaseEntity {
 
     public void setReleased(Boolean released) {
         this.released = released;
+    }
+
+    public PaymentMethodType getMethodType() {
+        return methodType;
+    }
+
+    public void setMethodType(PaymentMethodType methodType) {
+        this.methodType = methodType;
     }
 
     public String getExternalReference() {

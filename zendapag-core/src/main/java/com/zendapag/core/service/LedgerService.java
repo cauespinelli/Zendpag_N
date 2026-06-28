@@ -70,6 +70,7 @@ public class LedgerService {
         credit.setAccount(account);
         credit.setFeeAmount(fee);
         credit.setNetAmount(net);
+        credit.setMethodType(method);
         credit.setStatus(TransactionStatus.COMPLETED);
 
         if (rule.retentionEnabled()) {
@@ -102,6 +103,7 @@ public class LedgerService {
         platformFee.setAccount(account);
         platformFee.setStatus(TransactionStatus.COMPLETED);
         platformFee.setReleased(true);
+        platformFee.setMethodType(method);
         platformFee.setDescription("Taxa da plataforma (MDR) sobre o pagamento");
         transactionRepository.save(platformFee);
 
@@ -132,9 +134,14 @@ public class LedgerService {
     }
 
     /**
-     * Reverte o crédito de um pagamento estornado: debita o líquido do saldo do
-     * estabelecimento e registra um lançamento REFUND. A taxa (MDR) já cobrada
-     * permanece como receita da plataforma (política comum de estorno).
+     * Reverte o crédito de um pagamento estornado, ciente do balde onde o líquido
+     * está: se o pagamento ainda estava PENDENTE (lançamento não liberado), debita
+     * o pendingBalance; se já tinha sido liberado, debita o disponível. A taxa (MDR)
+     * já cobrada permanece como receita da plataforma (política comum de estorno).
+     *
+     * Borda (sandbox): se o líquido já tiver saído por auto-payout, o disponível
+     * pode ficar negativo — registramos o débito mesmo assim e logamos o alerta;
+     * tratamento de débito/chargeback real fica para a fase do PSP.
      */
     @Transactional
     public void reverseRefund(Payment payment, BigDecimal net) {
@@ -144,19 +151,41 @@ public class LedgerService {
             .orElseThrow(() -> new BusinessException(
                 "Estabelecimento sem conta para débito: " + merchant.getId()));
 
-        BigDecimal before = account.getBalance() != null ? account.getBalance() : BigDecimal.ZERO;
         BigDecimal amount = net != null ? net : BigDecimal.ZERO;
-        account.setBalance(before.subtract(amount));
+
+        // Descobre o balde do líquido a partir do lançamento original do pagamento.
+        Transaction origin = transactionRepository.findByReferenceId("TXN-" + payment.getReferenceId()).orElse(null);
+        boolean stillPending = origin != null && Boolean.FALSE.equals(origin.getReleased());
+
+        if (stillPending) {
+            BigDecimal before = account.getPendingBalance() != null ? account.getPendingBalance() : BigDecimal.ZERO;
+            account.setPendingBalance(before.subtract(amount));
+            if (origin != null) {
+                origin.setReleased(true); // consome o pendente: não será mais liberado
+                transactionRepository.save(origin);
+            }
+            log.info("Estorno (PENDENTE) — saldo pendente do estabelecimento {}: {} -> {} (-{})",
+                merchant.getId(), before, account.getPendingBalance(), amount);
+        } else {
+            BigDecimal before = account.getBalance() != null ? account.getBalance() : BigDecimal.ZERO;
+            account.setBalance(before.subtract(amount));
+            if (account.getBalance().signum() < 0) {
+                log.warn("Estorno deixou o saldo DISPONÍVEL negativo no estabelecimento {} ({}). "
+                    + "Líquido provavelmente já sacado (auto-payout).", merchant.getId(), account.getBalance());
+            }
+            log.info("Estorno (DISPONÍVEL) — saldo do estabelecimento {}: {} -> {} (-{})",
+                merchant.getId(), before, account.getBalance(), amount);
+        }
         accountRepository.save(account);
-        log.info("Estorno — saldo do estabelecimento {}: {} -> {} (-{})",
-            merchant.getId(), before, account.getBalance(), amount);
 
         Transaction refund = new Transaction("REF-" + payment.getReferenceId(), merchant, payment,
             TransactionType.REFUND, amount);
         refund.setAccount(account);
         refund.setNetAmount(amount.negate());
+        refund.setReleased(true);
+        refund.setMethodType(methodTypeOf(payment));
         refund.setStatus(TransactionStatus.COMPLETED);
-        refund.setDescription("Estorno do pagamento — débito do líquido ao estabelecimento");
+        refund.setDescription("Estorno do pagamento — débito do líquido (" + (stillPending ? "pendente" : "disponível") + ")");
         transactionRepository.save(refund);
     }
 }

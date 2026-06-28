@@ -316,4 +316,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     @Query("SELECT t FROM Transaction t WHERE t.type = 'PAYMENT' " +
            "AND t.released = false AND t.deleted = false")
     List<Transaction> findAllPendingUnreleased();
+
+    // Saldo por método: soma do líquido dos lançamentos PAYMENT de uma conta,
+    // agrupado por método e filtrado por liberado (true=disponível, false=pendente).
+    @Query("SELECT t.methodType, COALESCE(SUM(t.netAmount), 0) FROM Transaction t WHERE " +
+           "t.account = :account AND t.type = 'PAYMENT' AND t.released = :released " +
+           "AND t.deleted = false GROUP BY t.methodType")
+    List<Object[]> sumPaymentNetByMethod(@Param("account") Account account, @Param("released") boolean released);
 }

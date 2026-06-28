@@ -76,6 +76,7 @@ public class BalanceReleaseService {
             rel.setAccount(account);
             rel.setNetAmount(net);
             rel.setReleased(true);
+            rel.setMethodType(methodTypeOf(t.getPayment()));
             rel.setStatus(TransactionStatus.COMPLETED);
             rel.setDescription("Liberação de saldo (" + motivo + ") — pendente -> disponível");
             transactionRepository.save(rel);
