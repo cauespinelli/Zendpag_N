@@ -1,3 +1,183 @@
+# Integração Zendpag ↔ Gateway externo (One A One / Nuvra) — Contrato da ORIGEM
+
+> **Este é o contrato a entregar para o lado do gateway.** Cobre a integração
+> multi-tenant por **origem**: autenticação por API Key, registro de estabelecimentos,
+> envio de pagamentos (PIX/cartão/boleto) e webhooks de volta assinados (HMAC).
+> Todos os payloads abaixo foram **validados de ponta a ponta** no sandbox.
+>
+> O guia da API voltado ao **lojista** (cobrança avulsa, saldo, etc.) segue **mais
+> abaixo**, a partir de "# Integração Zendpag — Guia da API".
+
+A Zendpag é multi-tenant por **origem**. O gateway é a origem **`ONE_A_ONE`**. Cada
+chamada é autenticada pela API Key dessa origem; o `source` é derivado da key (não do
+corpo) — uma key do `ONE_A_ONE` só cria/movimenta estabelecimentos `ONE_A_ONE`.
+
+## 0. CREDENCIAIS PRO GATEWAY
+
+```
+# ── AUTENTICAÇÃO (a origem ONE_A_ONE usa esta key em TODAS as chamadas) ──
+ZENDPAG_API_KEY        = zk_one_a_one_devkey00000000000000      # header X-API-Key
+ZENDPAG_SOURCE         = ONE_A_ONE
+
+# ── BASE URL (sandbox/dev) ──
+ZENDPAG_BASE_URL       = http://localhost:8093                  # ajuste p/ a URL publicada
+
+# ── ENDPOINTS (o gateway chama estes) ──
+Criar estabelecimento   = POST {BASE_URL}/api/v1/origin/merchants
+Enviar pagamento PIX    = POST {BASE_URL}/api/v1/origin/payments/pix
+Enviar pagamento cartão = POST {BASE_URL}/api/v1/origin/payments/card
+Enviar pagamento boleto = POST {BASE_URL}/api/v1/origin/payments/boleto
+
+# ── WEBHOOK DE VOLTA (a Zendpag chama o gateway; o gateway valida a assinatura) ──
+ZENDPAG_WEBHOOK_URL    = (URL do receptor do gateway — cadastrada na origem ONE_A_ONE)
+ZENDPAG_WEBHOOK_SECRET = whsec_origin_one_dev                   # valida X-Zendapag-Signature
+```
+
+> **Produção:** gere API Key e segredo fortes (não use os de DEV). Rotacione a key com
+> `POST /api/v1/admin/origins/ONE_A_ONE/rotate-key` (retorna a nova key uma única vez) e
+> configure `webhookUrl`/`webhookSecret` da origem. Em DEV a key/secret acima são fixos.
+
+## 1. Autenticação (API Key)
+
+Toda chamada do gateway envia o header:
+```
+X-API-Key: zk_one_a_one_devkey00000000000000
+```
+A Zendpag resolve a origem pelo SHA-256 da key. Key ausente/inválida → **401**. O `source`
+da operação é **sempre** o da key (o gateway não envia `source` no corpo).
+
+## 2. Criar estabelecimento
+
+```
+POST /api/v1/origin/merchants
+X-API-Key: <ZENDPAG_API_KEY>
+Content-Type: application/json
+```
+```json
+{ "name":"Loja do Cliente", "document":"12312312000199",
+  "email":"loja@cliente.com", "phone":"11999990000", "externalId":"NUVRA-M-001" }
+```
+- `document` (CNPJ/CPF) — **chave de idempotência**: reenviar o mesmo documento devolve o
+  mesmo estabelecimento (não duplica).
+- `externalId` — id do lojista **no gateway** (mapeia os dois lados; ecoado nos webhooks
+  como `external_id`).
+
+Resposta `201`:
+```json
+{ "success": true, "message": "Estabelecimento registrado",
+  "data": { "merchantId":"61a4c21e-754f-491f-a7bb-05be807ae478",   // id na ZENDPAG — GUARDE
+            "source":"ONE_A_ONE", "externalId":"NUVRA-M-001",
+            "name":"Loja do Cliente", "document":"12312312000199", "status":"ACTIVE" } }
+```
+
+## 3. Enviar pagamento
+
+Identifique o estabelecimento por `merchantId` (UUID da Zendpag) **ou** `externalId` (id
+no gateway). A Zendpag valida que o estabelecimento pertence à origem da API Key.
+
+### 3.1 PIX — `POST /api/v1/origin/payments/pix`
+```json
+{ "merchantId":"61a4c21e-754f-491f-a7bb-05be807ae478", "referenceId":"NUVRA-PAY-001",
+  "amount":1500.00, "customerName":"Cliente Final", "customerDocument":"39053344705",
+  "customerEmail":"cliente@email.com" }
+```
+Resposta `201` (pagamento **PENDING** — confirma quando o cliente paga):
+```json
+{ "data": { "payment_id":"c4b1184c-2add-4c21-b568-9838d1cfea59", "reference_id":"NUVRA-PAY-001",
+            "status":"PENDING", "amount":1500.00, "merchant_id":"61a4c21e-...",
+            "source":"ONE_A_ONE", "pix_copia_e_cola":"00020126BR.GOV.BCB.PIX-SANDBOX-NUVRA-PAY-001" } }
+```
+- `referenceId` é **idempotente** (mesma referência → mesmo pagamento).
+- Ao pagar, a Zendpag dispara o webhook **`PAYMENT_COMPLETED`** (seção 4).
+
+### 3.2 Cartão — `POST /api/v1/origin/payments/card`
+```json
+{ "merchantId":"61a4c21e-...", "referenceId":"NUVRA-PAY-002", "amount":300.00,
+  "installments":3, "cardToken":"tok_visa_ok", "brand":"VISA", "lastFour":"4242",
+  "expiryMonth":11, "expiryYear":2027, "holderName":"FULANO DE TAL",
+  "customerName":"Cliente Final", "customerDocument":"39053344705" }
+```
+> **PCI:** envie **somente o token** do cartão (tokenização no gateway/PSP). **Nunca** PAN
+> completo nem CVV. A Zendpag guarda só token, bandeira, últimos 4 e validade. 3DS challenge
+> (se exigido) retorna `status=PENDING` + `challenge_id`.
+
+### 3.3 Boleto — `POST /api/v1/origin/payments/boleto`
+```json
+{ "merchantId":"61a4c21e-...", "referenceId":"NUVRA-PAY-003", "amount":250.00,
+  "dueInDays":3, "customerName":"Cliente Final", "customerDocument":"39053344705" }
+```
+Resposta inclui `barcode`, `digitable_line`, `due_date`. Boleto é assíncrono: confirma
+quando pago, disparando `PAYMENT_COMPLETED`.
+
+## 4. Webhooks de volta (Zendpag → gateway)
+
+Quando um pagamento/saque/disputa muda de estado, a Zendpag faz `POST` na URL de webhook
+da origem, **assinado com HMAC-SHA256** sobre o corpo cru.
+
+### 4.1 Headers (em todos os eventos)
+```
+Content-Type: application/json
+X-Zendapag-Event: <NOME_DO_EVENTO>
+X-Zendapag-Webhook-Id: <uuid único do evento>     # idempotência (estável no retry)
+X-Zendapag-Signature: sha256=<hex HMAC-SHA256(ZENDPAG_WEBHOOK_SECRET, raw_body)>
+```
+
+### 4.2 Validação da assinatura (lado do gateway)
+```
+esperado = "sha256=" + hex( HMAC_SHA256( ZENDPAG_WEBHOOK_SECRET, <bytes crus do corpo> ) )
+aceitar SOMENTE se esperado == X-Zendapag-Signature   (comparação em tempo constante)
+```
+Use o `X-Zendapag-Webhook-Id` para idempotência (mesmo id = mesmo evento; ignore repetições).
+
+### 4.3 Eventos e payloads (exatos, validados)
+
+**Pagamento** — `PAYMENT_COMPLETED`, `PAYMENT_FAILED`, `PAYMENT_REFUNDED`:
+```json
+{ "event":"PAYMENT_COMPLETED", "payment_id":"c4b1184c-2add-4c21-b568-9838d1cfea59",
+  "reference_id":"NUVRA-PAY-001", "status":"APPROVED", "amount":1500.00, "fee":29.85,
+  "net":1470.15, "merchant_id":"61a4c21e-...", "source":"ONE_A_ONE", "external_id":"NUVRA-M-001" }
+```
+
+**Saque** — `WITHDRAWAL_PROCESSING`, `WITHDRAWAL_COMPLETED`, `WITHDRAWAL_FAILED`
+(o `status` **sempre** bate com o nome do evento):
+```json
+{ "event":"WITHDRAWAL_COMPLETED", "withdrawal_id":"2877b525-...", "reference_id":"WD-OK-1",
+  "status":"COMPLETED", "amount":1000.00, "net":1000.00, "merchant_id":"61a4c21e-..." }
+```
+Fluxo: `PENDING → PROCESSING` (debita/reserva, `WITHDRAWAL_PROCESSING`) `→ COMPLETED`
+(entregue, `WITHDRAWAL_COMPLETED`) **ou** `→ FAILED` (estorna o saldo, `WITHDRAWAL_FAILED`).
+
+**Disputa** — `DISPUTE_CREATED`:
+```json
+{ "event":"DISPUTE_CREATED", "dispute_id":"95ef2a1d-...", "external_id":"DSP-09999F8B",
+  "status":"OPENED", "reason":"FRAUD", "amount":1500.00, "payment_id":"c4b1184c-...",
+  "payment_reference_id":"NUVRA-PAY-001", "merchant_id":"61a4c21e-..." }
+```
+> Campos extras (`source`, `external_id`, `merchant_id`) podem aparecer além dos
+> obrigatórios — o receptor deve **ignorar chaves desconhecidas**.
+
+### 4.4 Entrega e retry
+`2xx` = entregue. Não-2xx/timeout → reagenda com backoff e reenvia (mesmo
+`X-Zendapag-Webhook-Id`). O gateway deve ser **idempotente**.
+
+## 5. Fluxo ponta a ponta (validado em sandbox)
+```
+1. Gateway → POST /api/v1/origin/merchants     (X-API-Key)  → recebe merchantId
+2. Gateway → POST /api/v1/origin/payments/pix  (X-API-Key)  → pagamento PENDING + pix copia-e-cola
+3. Cliente paga → PSP confirma → Zendpag aprova o pagamento
+4. Zendpag → POST <WEBHOOK_URL>  PAYMENT_COMPLETED (assinado) → gateway valida HMAC e concilia
+```
+
+## 6. Admin da Zendpag — gerar/rotacionar API Key
+```
+POST /api/v1/admin/origins                       (Bearer ADMIN)  # cria origem, retorna apiKey 1x
+POST /api/v1/admin/origins/ONE_A_ONE/rotate-key  (Bearer ADMIN)  # nova apiKey 1x
+GET  /api/v1/admin/origins                       (Bearer ADMIN)  # lista (sem hash)
+```
+
+---
+---
+
 # Integração Zendpag — Guia da API
 
 Documentação de integração com a API da Zendpag (gateway de pagamentos). Cobre
