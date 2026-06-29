@@ -632,6 +632,7 @@ public class PaymentController {
         if (payment.getBoletoDueDate() != null) {
             response.setBoletoDueDate(payment.getBoletoDueDate().toString());
         }
+        response.setBoletoDigitableLine(payment.getBoletoDigitableLine());
         return response;
     }
 

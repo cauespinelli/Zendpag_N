@@ -55,6 +55,7 @@ const AdminTransactions: React.FC = () => {
 
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('todos');
+  const [metodo, setMetodo] = useState('todos');
 
   const [detalhe, setDetalhe] = useState<any>(null);
   const [webhookTx, setWebhookTx] = useState<any>(null);
@@ -136,9 +137,10 @@ const AdminTransactions: React.FC = () => {
         const alvo = `${t.id || ''} ${t.cliente || ''} ${t.documento || ''}`.toLowerCase();
         if (q && !alvo.includes(q)) return false;
         if (status !== 'todos' && t.status !== status) return false;
+        if (metodo !== 'todos' && t.metodo !== metodo) return false;
         return true;
       }),
-    [rows, query, status]
+    [rows, query, status, metodo]
   );
 
   return (
@@ -180,6 +182,12 @@ const AdminTransactions: React.FC = () => {
               className="w-full pl-9 pr-4 py-2 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
           </div>
+          <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={selectCls} title="Filtrar por método">
+            <option value="todos">Todos os métodos</option>
+            <option value="pix">PIX</option>
+            <option value="cartao">Cartão</option>
+            <option value="boleto">Boleto</option>
+          </select>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls}>
             <option value="todos">Todos os status</option>
             <option value="aprovada">Aprovada</option>
@@ -357,6 +365,15 @@ const AdminTransactions: React.FC = () => {
                     <div><p className="text-xs text-slate-400">Parcelas</p><p className="font-medium text-slate-700">{detalhe.cartao.parcelas}x</p></div>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-2">Por segurança (PCI-DSS), exibimos apenas os últimos 4 dígitos. PAN completo e CVV não são armazenados.</p>
+                </div>
+              )}
+              {detalhe.boleto && (
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                  <p className="text-xs text-slate-400 mb-2 inline-flex items-center gap-1.5"><Barcode size={13} /> Dados do boleto</p>
+                  <div className="grid grid-cols-1 gap-y-2 text-sm">
+                    <div><p className="text-xs text-slate-400">Linha digitável</p><p className="font-medium text-slate-700 tabular-nums break-all">{detalhe.boleto.linhaDigitavel}</p></div>
+                    <div><p className="text-xs text-slate-400">Vencimento</p><p className="font-medium text-slate-700 tabular-nums">{detalhe.boleto.vencimento}</p></div>
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-3 gap-3 pt-1">

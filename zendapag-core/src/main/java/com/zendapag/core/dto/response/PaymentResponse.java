@@ -46,6 +46,7 @@ public class PaymentResponse {
     private Integer installments;       // nº de parcelas
     private String threeDsStatus;       // status 3DS
     private String boletoDueDate;       // vencimento do boleto (yyyy-MM-dd)
+    private String boletoDigitableLine; // linha digitável do boleto
     private String source;              // origem (multi-tenant): DIRETO ou origem externa
 
     // Timestamps
@@ -266,6 +267,9 @@ public class PaymentResponse {
 
     public String getBoletoDueDate() { return boletoDueDate; }
     public void setBoletoDueDate(String boletoDueDate) { this.boletoDueDate = boletoDueDate; }
+
+    public String getBoletoDigitableLine() { return boletoDigitableLine; }
+    public void setBoletoDigitableLine(String boletoDigitableLine) { this.boletoDigitableLine = boletoDigitableLine; }
 
     public String getSource() { return source; }
     public void setSource(String source) { this.source = source; }

@@ -51,7 +51,7 @@ const mapPayment = (p: any) => {
     estabelecimento: p.merchantName || '—',
     origem: p.source || 'DIRETO',
     metodo: card ? 'cartao' : boleto ? 'boleto' : 'pix',
-    boleto: boleto ? { vencimento: fmtDate(p.boletoDueDate) } : null,
+    boleto: boleto ? { vencimento: fmtDate(p.boletoDueDate), linhaDigitavel: p.boletoDigitableLine || '—' } : null,
     status: statusMap[p.status] || 'pendente',
     statusRaw: p.status,
     bruto,
