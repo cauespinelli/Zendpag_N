@@ -4,10 +4,12 @@ import com.zendapag.common.exception.BusinessException;
 import com.zendapag.common.exception.ResourceNotFoundException;
 import com.zendapag.core.entity.Merchant;
 import com.zendapag.core.entity.Payment;
+import com.zendapag.core.entity.enums.PaymentMethodType;
 import com.zendapag.core.entity.enums.PaymentStatus;
 import com.zendapag.core.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,14 @@ public class PaymentEngineService {
     private static final BigDecimal DEFAULT_FEE_RATE = new BigDecimal("0.0199");
     /** Taxa mínima por transação. */
     private static final BigDecimal MIN_FEE = new BigDecimal("0.50");
+    private static final BigDecimal HUNDRED = new BigDecimal("100");
+
+    /** Taxa base de cartão de crédito (à vista). Default 3,49%. */
+    @Value("${zendapag.fees.card.base-rate:0.0349}")
+    private BigDecimal cardBaseRate;
+    /** Acréscimo por parcela acima de 1 (juros/risco do parcelado). Default +0,40%/parcela. */
+    @Value("${zendapag.fees.card.installment-surcharge:0.0040}")
+    private BigDecimal cardInstallmentSurcharge;
 
     private final PaymentRepository paymentRepository;
     private final LedgerService ledgerService;
@@ -67,8 +77,9 @@ public class PaymentEngineService {
         Merchant merchant = payment.getMerchant();
         BigDecimal gross = payment.getAmount();
 
-        // 1) Taxa (MDR) pelo feeRate do estabelecimento, com mínimo
-        BigDecimal feeRate = merchant.getFeeRate() != null ? merchant.getFeeRate() : DEFAULT_FEE_RATE;
+        // 1) Taxa (MDR) ciente do método: PIX usa o feeRate do estabelecimento;
+        //    cartão usa a taxa base de cartão + acréscimo por parcela.
+        BigDecimal feeRate = effectiveFeeRate(payment, merchant);
         BigDecimal fee = gross.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
         if (fee.compareTo(MIN_FEE) < 0) {
             fee = MIN_FEE;
@@ -83,12 +94,13 @@ public class PaymentEngineService {
 
         // 2) Atualiza o pagamento
         payment.setFeeAmount(fee);
+        payment.setFeeRate(feeRate);
         payment.setNetAmount(net);
         payment.setStatus(PaymentStatus.APPROVED);
         payment.setPaidAt(Instant.now());
         paymentRepository.save(payment);
         log.info("Pagamento {} aprovado — bruto {}, taxa {} ({}%), líquido {}",
-            payment.getReferenceId(), gross, fee, feeRate.multiply(new BigDecimal("100")), net);
+            payment.getReferenceId(), gross, fee, feeRate.multiply(HUNDRED), net);
 
         // 3) Razão: credita líquido no saldo do merchant + registra taxa como receita
         ledgerService.settleApprovedPayment(payment, gross, fee, net);
@@ -137,6 +149,29 @@ public class PaymentEngineService {
         return payment;
     }
 
+    /**
+     * Taxa efetiva (MDR) por método:
+     *  - CARTÃO: taxa base de cartão + acréscimo por parcela acima de 1.
+     *  - demais (PIX/boleto): feeRate do estabelecimento (ou default).
+     */
+    private BigDecimal effectiveFeeRate(Payment payment, Merchant merchant) {
+        PaymentMethodType method = methodTypeOf(payment);
+        if (method == PaymentMethodType.CREDIT_CARD || method == PaymentMethodType.DEBIT_CARD) {
+            int installments = payment.getInstallments() != null ? Math.max(1, payment.getInstallments()) : 1;
+            BigDecimal surcharge = cardInstallmentSurcharge.multiply(new BigDecimal(installments - 1));
+            return cardBaseRate.add(surcharge);
+        }
+        return merchant.getFeeRate() != null ? merchant.getFeeRate() : DEFAULT_FEE_RATE;
+    }
+
+    /** Tipo do método do pagamento; sem método associado, assume PIX (caso padrão). */
+    private PaymentMethodType methodTypeOf(Payment payment) {
+        if (payment.getPaymentMethod() != null && payment.getPaymentMethod().getType() != null) {
+            return payment.getPaymentMethod().getType();
+        }
+        return PaymentMethodType.PIX;
+    }
+
     private Map<String, Object> paymentPayload(Payment payment, String eventType) {
         Map<String, Object> body = new HashMap<>();
         body.put("event", eventType);
@@ -146,6 +181,7 @@ public class PaymentEngineService {
         body.put("amount", payment.getAmount());
         body.put("fee", payment.getFeeAmount());
         body.put("net", payment.getNetAmount());
+        body.put("installments", payment.getInstallments());
         body.put("merchant_id", payment.getMerchant().getId().toString());
         return body;
     }

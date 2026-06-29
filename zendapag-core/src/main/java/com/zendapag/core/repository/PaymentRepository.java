@@ -27,6 +27,11 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpec
     @Cacheable(value = "payments", key = "#referenceId")
     Optional<Payment> findByReferenceId(String referenceId);
 
+    // Busca SEM cache — para idempotência (o findByReferenceId cacheável pode
+    // guardar um null anterior à criação do pagamento e causar falso-negativo).
+    @Query("SELECT p FROM Payment p WHERE p.referenceId = :referenceId")
+    Optional<Payment> findByReferenceIdUncached(@Param("referenceId") String referenceId);
+
     @Query("SELECT p FROM Payment p WHERE p.merchant = :merchant AND p.deleted = false ORDER BY p.createdAt DESC")
     Page<Payment> findByMerchant(@Param("merchant") Merchant merchant, Pageable pageable);
 

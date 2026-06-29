@@ -5,6 +5,10 @@ import com.zendapag.api.dto.PaymentRefundRequest;
 import com.zendapag.api.dto.PaymentSearchRequest;
 import com.zendapag.common.dto.ApiResponse;
 import com.zendapag.core.dto.request.CreatePixPaymentRequest;
+import com.zendapag.core.dto.request.CreateCardPaymentRequest;
+import com.zendapag.core.entity.Payment;
+import com.zendapag.core.service.CardPaymentService.CardChargeRequest;
+import com.zendapag.core.service.CardPaymentService.CardChargeResult;
 import com.zendapag.core.dto.response.PaymentResponse;
 import com.zendapag.core.entity.Merchant;
 import com.zendapag.core.entity.Payment;
@@ -56,6 +60,9 @@ public class PaymentController {
     private final PaymentEngineService paymentEngineService;
     private final RiskService riskService;
     private final com.zendapag.core.service.DisputeService disputeService;
+    private final com.zendapag.core.service.CardPaymentService cardPaymentService;
+    private final com.zendapag.core.repository.UserRepository userRepository;
+    private final com.zendapag.core.repository.AccountRepository accountRepository;
 
     @Operation(
         summary = "Create PIX payment",
@@ -101,6 +108,59 @@ public class PaymentController {
             log.error("Unexpected error creating PIX payment: {}", e.getMessage(), e);
             throw new BusinessException("Failed to process payment request", "PAYMENT_PROCESSING_ERROR");
         }
+    }
+
+    @Operation(summary = "Create card payment",
+        description = "Cria uma cobrança com cartão de crédito (tokenizado). 3DS no sandbox; "
+            + "saldo do cartão entra como pendente D+30 (fluxo de liquidação da Fase 1).")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/card")
+    @RateLimiter(name = "payments-api")
+    @Timed(value = "api.payments.create.card", description = "Time taken to create card payment via API")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> createCardPayment(
+            @Valid @RequestBody CreateCardPaymentRequest request,
+            Authentication authentication) {
+        UUID merchantId = getMerchantIdFromAuth(authentication);
+        log.info("Creating CARD payment for merchant {} reference {} ({}x)",
+            merchantId, request.getReferenceId(), request.getInstallments());
+
+        CardChargeResult result = cardPaymentService.createCardPayment(merchantId, new CardChargeRequest(
+            request.getReferenceId(), request.getAmount(), request.getInstallments(),
+            request.getCardToken(), request.getBrand(), request.getLastFour(), request.getHolderName(),
+            request.getCustomerName(), request.getCustomerEmail(), request.getCustomerDocument(),
+            request.getDescription(), request.getNotificationUrl()));
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success("Cobrança de cartão criada", cardResultToMap(result)));
+    }
+
+    @Operation(summary = "Confirm 3DS challenge",
+        description = "Confirma o desafio 3-D Secure (mock no sandbox) e prossegue para a aprovação.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/card/{id}/3ds")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> confirm3ds(@PathVariable UUID id) {
+        CardChargeResult result = cardPaymentService.confirm3ds(id);
+        return ResponseEntity.ok(ApiResponse.success("3DS confirmado", cardResultToMap(result)));
+    }
+
+    private java.util.Map<String, Object> cardResultToMap(CardChargeResult result) {
+        Payment p = result.payment();
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("id", p.getId().toString());
+        m.put("referenceId", p.getReferenceId());
+        m.put("status", p.getStatus().name());
+        m.put("threeDsStatus", p.getThreeDsStatus() != null ? p.getThreeDsStatus().name() : null);
+        m.put("challengeId", result.challengeId());
+        m.put("amount", p.getAmount());
+        m.put("installments", p.getInstallments());
+        m.put("feeAmount", p.getFeeAmount());
+        m.put("feeRate", p.getFeeRate());
+        m.put("netAmount", p.getNetAmount());
+        m.put("authorizationCode", p.getAuthorizationCode());
+        m.put("nsu", p.getGatewayTransactionId());
+        m.put("brand", p.getPaymentMethod() != null ? p.getPaymentMethod().getBrand() : null);
+        m.put("lastFour", p.getPaymentMethod() != null ? p.getPaymentMethod().getLastFour() : null);
+        return m;
     }
 
     @Operation(
@@ -439,11 +499,21 @@ public class PaymentController {
     // Helper methods
 
     private UUID getMerchantIdFromAuth(Authentication authentication) {
-        // This would typically extract the merchant ID from JWT token claims
-        // For now, we'll assume the username is the merchant document and look it up
-        String merchantDocument = authentication.getName();
-        Merchant merchant = merchantService.findByDocument(merchantDocument);
-        return merchant.getId();
+        String name = authentication.getName();
+        // 1) Subject como documento do estabelecimento (API-key/integração)
+        Merchant byDoc = merchantService.findByDocumentOptional(name).orElse(null);
+        if (byDoc != null) {
+            return byDoc.getId();
+        }
+        // 2) Subject como usuário (login do seller): resolve o merchant pela conta
+        return userRepository.findByUsernameOrEmail(name)
+            .flatMap(u -> accountRepository.findByUser(u).stream()
+                .map(com.zendapag.core.entity.Account::getMerchant)
+                .filter(java.util.Objects::nonNull)
+                .findFirst())
+            .map(Merchant::getId)
+            .orElseThrow(() -> new BusinessException(
+                "Não foi possível resolver o estabelecimento do usuário autenticado: " + name));
     }
 
 

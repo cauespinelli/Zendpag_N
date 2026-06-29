@@ -1,6 +1,7 @@
 package com.zendapag.core.entity;
 
 import com.zendapag.core.entity.enums.PaymentStatus;
+import com.zendapag.core.entity.enums.ThreeDsStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -78,6 +79,17 @@ public class Payment extends BaseEntity {
 
     @Column(name = "net_amount", precision = 15, scale = 2)
     private BigDecimal netAmount;
+
+    // Cartão: parcelas e autenticação 3DS (autenticação do portador)
+    @Column(name = "installments", nullable = false)
+    private Integer installments = 1;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "three_ds_status", length = 20)
+    private ThreeDsStatus threeDsStatus = ThreeDsStatus.NOT_REQUIRED;
+
+    @Column(name = "authorization_code", length = 50)
+    private String authorizationCode;
 
     // Payment Flow
     @Column(name = "expires_at")
@@ -408,6 +420,30 @@ public class Payment extends BaseEntity {
 
     public void setNetAmount(BigDecimal netAmount) {
         this.netAmount = netAmount;
+    }
+
+    public Integer getInstallments() {
+        return installments;
+    }
+
+    public void setInstallments(Integer installments) {
+        this.installments = installments;
+    }
+
+    public ThreeDsStatus getThreeDsStatus() {
+        return threeDsStatus;
+    }
+
+    public void setThreeDsStatus(ThreeDsStatus threeDsStatus) {
+        this.threeDsStatus = threeDsStatus;
+    }
+
+    public String getAuthorizationCode() {
+        return authorizationCode;
+    }
+
+    public void setAuthorizationCode(String authorizationCode) {
+        this.authorizationCode = authorizationCode;
     }
 
     public Instant getExpiresAt() {
