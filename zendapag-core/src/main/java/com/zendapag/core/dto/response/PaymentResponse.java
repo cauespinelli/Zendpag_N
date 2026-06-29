@@ -35,6 +35,17 @@ public class PaymentResponse {
     private BigDecimal feeAmount;
     private BigDecimal netAmount;
 
+    // Card display info (PCI-compliant: SOMENTE dado não-sensível).
+    // NUNCA PAN completo nem CVV — proibido por PCI-DSS (req. 3.2/3.3) e pelas
+    // regras do projeto. Guardamos/expomos apenas máscara, bandeira e validade.
+    private String paymentMethodType;   // PIX, CREDIT_CARD, ...
+    private String cardBrand;           // VISA, MASTERCARD, ...
+    private String cardLast4;           // últimos 4 dígitos
+    private String cardMaskedNumber;    // "•••• •••• •••• 4242"
+    private String cardExpiry;          // "MM/AA"
+    private Integer installments;       // nº de parcelas
+    private String threeDsStatus;       // status 3DS
+
     // Timestamps
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
     private Instant createdAt;
@@ -229,4 +240,25 @@ public class PaymentResponse {
     public void setMerchantName(String merchantName) {
         this.merchantName = merchantName;
     }
+
+    public String getPaymentMethodType() { return paymentMethodType; }
+    public void setPaymentMethodType(String paymentMethodType) { this.paymentMethodType = paymentMethodType; }
+
+    public String getCardBrand() { return cardBrand; }
+    public void setCardBrand(String cardBrand) { this.cardBrand = cardBrand; }
+
+    public String getCardLast4() { return cardLast4; }
+    public void setCardLast4(String cardLast4) { this.cardLast4 = cardLast4; }
+
+    public String getCardMaskedNumber() { return cardMaskedNumber; }
+    public void setCardMaskedNumber(String cardMaskedNumber) { this.cardMaskedNumber = cardMaskedNumber; }
+
+    public String getCardExpiry() { return cardExpiry; }
+    public void setCardExpiry(String cardExpiry) { this.cardExpiry = cardExpiry; }
+
+    public Integer getInstallments() { return installments; }
+    public void setInstallments(Integer installments) { this.installments = installments; }
+
+    public String getThreeDsStatus() { return threeDsStatus; }
+    public void setThreeDsStatus(String threeDsStatus) { this.threeDsStatus = threeDsStatus; }
 }

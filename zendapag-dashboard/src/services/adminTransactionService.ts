@@ -26,10 +26,14 @@ const statusMap: Record<string, string> = {
 
 const num = (v: any) => (v == null ? 0 : Number(v));
 
+const isCard = (p: any) =>
+  p.paymentMethodType === 'CREDIT_CARD' || p.paymentMethodType === 'DEBIT_CARD' || !!p.cardLast4;
+
 const mapPayment = (p: any) => {
   const bruto = num(p.grossAmount ?? p.amount);
   const taxa = num(p.feeAmount);
   const liquido = p.netAmount != null ? num(p.netAmount) : bruto - taxa;
+  const card = isCard(p);
   return {
     id: p.referenceId || p.id,
     uuid: p.id, // id real (UUID) para ações como aprovar
@@ -37,13 +41,24 @@ const mapPayment = (p: any) => {
     cliente: p.customerName || '—',
     documento: p.customerDocument || '—',
     estabelecimento: p.merchantName || '—',
-    metodo: 'pix',
+    metodo: card ? 'cartao' : 'pix',
     status: statusMap[p.status] || 'pendente',
     statusRaw: p.status,
     bruto,
     taxa,
     liquido: p.status === 'REFUNDED' ? -bruto : liquido,
     adquirente: '—',
+    // Dados de cartão (PCI-compliant: só máscara/bandeira/validade/parcelas — nunca PAN/CVV)
+    cartao: card
+      ? {
+          bandeira: p.cardBrand || '—',
+          mascara: p.cardMaskedNumber || (p.cardLast4 ? `•••• ${p.cardLast4}` : '—'),
+          last4: p.cardLast4 || null,
+          validade: p.cardExpiry || '—',
+          parcelas: p.installments || 1,
+          tresDs: p.threeDsStatus || null,
+        }
+      : null,
     motivoErro: (p.status === 'REJECTED' || p.status === 'FAILED') ? 'Pagamento recusado/falhou' : null,
     criadoEm: p.createdAt ? String(p.createdAt).replace('T', ' ').slice(0, 16) : '—',
   };

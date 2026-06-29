@@ -67,8 +67,8 @@ public class CardPaymentService {
     /** Dados mínimos de criação de cobrança com cartão (tokenizado). */
     public record CardChargeRequest(
         String referenceId, BigDecimal amount, int installments,
-        String cardToken, String brand, String lastFour, String holderName,
-        String customerName, String customerEmail, String customerDocument,
+        String cardToken, String brand, String lastFour, Integer expiryMonth, Integer expiryYear,
+        String holderName, String customerName, String customerEmail, String customerDocument,
         String description, String notificationUrl
     ) {}
 
@@ -103,6 +103,8 @@ public class CardPaymentService {
         pm.setToken(req.cardToken());
         pm.setBrand(req.brand());
         pm.setLastFour(req.lastFour());
+        pm.setExpiryMonth(req.expiryMonth());
+        pm.setExpiryYear(req.expiryYear());
         pm.setHolderName(req.holderName());
         pm = paymentMethodRepository.save(pm);
 

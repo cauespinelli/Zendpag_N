@@ -35,6 +35,14 @@ public class CreateCardPaymentRequest {
     @Pattern(regexp = "\\d{4}", message = "lastFour deve ter 4 dígitos")
     private String lastFour;
 
+    @Min(value = 1, message = "expiryMonth entre 1 e 12")
+    @Max(value = 12, message = "expiryMonth entre 1 e 12")
+    private Integer expiryMonth;
+
+    @Min(value = 2000, message = "expiryYear inválido")
+    @Max(value = 2099, message = "expiryYear inválido")
+    private Integer expiryYear;
+
     @Size(max = 100)
     private String holderName;
 
@@ -71,6 +79,12 @@ public class CreateCardPaymentRequest {
 
     public String getLastFour() { return lastFour; }
     public void setLastFour(String lastFour) { this.lastFour = lastFour; }
+
+    public Integer getExpiryMonth() { return expiryMonth; }
+    public void setExpiryMonth(Integer expiryMonth) { this.expiryMonth = expiryMonth; }
+
+    public Integer getExpiryYear() { return expiryYear; }
+    public void setExpiryYear(Integer expiryYear) { this.expiryYear = expiryYear; }
 
     public String getHolderName() { return holderName; }
     public void setHolderName(String holderName) { this.holderName = holderName; }

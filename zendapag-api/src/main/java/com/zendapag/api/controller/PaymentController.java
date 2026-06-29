@@ -126,7 +126,8 @@ public class PaymentController {
 
         CardChargeResult result = cardPaymentService.createCardPayment(merchantId, new CardChargeRequest(
             request.getReferenceId(), request.getAmount(), request.getInstallments(),
-            request.getCardToken(), request.getBrand(), request.getLastFour(), request.getHolderName(),
+            request.getCardToken(), request.getBrand(), request.getLastFour(),
+            request.getExpiryMonth(), request.getExpiryYear(), request.getHolderName(),
             request.getCustomerName(), request.getCustomerEmail(), request.getCustomerDocument(),
             request.getDescription(), request.getNotificationUrl()));
 
@@ -566,6 +567,28 @@ public class PaymentController {
         response.setCreatedAt(payment.getCreatedAt());
         response.setExpiresAt(payment.getExpiresAt());
         response.setProcessedAt(payment.getProcessedAt());
+
+        // Dados de cartão para o painel — SOMENTE não-sensíveis (máscara/bandeira/
+        // validade/parcelas). Nunca PAN completo nem CVV (PCI-DSS req. 3.2/3.3).
+        response.setInstallments(payment.getInstallments());
+        if (payment.getThreeDsStatus() != null) {
+            response.setThreeDsStatus(payment.getThreeDsStatus().name());
+        }
+        com.zendapag.core.entity.PaymentMethod pm = payment.getPaymentMethod();
+        if (pm != null) {
+            if (pm.getType() != null) {
+                response.setPaymentMethodType(pm.getType().name());
+            }
+            response.setCardBrand(pm.getBrand());
+            response.setCardLast4(pm.getLastFour());
+            if (pm.getLastFour() != null && !pm.getLastFour().isBlank()) {
+                response.setCardMaskedNumber("•••• •••• •••• " + pm.getLastFour());
+            }
+            if (pm.getExpiryMonth() != null && pm.getExpiryYear() != null) {
+                response.setCardExpiry(String.format("%02d/%02d",
+                    pm.getExpiryMonth(), pm.getExpiryYear() % 100));
+            }
+        }
         return response;
     }
 

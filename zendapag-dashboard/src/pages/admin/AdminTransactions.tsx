@@ -12,6 +12,7 @@ import {
   TrendingDown,
   Wallet,
   QrCode,
+  CreditCard,
   Eye,
   ShieldAlert,
   Webhook,
@@ -223,7 +224,17 @@ const AdminTransactions: React.FC = () => {
                       <p className="text-[11px] text-slate-300 tabular-nums">{t.criadoEm}</p>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="inline-flex items-center gap-1.5 text-slate-600"><QrCode size={16} className="text-slate-400" /> Pix</span>
+                      {t.cartao ? (
+                        <div className="flex flex-col">
+                          <span className="inline-flex items-center gap-1.5 text-slate-600">
+                            <CreditCard size={16} className="text-slate-400" /> {t.cartao.bandeira}
+                            {t.cartao.parcelas > 1 && <span className="text-xs text-slate-400">· {t.cartao.parcelas}x</span>}
+                          </span>
+                          <span className="text-[11px] text-slate-400 tabular-nums">{t.cartao.mascara} · val {t.cartao.validade}</span>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-slate-600"><QrCode size={16} className="text-slate-400" /> Pix</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-1.5">
@@ -310,11 +321,29 @@ const AdminTransactions: React.FC = () => {
               <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div><p className="text-xs text-slate-400">Pagador (nome)</p><p className="font-medium text-slate-700">{detalhe.cliente}</p></div>
                 <div><p className="text-xs text-slate-400">CPF</p><p className="font-medium text-slate-700 tabular-nums">{detalhe.documento}</p></div>
-                <div><p className="text-xs text-slate-400">Método</p><p className="font-medium text-slate-700 inline-flex items-center gap-1.5"><QrCode size={15} className="text-slate-400" /> Pix</p></div>
+                <div><p className="text-xs text-slate-400">Método</p>
+                  {detalhe.cartao ? (
+                    <p className="font-medium text-slate-700 inline-flex items-center gap-1.5"><CreditCard size={15} className="text-slate-400" /> Cartão</p>
+                  ) : (
+                    <p className="font-medium text-slate-700 inline-flex items-center gap-1.5"><QrCode size={15} className="text-slate-400" /> Pix</p>
+                  )}
+                </div>
                 <div><p className="text-xs text-slate-400">Status</p><div className="mt-0.5"><StatusBadge tone={statusMeta[detalhe.status]?.tone || 'neutral'}>{statusMeta[detalhe.status]?.label || detalhe.status}</StatusBadge></div></div>
                 <div><p className="text-xs text-slate-400">Data</p><p className="font-medium text-slate-700 tabular-nums">{detalhe.criadoEm}</p></div>
                 <div><p className="text-xs text-slate-400">Estabelecimento</p><p className="font-medium text-slate-700">{detalhe.estabelecimento}</p></div>
               </div>
+              {detalhe.cartao && (
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                  <p className="text-xs text-slate-400 mb-2 inline-flex items-center gap-1.5"><CreditCard size={13} /> Dados do cartão</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div><p className="text-xs text-slate-400">Número</p><p className="font-medium text-slate-700 tabular-nums">{detalhe.cartao.mascara}</p></div>
+                    <div><p className="text-xs text-slate-400">Bandeira</p><p className="font-medium text-slate-700">{detalhe.cartao.bandeira}</p></div>
+                    <div><p className="text-xs text-slate-400">Validade</p><p className="font-medium text-slate-700 tabular-nums">{detalhe.cartao.validade}</p></div>
+                    <div><p className="text-xs text-slate-400">Parcelas</p><p className="font-medium text-slate-700">{detalhe.cartao.parcelas}x</p></div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-2">Por segurança (PCI-DSS), exibimos apenas os últimos 4 dígitos. PAN completo e CVV não são armazenados.</p>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-3 pt-1">
                 <div className="rounded-xl bg-slate-50 border border-slate-100 p-3"><p className="text-xs text-slate-400">Bruto</p><p className="font-semibold text-slate-800 tabular-nums mt-0.5">{brl(detalhe.bruto)}</p></div>
                 <div className="rounded-xl bg-slate-50 border border-slate-100 p-3"><p className="text-xs text-slate-400">Taxa</p><p className="font-semibold text-slate-500 tabular-nums mt-0.5">{detalhe.taxa ? `- ${brl(detalhe.taxa)}` : '—'}</p></div>
