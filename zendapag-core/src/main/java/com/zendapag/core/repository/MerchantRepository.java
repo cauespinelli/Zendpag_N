@@ -29,6 +29,10 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID>, JpaSp
     @Query("SELECT m FROM Merchant m WHERE m.document = :document AND m.deleted = false")
     Optional<Merchant> findByDocumentUncached(@Param("document") String document);
 
+    // Resolução de estabelecimento de uma origem pelo id externo (do gateway).
+    @Query("SELECT m FROM Merchant m WHERE m.sourceExternalId = :externalId AND m.source = :source AND m.deleted = false")
+    Optional<Merchant> findBySourceExternalIdAndSource(@Param("externalId") String externalId, @Param("source") String source);
+
     @Cacheable(value = "merchants", key = "#email")
     Optional<Merchant> findByEmail(String email);
 
