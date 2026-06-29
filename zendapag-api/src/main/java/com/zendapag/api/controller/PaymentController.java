@@ -6,6 +6,7 @@ import com.zendapag.api.dto.PaymentSearchRequest;
 import com.zendapag.common.dto.ApiResponse;
 import com.zendapag.core.dto.request.CreatePixPaymentRequest;
 import com.zendapag.core.dto.request.CreateCardPaymentRequest;
+import com.zendapag.core.dto.request.CreateBoletoPaymentRequest;
 import com.zendapag.core.entity.Payment;
 import com.zendapag.core.service.CardPaymentService.CardChargeRequest;
 import com.zendapag.core.service.CardPaymentService.CardChargeResult;
@@ -61,6 +62,7 @@ public class PaymentController {
     private final RiskService riskService;
     private final com.zendapag.core.service.DisputeService disputeService;
     private final com.zendapag.core.service.CardPaymentService cardPaymentService;
+    private final com.zendapag.core.service.BoletoPaymentService boletoPaymentService;
     private final com.zendapag.core.repository.UserRepository userRepository;
     private final com.zendapag.core.repository.AccountRepository accountRepository;
 
@@ -142,6 +144,43 @@ public class PaymentController {
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> confirm3ds(@PathVariable UUID id) {
         CardChargeResult result = cardPaymentService.confirm3ds(id);
         return ResponseEntity.ok(ApiResponse.success("3DS confirmado", cardResultToMap(result)));
+    }
+
+    @Operation(summary = "Create boleto payment",
+        description = "Emite um boleto (codigo de barras, linha digitavel, vencimento). Boleto e "
+            + "assincrono: fica PENDING ate a confirmacao via webhook de entrada (boleto.paid). "
+            + "Tarifa fixa; saldo entra como pendente D+2 (liquidacao da Fase 1).")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/boleto")
+    @RateLimiter(name = "payments-api")
+    @Timed(value = "api.payments.create.boleto", description = "Time taken to create boleto payment via API")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> createBoletoPayment(
+            @Valid @RequestBody CreateBoletoPaymentRequest request,
+            Authentication authentication) {
+        UUID merchantId = getMerchantIdFromAuth(authentication);
+        log.info("Creating BOLETO payment for merchant {} reference {}", merchantId, request.getReferenceId());
+
+        Payment p = boletoPaymentService.createBoletoPayment(merchantId,
+            new com.zendapag.core.service.BoletoPaymentService.BoletoChargeRequest(
+                request.getReferenceId(), request.getAmount(), request.getDueInDays(),
+                request.getCustomerName(), request.getCustomerEmail(), request.getCustomerDocument(),
+                request.getDescription(), request.getNotificationUrl()));
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success("Boleto emitido", boletoToMap(p)));
+    }
+
+    private java.util.Map<String, Object> boletoToMap(Payment p) {
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("id", p.getId().toString());
+        m.put("referenceId", p.getReferenceId());
+        m.put("status", p.getStatus().name());
+        m.put("amount", p.getAmount());
+        m.put("barcode", p.getBoletoBarcode());
+        m.put("digitableLine", p.getBoletoDigitableLine());
+        m.put("dueDate", p.getBoletoDueDate() != null ? p.getBoletoDueDate().toString() : null);
+        m.put("url", p.getBoletoUrl());
+        return m;
     }
 
     private java.util.Map<String, Object> cardResultToMap(CardChargeResult result) {
@@ -588,6 +627,9 @@ public class PaymentController {
                 response.setCardExpiry(String.format("%02d/%02d",
                     pm.getExpiryMonth(), pm.getExpiryYear() % 100));
             }
+        }
+        if (payment.getBoletoDueDate() != null) {
+            response.setBoletoDueDate(payment.getBoletoDueDate().toString());
         }
         return response;
     }

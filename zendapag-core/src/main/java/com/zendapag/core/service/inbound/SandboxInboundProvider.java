@@ -69,9 +69,10 @@ public class SandboxInboundProvider implements InboundWebhookProvider {
         if (rawType == null) return InboundEventType.UNKNOWN;
         return switch (rawType.toLowerCase()) {
             case "payment.confirmed", "payment.approved", "payment.paid",
-                 "card.authorized", "card.captured" -> InboundEventType.PAYMENT_CONFIRMED;
+                 "card.authorized", "card.captured",
+                 "boleto.paid", "bankslip.paid" -> InboundEventType.PAYMENT_CONFIRMED;
             case "payment.failed", "payment.refused", "payment.declined",
-                 "card.declined" -> InboundEventType.PAYMENT_FAILED;
+                 "card.declined", "boleto.expired" -> InboundEventType.PAYMENT_FAILED;
             case "withdrawal.completed", "payout.completed" -> InboundEventType.WITHDRAWAL_COMPLETED;
             default -> InboundEventType.UNKNOWN;
         };

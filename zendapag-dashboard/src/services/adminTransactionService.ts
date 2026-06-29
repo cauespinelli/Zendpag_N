@@ -28,12 +28,20 @@ const num = (v: any) => (v == null ? 0 : Number(v));
 
 const isCard = (p: any) =>
   p.paymentMethodType === 'CREDIT_CARD' || p.paymentMethodType === 'DEBIT_CARD' || !!p.cardLast4;
+const isBoleto = (p: any) => p.paymentMethodType === 'BANK_SLIP' || !!p.boletoDueDate;
+
+const fmtDate = (d: any) => {
+  if (!d) return '—';
+  const [y, m, dd] = String(d).slice(0, 10).split('-');
+  return dd && m && y ? `${dd}/${m}/${y}` : String(d);
+};
 
 const mapPayment = (p: any) => {
   const bruto = num(p.grossAmount ?? p.amount);
   const taxa = num(p.feeAmount);
   const liquido = p.netAmount != null ? num(p.netAmount) : bruto - taxa;
   const card = isCard(p);
+  const boleto = isBoleto(p);
   return {
     id: p.referenceId || p.id,
     uuid: p.id, // id real (UUID) para ações como aprovar
@@ -41,7 +49,8 @@ const mapPayment = (p: any) => {
     cliente: p.customerName || '—',
     documento: p.customerDocument || '—',
     estabelecimento: p.merchantName || '—',
-    metodo: card ? 'cartao' : 'pix',
+    metodo: card ? 'cartao' : boleto ? 'boleto' : 'pix',
+    boleto: boleto ? { vencimento: fmtDate(p.boletoDueDate) } : null,
     status: statusMap[p.status] || 'pendente',
     statusRaw: p.status,
     bruto,

@@ -13,6 +13,7 @@ import {
   Wallet,
   QrCode,
   CreditCard,
+  Barcode,
   Eye,
   ShieldAlert,
   Webhook,
@@ -232,6 +233,11 @@ const AdminTransactions: React.FC = () => {
                           </span>
                           <span className="text-[11px] text-slate-400 tabular-nums">{t.cartao.mascara} · val {t.cartao.validade}</span>
                         </div>
+                      ) : t.boleto ? (
+                        <div className="flex flex-col">
+                          <span className="inline-flex items-center gap-1.5 text-slate-600"><Barcode size={16} className="text-slate-400" /> Boleto</span>
+                          <span className="text-[11px] text-slate-400 tabular-nums">venc {t.boleto.vencimento}</span>
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-slate-600"><QrCode size={16} className="text-slate-400" /> Pix</span>
                       )}
@@ -324,6 +330,8 @@ const AdminTransactions: React.FC = () => {
                 <div><p className="text-xs text-slate-400">Método</p>
                   {detalhe.cartao ? (
                     <p className="font-medium text-slate-700 inline-flex items-center gap-1.5"><CreditCard size={15} className="text-slate-400" /> Cartão</p>
+                  ) : detalhe.boleto ? (
+                    <p className="font-medium text-slate-700 inline-flex items-center gap-1.5"><Barcode size={15} className="text-slate-400" /> Boleto · venc {detalhe.boleto.vencimento}</p>
                   ) : (
                     <p className="font-medium text-slate-700 inline-flex items-center gap-1.5"><QrCode size={15} className="text-slate-400" /> Pix</p>
                   )}

@@ -91,6 +91,19 @@ public class Payment extends BaseEntity {
     @Column(name = "authorization_code", length = 50)
     private String authorizationCode;
 
+    // Boleto: código de barras, linha digitável, vencimento e link da 2ª via
+    @Column(name = "boleto_barcode", length = 60)
+    private String boletoBarcode;
+
+    @Column(name = "boleto_digitable_line", length = 60)
+    private String boletoDigitableLine;
+
+    @Column(name = "boleto_due_date")
+    private java.time.LocalDate boletoDueDate;
+
+    @Column(name = "boleto_url", length = 500)
+    private String boletoUrl;
+
     // Payment Flow
     @Column(name = "expires_at")
     private Instant expiresAt;
@@ -444,6 +457,38 @@ public class Payment extends BaseEntity {
 
     public void setAuthorizationCode(String authorizationCode) {
         this.authorizationCode = authorizationCode;
+    }
+
+    public String getBoletoBarcode() {
+        return boletoBarcode;
+    }
+
+    public void setBoletoBarcode(String boletoBarcode) {
+        this.boletoBarcode = boletoBarcode;
+    }
+
+    public String getBoletoDigitableLine() {
+        return boletoDigitableLine;
+    }
+
+    public void setBoletoDigitableLine(String boletoDigitableLine) {
+        this.boletoDigitableLine = boletoDigitableLine;
+    }
+
+    public java.time.LocalDate getBoletoDueDate() {
+        return boletoDueDate;
+    }
+
+    public void setBoletoDueDate(java.time.LocalDate boletoDueDate) {
+        this.boletoDueDate = boletoDueDate;
+    }
+
+    public String getBoletoUrl() {
+        return boletoUrl;
+    }
+
+    public void setBoletoUrl(String boletoUrl) {
+        this.boletoUrl = boletoUrl;
     }
 
     public Instant getExpiresAt() {

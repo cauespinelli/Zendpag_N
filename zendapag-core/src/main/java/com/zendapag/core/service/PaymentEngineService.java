@@ -46,6 +46,9 @@ public class PaymentEngineService {
     /** Acréscimo por parcela acima de 1 (juros/risco do parcelado). Default +0,40%/parcela. */
     @Value("${zendapag.fees.card.installment-surcharge:0.0040}")
     private BigDecimal cardInstallmentSurcharge;
+    /** Tarifa FIXA por boleto (não percentual). Default R$ 3,49. */
+    @Value("${zendapag.fees.boleto.flat:3.49}")
+    private BigDecimal boletoFlatFee;
 
     private final PaymentRepository paymentRepository;
     private final LedgerService ledgerService;
@@ -77,16 +80,26 @@ public class PaymentEngineService {
         Merchant merchant = payment.getMerchant();
         BigDecimal gross = payment.getAmount();
 
-        // 1) Taxa (MDR) ciente do método: PIX usa o feeRate do estabelecimento;
-        //    cartão usa a taxa base de cartão + acréscimo por parcela.
-        BigDecimal feeRate = effectiveFeeRate(payment, merchant);
-        BigDecimal fee = gross.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
-        if (fee.compareTo(MIN_FEE) < 0) {
-            fee = MIN_FEE;
+        // 1) Taxa ciente do método:
+        //    - BOLETO: tarifa FIXA (não percentual);
+        //    - CARTÃO: taxa base + acréscimo por parcela;
+        //    - PIX/demais: feeRate do estabelecimento.
+        PaymentMethodType method = methodTypeOf(payment);
+        BigDecimal fee;
+        BigDecimal feeRate;
+        if (method == PaymentMethodType.BANK_SLIP) {
+            fee = boletoFlatFee.setScale(2, RoundingMode.HALF_UP);
+            feeRate = null; // tarifa fixa — sem percentual
+        } else {
+            feeRate = effectiveFeeRate(payment, merchant);
+            fee = gross.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
+            if (fee.compareTo(MIN_FEE) < 0) {
+                fee = MIN_FEE;
+            }
         }
         // A taxa nunca pode exceder o valor bruto: em cobranças menores que a
-        // taxa mínima (ex.: R$0,01), a taxa é limitada ao bruto e o líquido
-        // fica em zero — nunca negativo.
+        // taxa (ex.: boleto de R$1 com tarifa R$3,49), a taxa é limitada ao bruto
+        // e o líquido fica em zero — nunca negativo.
         if (fee.compareTo(gross) > 0) {
             fee = gross;
         }
@@ -99,8 +112,9 @@ public class PaymentEngineService {
         payment.setStatus(PaymentStatus.APPROVED);
         payment.setPaidAt(Instant.now());
         paymentRepository.save(payment);
-        log.info("Pagamento {} aprovado — bruto {}, taxa {} ({}%), líquido {}",
-            payment.getReferenceId(), gross, fee, feeRate.multiply(HUNDRED), net);
+        log.info("Pagamento {} aprovado — bruto {}, taxa {} ({}), líquido {}",
+            payment.getReferenceId(), gross, fee,
+            feeRate != null ? feeRate.multiply(HUNDRED) + "%" : "tarifa fixa", net);
 
         // 3) Razão: credita líquido no saldo do merchant + registra taxa como receita
         ledgerService.settleApprovedPayment(payment, gross, fee, net);

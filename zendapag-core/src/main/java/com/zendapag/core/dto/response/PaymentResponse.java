@@ -45,6 +45,7 @@ public class PaymentResponse {
     private String cardExpiry;          // "MM/AA"
     private Integer installments;       // nº de parcelas
     private String threeDsStatus;       // status 3DS
+    private String boletoDueDate;       // vencimento do boleto (yyyy-MM-dd)
 
     // Timestamps
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
@@ -261,4 +262,7 @@ public class PaymentResponse {
 
     public String getThreeDsStatus() { return threeDsStatus; }
     public void setThreeDsStatus(String threeDsStatus) { this.threeDsStatus = threeDsStatus; }
+
+    public String getBoletoDueDate() { return boletoDueDate; }
+    public void setBoletoDueDate(String boletoDueDate) { this.boletoDueDate = boletoDueDate; }
 }
