@@ -28,6 +28,7 @@ public class ApiSecurityConfig {
 
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     @Lazy private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    @Lazy private final com.zendapag.api.security.ApiKeyAuthFilter apiKeyAuthFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
@@ -67,6 +68,8 @@ public class ApiSecurityConfig {
                         // Webhooks de ENTRADA do PSP — sem JWT; a autenticação é a assinatura HMAC
                         // validada pelo adapter. Precede a regra geral /webhooks/** abaixo.
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/psp/**").permitAll()
+                        // Endpoints de ORIGEM externa — autenticados por API Key (ROLE_ORIGIN), não JWT.
+                        .requestMatchers("/api/v1/origin/**").hasRole("ORIGIN")
 
                         // Protected API endpoints (ADMIN também passa no filtro;
                         // os métodos admin têm @PreAuthorize("hasRole('ADMIN')") próprio)
@@ -82,6 +85,7 @@ public class ApiSecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(apiKeyAuthFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 

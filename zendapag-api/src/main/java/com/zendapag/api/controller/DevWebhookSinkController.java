@@ -49,6 +49,7 @@ public class DevWebhookSinkController {
     private final DisputeService disputeService;
     private final BalanceReleaseService balanceReleaseService;
     private final PayoutPolicyService payoutPolicyService;
+    private final com.zendapag.core.repository.OriginRepository originRepository;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/api/v1/webhooks/receive/dev-sink")
@@ -73,6 +74,36 @@ public class DevWebhookSinkController {
                 event, merchantId, signature, verdict);
         } catch (Exception e) {
             log.warn("[DevWebhookSink] erro ao processar corpo: {}", e.getMessage());
+        }
+        return ResponseEntity.ok("{\"received\":true,\"hmac\":\"" + verdict + "\"}");
+    }
+
+    /**
+     * Receptor de DEV dos webhooks DE VOLTA à ORIGEM (simula o gateway). Valida o
+     * HMAC com o segredo da ORIGEM (achada pelo campo "source" do corpo).
+     */
+    @PostMapping("/api/v1/webhooks/receive/dev-origin-sink")
+    public ResponseEntity<String> originSink(
+            @RequestBody String body,
+            @RequestHeader(value = "X-Zendapag-Signature", required = false) String signature,
+            @RequestHeader(value = "X-Zendapag-Event", required = false) String event) {
+        String verdict = "sem source";
+        try {
+            JsonNode node = objectMapper.readTree(body);
+            String source = node.path("source").asText(null);
+            String merchantId = node.path("merchant_id").asText(null);
+            if (source != null) {
+                var origin = originRepository.findByCode(source).orElse(null);
+                if (origin != null && origin.getWebhookSecret() != null) {
+                    String expected = "sha256=" + HmacUtil.sha256Hex(origin.getWebhookSecret(), body);
+                    verdict = expected.equals(signature) ? "HMAC VALIDO" : "HMAC INVALIDO";
+                } else {
+                    verdict = "origem nao encontrada / sem secret";
+                }
+            }
+            log.warn("[DevOriginSink] evento={} source={} merchant={} -> {}", event, source, merchantId, verdict);
+        } catch (Exception e) {
+            log.warn("[DevOriginSink] erro ao processar corpo: {}", e.getMessage());
         }
         return ResponseEntity.ok("{\"received\":true,\"hmac\":\"" + verdict + "\"}");
     }
@@ -105,6 +136,27 @@ public class DevWebhookSinkController {
         body.put("retentionEnabled", rule.isRetentionEnabled());
         body.put("holdingDays", rule.getHoldingDays());
         body.put("autoPayoutEnabled", rule.isAutoPayoutEnabled());
+        return ResponseEntity.ok(body);
+    }
+
+    /** DEV: cria um pagamento PIX PENDING para um merchant (p/ testar aprovação/webhooks). */
+    @PostMapping("/api/v1/webhooks/receive/dev-create-payment")
+    public ResponseEntity<Map<String, Object>> devCreatePayment(
+            @RequestParam UUID merchantId,
+            @RequestParam String referenceId,
+            @RequestParam String amount) {
+        Merchant m = merchantRepository.findById(merchantId).orElse(null);
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (m == null) {
+            body.put("error", "merchant não encontrado");
+            return ResponseEntity.ok(body);
+        }
+        Payment p = new Payment(referenceId, m, new java.math.BigDecimal(amount));
+        p.setStatus(PaymentStatus.PENDING);
+        p = paymentRepository.save(p);
+        body.put("id", p.getId().toString());
+        body.put("referenceId", p.getReferenceId());
+        body.put("status", p.getStatus().name());
         return ResponseEntity.ok(body);
     }
 

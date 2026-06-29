@@ -58,6 +58,12 @@ public class Webhook extends BaseEntity {
     @Column(name = "http_method", nullable = false, length = 10)
     private String httpMethod = "POST";
 
+    // Quando preenchido, este webhook é destinado a uma ORIGEM (não ao merchant):
+    // a entrega assina com o segredo da origem (resolvido por este código), e não
+    // com o segredo do estabelecimento. Mantém o retry correto.
+    @Column(name = "target_source", length = 40)
+    private String targetSource;
+
     // Request Information
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload")
@@ -307,6 +313,14 @@ public class Webhook extends BaseEntity {
 
     public String getHttpMethod() {
         return httpMethod;
+    }
+
+    public String getTargetSource() {
+        return targetSource;
+    }
+
+    public void setTargetSource(String targetSource) {
+        this.targetSource = targetSource;
     }
 
     public void setHttpMethod(String httpMethod) {

@@ -38,6 +38,12 @@ public class MerchantResponse {
     @Schema(description = "Merchant status")
     private String status;
 
+    @Schema(description = "Origem (multi-tenant): DIRETO ou origem externa (ex.: ONE_A_ONE)")
+    private String source;
+
+    @Schema(description = "Id do estabelecimento no sistema da origem")
+    private String sourceExternalId;
+
     @Schema(description = "KYC verification status")
     private Boolean kycVerified;
 

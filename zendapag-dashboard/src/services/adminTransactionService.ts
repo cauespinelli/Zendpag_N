@@ -49,6 +49,7 @@ const mapPayment = (p: any) => {
     cliente: p.customerName || '—',
     documento: p.customerDocument || '—',
     estabelecimento: p.merchantName || '—',
+    origem: p.source || 'DIRETO',
     metodo: card ? 'cartao' : boleto ? 'boleto' : 'pix',
     boleto: boleto ? { vencimento: fmtDate(p.boletoDueDate) } : null,
     status: statusMap[p.status] || 'pendente',

@@ -30,6 +30,8 @@ const mapMerchant = (m: any) => {
     email: m.email,
     telefone: m.phoneNumber || '—',
     status: statusMap[m.status] || 'analise',
+    origem: m.source || 'DIRETO',
+    origemExternalId: m.sourceExternalId || null,
     compliance: m.kycVerified ? 'aprovado' : 'pendente',
     // ainda não disponíveis no backend:
     saldoDisponivel: null,

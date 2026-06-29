@@ -594,6 +594,7 @@ public class PaymentController {
         if (payment.getMerchant() != null) {
             response.setMerchantId(payment.getMerchant().getId().toString());
             response.setMerchantName(payment.getMerchant().getName());
+            response.setSource(payment.getMerchant().getSource());
         }
         response.setPixKey(payment.getPixKey());
         response.setPixQrCode(payment.getPixQrCode());

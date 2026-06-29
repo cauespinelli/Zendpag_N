@@ -71,6 +71,7 @@ public class LedgerService {
         credit.setFeeAmount(fee);
         credit.setNetAmount(net);
         credit.setMethodType(method);
+        credit.setSource(merchant.getSource());
         credit.setStatus(TransactionStatus.COMPLETED);
 
         if (rule.retentionEnabled()) {
@@ -104,6 +105,7 @@ public class LedgerService {
         platformFee.setStatus(TransactionStatus.COMPLETED);
         platformFee.setReleased(true);
         platformFee.setMethodType(method);
+        platformFee.setSource(merchant.getSource());
         platformFee.setDescription("Taxa da plataforma (MDR) sobre o pagamento");
         transactionRepository.save(platformFee);
 
@@ -184,6 +186,7 @@ public class LedgerService {
         refund.setNetAmount(amount.negate());
         refund.setReleased(true);
         refund.setMethodType(methodTypeOf(payment));
+        refund.setSource(merchant.getSource());
         refund.setStatus(TransactionStatus.COMPLETED);
         refund.setDescription("Estorno do pagamento — débito do líquido (" + (stillPending ? "pendente" : "disponível") + ")");
         transactionRepository.save(refund);

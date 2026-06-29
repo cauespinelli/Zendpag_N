@@ -308,6 +308,8 @@ public class MerchantController {
         response.setWebsiteUrl(merchant.getWebsiteUrl());
         response.setDescription(merchant.getDescription());
         response.setStatus(merchant.getStatus().name());
+        response.setSource(merchant.getSource());
+        response.setSourceExternalId(merchant.getSourceExternalId());
         response.setKycVerified(merchant.getKycVerified());
         response.setRiskScore(merchant.getRiskScore());
         response.setAddress(merchant.getAddressAsMap());

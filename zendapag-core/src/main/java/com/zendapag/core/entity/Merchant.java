@@ -101,6 +101,15 @@ public class Merchant extends BaseEntity {
     @Column(name = "monthly_limit", precision = 15, scale = 2)
     private BigDecimal monthlyLimit;
 
+    // Origem (multi-tenant): "DIRETO" = estabelecimento próprio da Zend;
+    // outras origens externas (ex.: ONE_A_ONE) registram via API Key.
+    @Column(name = "source", nullable = false, length = 40)
+    private String source = "DIRETO";
+
+    // Id do estabelecimento no sistema da origem (mapeia os dois lados).
+    @Column(name = "source_external_id", length = 120)
+    private String sourceExternalId;
+
     // Settings
     @Column(name = "webhook_url", length = 500)
     private String webhookUrl;
@@ -327,6 +336,22 @@ public class Merchant extends BaseEntity {
 
     public void setMonthlyLimit(BigDecimal monthlyLimit) {
         this.monthlyLimit = monthlyLimit;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getSourceExternalId() {
+        return sourceExternalId;
+    }
+
+    public void setSourceExternalId(String sourceExternalId) {
+        this.sourceExternalId = sourceExternalId;
     }
 
     public String getWebhookUrl() {

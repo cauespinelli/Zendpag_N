@@ -46,6 +46,7 @@ public class PaymentResponse {
     private Integer installments;       // nº de parcelas
     private String threeDsStatus;       // status 3DS
     private String boletoDueDate;       // vencimento do boleto (yyyy-MM-dd)
+    private String source;              // origem (multi-tenant): DIRETO ou origem externa
 
     // Timestamps
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "UTC")
@@ -265,4 +266,7 @@ public class PaymentResponse {
 
     public String getBoletoDueDate() { return boletoDueDate; }
     public void setBoletoDueDate(String boletoDueDate) { this.boletoDueDate = boletoDueDate; }
+
+    public String getSource() { return source; }
+    public void setSource(String source) { this.source = source; }
 }

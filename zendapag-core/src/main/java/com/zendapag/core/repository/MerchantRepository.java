@@ -24,6 +24,11 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID>, JpaSp
     @Cacheable(value = "merchants", key = "#document")
     Optional<Merchant> findByDocument(String document);
 
+    // Busca SEM cache — para idempotência (o findByDocument cacheável pode guardar
+    // um null anterior à criação do estabelecimento e causar falso-negativo).
+    @Query("SELECT m FROM Merchant m WHERE m.document = :document AND m.deleted = false")
+    Optional<Merchant> findByDocumentUncached(@Param("document") String document);
+
     @Cacheable(value = "merchants", key = "#email")
     Optional<Merchant> findByEmail(String email);
 

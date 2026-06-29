@@ -220,7 +220,14 @@ const AdminTransactions: React.FC = () => {
                 {filtered.map((t) => (
                   <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50/60">
                     <td className="px-5 py-3.5">
-                      <p className="font-medium text-slate-700">{t.id}</p>
+                      <p className="font-medium text-slate-700 flex items-center gap-1.5">
+                        {t.id}
+                        {t.origem && t.origem !== 'DIRETO' && (
+                          <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 border border-violet-100" title={`Origem: ${t.origem}`}>
+                            {t.origem}
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-slate-400">{t.cliente} · {t.estabelecimento}</p>
                       <p className="text-[11px] text-slate-300 tabular-nums">{t.criadoEm}</p>
                     </td>

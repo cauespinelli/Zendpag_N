@@ -303,6 +303,7 @@ const EditModal: React.FC<{ estab: any; onClose: () => void; onSave: (id: string
 const AdminEstablishments: React.FC = () => {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
+  const [origemFilter, setOrigemFilter] = useState('todos');
   const [editing, setEditing] = useState<any>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -362,9 +363,16 @@ const AdminEstablishments: React.FC = () => {
           e.documento.includes(q) ||
           e.id.toLowerCase().includes(q);
         const matchStatus = statusFilter === 'todos' || e.status === statusFilter;
-        return matchQuery && matchStatus;
+        const matchOrigem = origemFilter === 'todos' || (e.origem || 'DIRETO') === origemFilter;
+        return matchQuery && matchStatus && matchOrigem;
       }),
-    [estabs, query, statusFilter]
+    [estabs, query, statusFilter, origemFilter]
+  );
+
+  // origens distintas presentes (para o filtro)
+  const origens = useMemo(
+    () => Array.from(new Set(estabs.map((e) => e.origem || 'DIRETO'))).sort(),
+    [estabs]
   );
 
   return (
@@ -413,6 +421,17 @@ const AdminEstablishments: React.FC = () => {
               {s === 'todos' ? 'Todos' : statusMeta[s].label}
             </button>
           ))}
+          <select
+            value={origemFilter}
+            onChange={(e) => setOrigemFilter(e.target.value)}
+            className="px-3 py-2 text-sm rounded-lg font-medium text-slate-600 bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            title="Filtrar por origem"
+          >
+            <option value="todos">Todas as origens</option>
+            {origens.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
         </div>
 
         {loading ? (
@@ -450,7 +469,14 @@ const AdminEstablishments: React.FC = () => {
                         {e.nome.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-slate-700 truncate">{e.nome}</p>
+                        <p className="font-medium text-slate-700 truncate flex items-center gap-1.5">
+                          {e.nome}
+                          {(e.origem && e.origem !== 'DIRETO') && (
+                            <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 border border-violet-100" title={`Origem: ${e.origem}${e.origemExternalId ? ' · ext ' + e.origemExternalId : ''}`}>
+                              {e.origem}
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-slate-400 tabular-nums">{e.documento} · {e.tipo}</p>
                       </div>
                     </div>

@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zendapag.common.exception.BusinessException;
 import com.zendapag.common.exception.ResourceNotFoundException;
 import com.zendapag.core.entity.Merchant;
+import com.zendapag.core.entity.Origin;
 import com.zendapag.core.entity.Webhook;
 import com.zendapag.core.entity.enums.WebhookStatus;
+import com.zendapag.core.repository.OriginRepository;
 import com.zendapag.core.repository.WebhookRepository;
 import com.zendapag.core.util.HmacUtil;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ public class WebhookService {
         .build();
 
     private final WebhookRepository webhookRepository;
+    private final OriginRepository originRepository;
     private final ObjectMapper objectMapper;
 
     /**
@@ -71,6 +74,32 @@ public class WebhookService {
         }
     }
 
+    /**
+     * Dispara um webhook DE VOLTA para a origem (gateway) do estabelecimento.
+     * No-op para a origem interna (DIRETO) ou se a origem não tiver webhookUrl.
+     * Assina com o segredo da origem. Nunca lança.
+     */
+    public void notifyOrigin(Merchant merchant, String eventType, Map<String, Object> payload) {
+        try {
+            String source = merchant.getSource();
+            if (source == null || OriginService.SOURCE_DIRETO.equals(source)) {
+                return; // estabelecimento próprio — sem webhook de volta
+            }
+            Origin origin = originRepository.findByCode(source).orElse(null);
+            if (origin == null || origin.getWebhookUrl() == null || origin.getWebhookUrl().isEmpty()) {
+                log.info("Origem {} sem webhookUrl — evento {} não enviado de volta.", source, eventType);
+                return;
+            }
+            Webhook webhook = new Webhook(merchant, eventType, origin.getWebhookUrl(), payload);
+            webhook.setTargetSource(source);
+            webhook = webhookRepository.save(webhook);
+            deliver(webhook);
+        } catch (Exception e) {
+            log.warn("Falha ao enviar webhook {} de volta à origem do merchant {}: {}",
+                eventType, merchant.getId(), e.getMessage());
+        }
+    }
+
     /** Entrega de fato um webhook (HTTP POST assinado). Atualiza status e agenda retry em falha. */
     @Transactional
     public void deliver(Webhook webhook) {
@@ -79,7 +108,14 @@ public class WebhookService {
             String body = objectMapper.writeValueAsString(
                 webhook.getPayload() != null ? webhook.getPayload() : Map.of());
 
-            String secret = webhook.getMerchant().getWebhookSecret();
+            // Webhook de ORIGEM assina com o segredo da origem; senão, o do merchant.
+            String secret;
+            if (webhook.getTargetSource() != null) {
+                secret = originRepository.findByCode(webhook.getTargetSource())
+                    .map(Origin::getWebhookSecret).orElse(null);
+            } else {
+                secret = webhook.getMerchant().getWebhookSecret();
+            }
             String signature = "sha256=" + (secret != null ? HmacUtil.sha256Hex(secret, body) : "");
             webhook.setSignature(signature);
             webhook.addHeader("Content-Type", "application/json");

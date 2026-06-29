@@ -130,6 +130,11 @@ public class Transaction extends BaseEntity {
     @Column(name = "method_type", length = 20)
     private PaymentMethodType methodType;
 
+    // Origem (multi-tenant): copiada do merchant para permitir filtrar lançamentos
+    // por origem sem join. "DIRETO" para estabelecimentos próprios.
+    @Column(name = "source", length = 40)
+    private String source;
+
     // External references
     @Size(max = 255, message = "External reference must be at most 255 characters")
     @Column(name = "external_reference")
@@ -458,6 +463,14 @@ public class Transaction extends BaseEntity {
 
     public void setMethodType(PaymentMethodType methodType) {
         this.methodType = methodType;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
     }
 
     public String getExternalReference() {

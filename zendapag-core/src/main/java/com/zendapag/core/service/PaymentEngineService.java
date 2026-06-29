@@ -119,8 +119,9 @@ public class PaymentEngineService {
         // 3) Razão: credita líquido no saldo do merchant + registra taxa como receita
         ledgerService.settleApprovedPayment(payment, gross, fee, net);
 
-        // 4) Webhook do evento
+        // 4) Webhook do evento — ao estabelecimento e DE VOLTA à origem (se externa)
         webhookService.notifyMerchant(merchant, "PAYMENT_COMPLETED", paymentPayload(payment, "PAYMENT_COMPLETED"));
+        webhookService.notifyOrigin(merchant, "PAYMENT_COMPLETED", originPayload(payment, "PAYMENT_COMPLETED"));
 
         return payment;
     }
@@ -140,6 +141,7 @@ public class PaymentEngineService {
         log.info("Pagamento {} recusado (FAILED): {}", payment.getReferenceId(), reason);
 
         webhookService.notifyMerchant(payment.getMerchant(), "PAYMENT_FAILED", paymentPayload(payment, "PAYMENT_FAILED"));
+        webhookService.notifyOrigin(payment.getMerchant(), "PAYMENT_FAILED", originPayload(payment, "PAYMENT_FAILED"));
         return payment;
     }
 
@@ -160,6 +162,7 @@ public class PaymentEngineService {
         log.info("Pagamento {} estornado (REFUNDED) — líquido {} revertido", payment.getReferenceId(), payment.getNetAmount());
 
         webhookService.notifyMerchant(payment.getMerchant(), "PAYMENT_REFUNDED", paymentPayload(payment, "PAYMENT_REFUNDED"));
+        webhookService.notifyOrigin(payment.getMerchant(), "PAYMENT_REFUNDED", originPayload(payment, "PAYMENT_REFUNDED"));
         return payment;
     }
 
@@ -197,6 +200,25 @@ public class PaymentEngineService {
         body.put("net", payment.getNetAmount());
         body.put("installments", payment.getInstallments());
         body.put("merchant_id", payment.getMerchant().getId().toString());
+        return body;
+    }
+
+    /**
+     * Payload do webhook DE VOLTA à origem (gateway). Contrato com os campos que o
+     * gateway espera: source + merchant_id (id na Zend) + external_id (id na origem).
+     */
+    private Map<String, Object> originPayload(Payment payment, String eventType) {
+        Merchant merchant = payment.getMerchant();
+        Map<String, Object> body = new HashMap<>();
+        body.put("event", eventType);
+        body.put("source", merchant.getSource());
+        body.put("merchant_id", merchant.getId().toString());
+        body.put("external_id", merchant.getSourceExternalId());
+        body.put("reference_id", payment.getReferenceId());
+        body.put("status", payment.getStatus().name());
+        body.put("amount", payment.getAmount());
+        body.put("fee", payment.getFeeAmount());
+        body.put("net", payment.getNetAmount());
         return body;
     }
 }
