@@ -1,0 +1,227 @@
+================================================================================
+ZENDPAG (One A One) — SESSÃO: FLUXO PENDENTE -> DISPONÍVEL + SAQUE AUTOMÁTICO
+Registro completo do que foi feito, validado e commitado.
+Gerado a partir do trabalho no terminal.
+================================================================================
+
+--------------------------------------------------------------------------------
+0) COMO RODAR / ACESSAR
+--------------------------------------------------------------------------------
+LOGIN ADMIN:
+  e-mail:  admin@zendpag.com
+  senha:   Admin@12345
+
+URLs:
+  Dashboard (Zend):    http://localhost:3100   -> menu "Regras de Liquidação"
+  Backend (API):       http://localhost:8093
+
+Portas:
+  - One A One (Next.js) ...... 3000
+  - Zend dashboard (CRA) ..... 3100  (.env.development: PORT=3100, REACT_APP_API_URL=/api/v1)
+  - Zend backend (Java) ...... 8093  (proxy do dashboard aponta pra cá)
+
+JAVA / BUILD (dev):
+  export JAVA_HOME=/Users/nostapacima21/.jdks/jdk-17.0.19+10/Contents/Home
+
+  # compilar (pula testes e cobertura jacoco):
+  sh ./mvnw install -pl zendapag-api -am -DskipTests -Dmaven.test.skip=true -Djacoco.skip=true -B
+
+  # subir backend na 8093 (modo demo "fast-mode" = D+N lido como N SEGUNDOS):
+  SERVER_PORT=8093 sh ./mvnw spring-boot:run -pl zendapag-api \
+    -Dspring-boot.run.profiles=dev \
+    -Dspring-boot.run.jvmArguments="-Dzendapag.payout.fast-mode=true"
+
+  # subir dashboard na 3100:
+  cd zendapag-dashboard && npm start   # (.env.development já fixa PORT=3100)
+
+  # parar backend:
+  pkill -9 -f 'zendapag-api'
+
+--------------------------------------------------------------------------------
+1) O PROBLEMA QUE RESOLVEMOS
+--------------------------------------------------------------------------------
+ANTES: o dinheiro caía direto em saldo DISPONÍVEL ao aprovar o pagamento, sem
+retenção. O campo Account.pendingBalance existia mas nunca era usado.
+
+AGORA: regra configurável por método (em cascata override-do-merchant -> global
+-> default), com:
+  - PIX por padrão: D+0 (disponível na hora) + SAQUE AUTOMÁTICO pra chave do merchant.
+  - Cartão/boleto: retenção D+N (pendente) e liberação automática no vencimento.
+  - Só saldo DISPONÍVEL é sacável; pendente não.
+  - Painel mostra disponível/pendente (total e por método).
+  - Job agendado libera pendente -> disponível no vencimento.
+  - Saque automático "provider-ready" (sandbox simula; PSP real depois = outro adapter).
+  - Tela de admin pra configurar tudo (global e por estabelecimento).
+
+--------------------------------------------------------------------------------
+2) COMMITS (origin/main) — pushados com sucesso
+--------------------------------------------------------------------------------
+d437f24  feat(saldo): tela Regras de Liquidacao + rotulo Automatico em Saques (item 5)
+36f5b2f  feat(saldo): API de regras + balances por metodo + estorno ciente dos baldes (item 4)
+d6b89ea  feat(saldo): auto-payout provider-ready (item 3)
+17950b2  feat(saldo): retencao configuravel + job de liberacao pendente->disponivel (item 2)
+857c0e6  feat(saldo): modelo de regras de liquidacao configuravel (item 1)
+e06f7dd  fix(dev): fixa server.port=8093 (alinha API ao proxy do frontend e ao seeder)
+
+Push: e06f7dd..d437f24  main -> main  (github.com:cauespinelli/Zendpag_N.git)
+
+--------------------------------------------------------------------------------
+3) O QUE CADA ITEM ENTREGOU
+--------------------------------------------------------------------------------
+ITEM 1 — Modelo de regras configurável
+  - PayoutRule (entidade) + PayoutRuleRepository: regra por método com
+    retentionEnabled, holdingDays (D+N), autoPayoutEnabled; escopo GLOBAL/MERCHANT.
+  - PayoutPolicyService: resolve a regra efetiva em cascata; semeia defaults
+    globais na subida; upsert global/por-merchant.
+  - Transaction: campos availableAt + released (rastreio da liberação).
+  - PixWithdrawal: triggerType MANUAL|AUTOMATIC.
+  - enums PayoutScope, WithdrawalTriggerType; TransactionType.RELEASE.
+  - Reaproveitado: Account.pixKey/pixKeyType (destino do auto-payout),
+    Merchant.autoSettle (master switch).
+
+  DEFAULTS DE FÁBRICA (semeados):
+    PIX            -> retenção OFF, D+0, saque automático ON
+    CREDIT_CARD    -> retenção ON,  D+30, saque automático OFF
+    DEBIT_CARD     -> retenção ON,  D+1,  saque automático OFF
+    BANK_SLIP      -> retenção ON,  D+2,  saque automático OFF
+    BANK_TRANSFER  -> retenção ON,  D+1,  saque automático OFF
+    WALLET         -> retenção OFF, D+0,  saque automático OFF
+
+ITEM 2 — Retenção configurável + job de liberação
+  - LedgerService: sem retenção credita DISPONÍVEL (balance); com retenção credita
+    PENDENTE (pendingBalance) e grava availableAt = paidAt + D+N.
+  - BalanceReleaseService.releaseDuePending(): move pendente -> disponível no
+    vencimento, marca released=true, registra lançamento RELEASE.
+  - BalanceReleaseScheduler (@Scheduled, 30s default) roda o scan.
+  - forceReleaseAllPending() (DEV) ignora o vencimento (simula passagem do tempo).
+  - fast-mode (-Dzendapag.payout.fast-mode=true): D+N lido como N SEGUNDOS no dev.
+  - Endpoints DEV (sob /webhooks/receive/**, permitAll):
+      POST /api/v1/webhooks/receive/dev-release-now       (força liberação)
+      POST /api/v1/webhooks/receive/dev-set-merchant-rule (override de regra p/ teste)
+
+ITEM 3 — Auto-payout provider-ready
+  - PayoutProvider (interface) + SandboxPayoutProvider (simula envio, gera endToEndId).
+  - AutoPayoutService.maybeAutoPayout(): cria PixWithdrawal AUTOMATIC pra Account.pixKey,
+    envia pelo provider, debita o disponível, registra lançamento WITHDRAWAL.
+    Gating: regra autoPayout + master switch merchant.autoSettle + conta com chave PIX
+    + saldo suficiente. Qualquer bloqueio só loga e retorna.
+  - Disparo em 2 pontos: no D+0 (LedgerService) e na liberação (BalanceReleaseService).
+  - Seeder: contas dev passam a ter pixKey = documento (CNPJ) do merchant.
+
+ITEM 4 — API de regras + balances + estorno ciente dos baldes
+  - API admin (sob /api/v1/admin, ADMIN):
+      GET/PUT   /admin/payout-rules                     -> regras GLOBAIS
+      GET/PUT   /admin/payout-rules/merchant/{id}       -> efetivas + override
+      DELETE    /admin/payout-rules/merchant/{id}/{m}   -> remove override (herda global)
+      GET       /admin/merchants/{id}/balances          -> saldos por método
+  - Transaction.methodType (gravado em PAYMENT/FEE/RELEASE/REFUND) p/ saldo por método.
+  - reverseRefund AGORA ciente do balde: estorno de pagamento PENDENTE debita o
+    pendingBalance; estorno de pagamento já liberado debita o disponível.
+  - Saque: mensagem clara de "saldo disponível insuficiente" (cita o pendente).
+
+ITEM 5 — Tela de config + rótulo "Automático"
+  - AdminPayoutRules (nova tela): aba Global (editar por método e salvar) e aba
+    Por estabelecimento (regras efetivas com origem Herdado/Próprio, override,
+    remover override, + saldos por método).
+  - adminPayoutService (frontend): GET/PUT global, GET/PUT/DELETE override, GET balances.
+  - AdminWithdrawals: badge "Automático" (triggerType=AUTOMATIC).
+  - Rota /admin/payout-rules + item "Regras de Liquidação" na sidebar.
+  - PixWithdrawalResponse expõe triggerType.
+
+--------------------------------------------------------------------------------
+4) VALIDAÇÃO E2E (provas reais coletadas no terminal)
+--------------------------------------------------------------------------------
+SEMEADURA DAS REGRAS GLOBAIS (subida do backend):
+  [PayoutPolicy] regra GLOBAL semeada: PIX (retencao=false, D+0, autoPayout=true)
+  [PayoutPolicy] regra GLOBAL semeada: CREDIT_CARD (retencao=true, D+30, autoPayout=false)
+  [PayoutPolicy] regra GLOBAL semeada: DEBIT_CARD (retencao=true, D+1, autoPayout=false)
+  [PayoutPolicy] regra GLOBAL semeada: BANK_SLIP (retencao=true, D+2, autoPayout=false)
+  [PayoutPolicy] regra GLOBAL semeada: BANK_TRANSFER (retencao=true, D+1, autoPayout=false)
+  [PayoutPolicy] regra GLOBAL semeada: WALLET (retencao=false, D+0, autoPayout=false)
+
+RETENÇÃO vs D+0 (item 2):
+  Saldo PENDENTE do estabelecimento ... +88.11 (libera em ...) — PIX D+8
+  Saldo DISPONÍVEL do estabelecimento ... +734.09 (D+0) — PIX
+  [BalanceRelease] PAY-SEED-0005 liberado (vencido): pendente 88.11 -> 0.00, disponível 0.00 -> 88.11
+  [BalanceRelease] PAY-SEED-0008 liberado (forçado): pendente 881.11 -> 0.00, disponível 88.11 -> 969.22
+  Extrato: {PAYMENT:3, FEE:3, RELEASE:2}
+
+AUTO-PAYOUT (item 3):
+  D+0:       Aurora PIX +734.09 -> [SandboxPayout] e2e=E2E... -> [AutoPayout] OK saldo 250734.09 -> 250000.00
+  Liberação: GamerZone retido D+8 -> libera 88.11 -> [AutoPayout] OK saldo 88.11 -> 0.00
+  Negativo:  autoPayout=false -> credita disponível, NENHUM saque
+  Painel /withdrawals/status/COMPLETED:
+    AUTOFF259D07  88.11  COMPLETED  e2e=E2E5852EDDE3F7C414E8FDC8C3A
+    AUTOFE475579  734.09 COMPLETED  e2e=E2E041C73E78E324D6EB58142FD
+
+REGRAS via API (item 4):
+  GET /admin/payout-rules -> 6 métodos
+  PUT global CREDIT_CARD D+15 -> salvo
+  PUT override GamerZone PIX D+10 -> source=MERCHANT, overridden=true
+  DELETE override PIX -> volta a source=GLOBAL, overridden=false
+  Estorno (PENDENTE): saldo pendente 881.11 -> 0.00 (debitou o balde certo)
+  Estorno (DISPONÍVEL): saldo 250734.09 -> 250000.00 (voltou ao original)
+
+TELA via proxy 3100 -> 8093 (item 5):
+  raiz 3100 HTTP=200 | login HTTP=200 | /admin/payout-rules HTTP=200 | /balances HTTP=200
+  saque auto retorna triggerType=AUTOMATIC
+  balances GamerZone (populado p/ demo): availableTotal=0.0 pendingTotal=969.22
+    PIX pending=969.22 received=0
+
+BUILDS:
+  Backend: BUILD SUCCESS (core + api), em todos os itens.
+  Frontend: "Compiled with warnings" (apenas warnings de source-map pré-existentes).
+
+--------------------------------------------------------------------------------
+5) ARQUIVOS PRINCIPAIS CRIADOS/ALTERADOS
+--------------------------------------------------------------------------------
+BACKEND (core):
+  entity/PayoutRule.java                         (novo)
+  entity/enums/PayoutScope.java                  (novo)
+  entity/enums/WithdrawalTriggerType.java        (novo)
+  entity/enums/TransactionType.java              (+ RELEASE)
+  entity/Transaction.java                        (+ availableAt, released, methodType)
+  entity/PixWithdrawal.java                      (+ triggerType)
+  repository/PayoutRuleRepository.java           (novo)
+  repository/TransactionRepository.java          (+ queries de liberação e saldo por método)
+  service/PayoutPolicyService.java               (novo)
+  service/LedgerService.java                     (retenção + estorno ciente dos baldes)
+  service/BalanceReleaseService.java             (novo)
+  service/AutoPayoutService.java                 (novo)
+  service/payout/PayoutProvider.java             (novo)
+  service/payout/SandboxPayoutProvider.java      (novo)
+  service/MerchantBalanceService.java            (novo)
+  service/PixWithdrawalService.java              (mensagem de saldo + triggerType no response)
+  dto/response/PixWithdrawalResponse.java        (+ triggerType)
+
+BACKEND (api):
+  controller/AdminPayoutController.java          (novo: regras + balances)
+  controller/DevWebhookSinkController.java       (+ dev-release-now, dev-set-merchant-rule)
+  scheduler/BalanceReleaseScheduler.java         (novo)
+  config/DevDataSeeder.java                      (contas com pixKey = CNPJ)
+
+FRONTEND (zendapag-dashboard):
+  src/pages/admin/AdminPayoutRules.tsx           (novo: tela de config)
+  src/services/adminPayoutService.ts             (novo)
+  src/pages/admin/AdminWithdrawals.tsx           (badge "Automático")
+  src/components/admin/AdminSidebar.tsx          (item de nav)
+  src/App.tsx                                    (rota /admin/payout-rules)
+  .env.development                               (PORT=3100, REACT_APP_API_URL=/api/v1)
+
+--------------------------------------------------------------------------------
+6) NOTAS HONESTAS (escopo sandbox)
+--------------------------------------------------------------------------------
+- fast-mode lê D+N como SEGUNDOS (só dev). Em produção, remova a flag -> D+N vira dias.
+- No balances, o campo per-método "received" é bruto; num estorno-de-pendente o valor
+  estornado ainda aparece nele (cosmético) — os TOTAIS permanecem corretos.
+- Estorno de valor já auto-sacado pode deixar o disponível negativo (logado como
+  alerta); tratamento real de débito/chargeback fica para a fase do PSP.
+- Sem Flyway: schema é create-drop no dev (H2). Campos novos entram na subida; ao
+  reiniciar, os UUIDs dos registros mudam (dados de seed são recriados).
+- O GamerZone ficou com override PIX D+10 (criado p/ demonstração do saldo pendente).
+  Para voltar ao padrão (D+0 + saque automático), clique "Remover" na linha PIX
+  da aba "Por estabelecimento".
+
+================================================================================
+FIM
+================================================================================

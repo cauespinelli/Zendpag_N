@@ -64,6 +64,9 @@ public class ApiSecurityConfig {
 
                         // Webhook endpoints (should be secured separately with webhook signatures)
                         .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/receive/**").permitAll()
+                        // Webhooks de ENTRADA do PSP — sem JWT; a autenticação é a assinatura HMAC
+                        // validada pelo adapter. Precede a regra geral /webhooks/** abaixo.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/psp/**").permitAll()
 
                         // Protected API endpoints (ADMIN também passa no filtro;
                         // os métodos admin têm @PreAuthorize("hasRole('ADMIN')") próprio)
