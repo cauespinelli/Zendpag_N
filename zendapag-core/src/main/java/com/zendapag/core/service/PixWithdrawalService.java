@@ -11,6 +11,8 @@ import com.zendapag.core.entity.enums.WithdrawalStatus;
 import com.zendapag.core.repository.AccountRepository;
 import com.zendapag.core.repository.MerchantRepository;
 import com.zendapag.core.repository.PixWithdrawalRepository;
+import com.zendapag.core.service.payout.PayoutProvider;
+import com.zendapag.core.util.WithdrawalPayloads;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,6 +34,8 @@ public class PixWithdrawalService {
     private final AccountRepository accountRepository;
     private final MerchantRepository merchantRepository;
     private final WebhookService webhookService;
+    private final LedgerService ledgerService;
+    private final PayoutProvider payoutProvider;
 
     @Transactional
     public PixWithdrawalResponse createWithdrawal(Long accountId, UUID merchantId, CreatePixWithdrawalRequest request) {
@@ -85,39 +89,92 @@ public class PixWithdrawalService {
     public PixWithdrawalResponse cancelWithdrawal(UUID id, String reason) {
         PixWithdrawal w = withdrawalRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Not found"));
         if (!w.canBeCancelled()) throw new BusinessException("Cannot cancel");
+        // Se já tinha sido debitado (estava em PROCESSING), estorna o saldo de volta.
+        boolean wasDebited = w.getStatus() == WithdrawalStatus.PROCESSING;
+        if (wasDebited) {
+            ledgerService.reverseWithdrawal(w.getAccount(), w.getAmount(), w.getReferenceId(), w.getMerchant().getSource());
+        }
         w.cancel(reason);
         PixWithdrawal saved = withdrawalRepository.save(w);
-        webhookService.notifyMerchant(saved.getMerchant(), "WITHDRAWAL_FAILED", withdrawalPayload(saved, "WITHDRAWAL_FAILED"));
+        fireWithdrawalEvent(saved, "WITHDRAWAL_FAILED");
         return convertToResponse(saved);
     }
 
     /**
-     * Aprova um saque pendente (ação do Admin Master), movendo-o para processamento.
-     * Dispara o webhook WITHDRAWAL_COMPLETED.
+     * Aprova um saque PENDING (Admin Master). Ciclo correto, com status sempre
+     * batendo com o evento:
+     *   PENDING -> PROCESSING: DEBITA o disponível (reserva + ledger) e dispara
+     *              WITHDRAWAL_PROCESSING. A revalidação do saldo aqui impede dupla-saque.
+     *   -> envia ao provedor (sandbox: sucesso imediato):
+     *        sucesso -> COMPLETED  + WITHDRAWAL_COMPLETED
+     *        falha   -> FAILED     + ESTORNA o saldo + WITHDRAWAL_FAILED
      */
     @Transactional
     public PixWithdrawalResponse approveWithdrawal(UUID id) {
         PixWithdrawal w = withdrawalRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Withdrawal not found: " + id));
         if (w.getStatus() != WithdrawalStatus.PENDING) {
-            throw new BusinessException("Only PENDING withdrawals can be approved");
+            throw new BusinessException("Apenas saques PENDING podem ser aprovados (atual: " + w.getStatus() + ")");
         }
+        Account account = w.getAccount();
+        Merchant merchant = w.getMerchant();
+        BigDecimal amount = w.getAmount();
+        String source = merchant.getSource();
+
+        // PENDING -> PROCESSING: debita o disponível (revalida -> trava dupla-saque)
+        BigDecimal before = account.getBalance() != null ? account.getBalance() : BigDecimal.ZERO;
         w.startProcessing();
-        PixWithdrawal saved = withdrawalRepository.save(w);
-        webhookService.notifyMerchant(saved.getMerchant(), "WITHDRAWAL_COMPLETED", withdrawalPayload(saved, "WITHDRAWAL_COMPLETED"));
-        return convertToResponse(saved);
+        w.setBalanceBefore(before);
+        ledgerService.debitForWithdrawal(account, amount, w.getReferenceId(), source);
+        w.setBalanceAfter(account.getBalance());
+        withdrawalRepository.save(w);
+        fireWithdrawalEvent(w, "WITHDRAWAL_PROCESSING");
+
+        // Envia ao provedor (sandbox: síncrono)
+        PayoutProvider.PayoutResult result = payoutProvider.send(w);
+        if (result.success()) {
+            w.complete(result.endToEndId());           // PROCESSING -> COMPLETED
+            withdrawalRepository.save(w);
+            fireWithdrawalEvent(w, "WITHDRAWAL_COMPLETED");
+        } else {
+            ledgerService.reverseWithdrawal(account, amount, w.getReferenceId(), source); // estorna
+            w.markAsFailed(result.message());          // -> FAILED
+            w.setBalanceAfter(account.getBalance());
+            withdrawalRepository.save(w);
+            fireWithdrawalEvent(w, "WITHDRAWAL_FAILED");
+        }
+        return convertToResponse(w);
     }
 
-    private java.util.Map<String, Object> withdrawalPayload(PixWithdrawal w, String eventType) {
-        java.util.Map<String, Object> body = new java.util.HashMap<>();
-        body.put("event", eventType);
-        body.put("withdrawal_id", w.getId().toString());
-        body.put("reference_id", w.getReferenceId());
-        body.put("status", w.getStatus().name());
-        body.put("amount", w.getAmount());
-        body.put("net", w.getNetAmount());
-        body.put("merchant_id", w.getMerchant().getId().toString());
-        return body;
+    /**
+     * Conclui um saque a partir da confirmação do PSP (webhook de entrada
+     * withdrawal.completed). PROCESSING -> COMPLETED + WITHDRAWAL_COMPLETED.
+     * Idempotente: se já COMPLETED, não repete.
+     */
+    @Transactional
+    public void completeWithdrawalFromPsp(String referenceId, String endToEndId) {
+        PixWithdrawal w = withdrawalRepository.findByReferenceId(referenceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Saque não encontrado: " + referenceId));
+        if (w.getStatus() == WithdrawalStatus.COMPLETED) {
+            return; // idempotente
+        }
+        // Se ainda não passou por PROCESSING (não debitado), debita agora.
+        if (w.getStatus() == WithdrawalStatus.PENDING) {
+            BigDecimal before = w.getAccount().getBalance() != null ? w.getAccount().getBalance() : BigDecimal.ZERO;
+            w.startProcessing();
+            w.setBalanceBefore(before);
+            ledgerService.debitForWithdrawal(w.getAccount(), w.getAmount(), w.getReferenceId(), w.getMerchant().getSource());
+            w.setBalanceAfter(w.getAccount().getBalance());
+        }
+        w.complete(endToEndId != null ? endToEndId : "PSP-confirm");
+        withdrawalRepository.save(w);
+        fireWithdrawalEvent(w, "WITHDRAWAL_COMPLETED");
+    }
+
+    /** Dispara o webhook do saque (ao merchant e à origem), com o status atual = nome do evento. */
+    private void fireWithdrawalEvent(PixWithdrawal w, String eventType) {
+        webhookService.notifyMerchant(w.getMerchant(), eventType, WithdrawalPayloads.of(w, eventType));
+        webhookService.notifyOrigin(w.getMerchant(), eventType, WithdrawalPayloads.of(w, eventType));
     }
 
     @Transactional

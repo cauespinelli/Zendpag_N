@@ -191,4 +191,47 @@ public class LedgerService {
         refund.setDescription("Estorno do pagamento — débito do líquido (" + (stillPending ? "pendente" : "disponível") + ")");
         transactionRepository.save(refund);
     }
+
+    /**
+     * Debita o saldo DISPONÍVEL para um saque (reserva) e registra o lançamento
+     * WITHDRAWAL. Revalida o disponível para impedir dupla-saque/condição de corrida.
+     */
+    @Transactional
+    public void debitForWithdrawal(Account account, BigDecimal amount, String withdrawalRef, String source) {
+        BigDecimal before = account.getBalance() != null ? account.getBalance() : BigDecimal.ZERO;
+        if (before.compareTo(amount) < 0) {
+            throw new BusinessException("Saldo disponível insuficiente para processar o saque: disponível R$ "
+                + before + ", saque R$ " + amount);
+        }
+        account.setBalance(before.subtract(amount));
+        accountRepository.save(account);
+
+        Transaction tx = new Transaction("WDR-" + withdrawalRef, account.getMerchant(), TransactionType.WITHDRAWAL, amount);
+        tx.setAccount(account);
+        tx.setNetAmount(amount.negate());
+        tx.setReleased(true);
+        tx.setSource(source);
+        tx.setStatus(TransactionStatus.COMPLETED);
+        tx.setDescription("Saque — débito do saldo disponível (reserva)");
+        transactionRepository.save(tx);
+        log.info("Saque {} — débito do disponível: {} -> {} (-{})", withdrawalRef, before, account.getBalance(), amount);
+    }
+
+    /** Estorna o débito de um saque que falhou: credita de volta o disponível. */
+    @Transactional
+    public void reverseWithdrawal(Account account, BigDecimal amount, String withdrawalRef, String source) {
+        BigDecimal before = account.getBalance() != null ? account.getBalance() : BigDecimal.ZERO;
+        account.setBalance(before.add(amount));
+        accountRepository.save(account);
+
+        Transaction tx = new Transaction("WDR-REV-" + withdrawalRef, account.getMerchant(), TransactionType.ADJUSTMENT, amount);
+        tx.setAccount(account);
+        tx.setNetAmount(amount);
+        tx.setReleased(true);
+        tx.setSource(source);
+        tx.setStatus(TransactionStatus.COMPLETED);
+        tx.setDescription("Estorno de saque falho — crédito de volta ao disponível");
+        transactionRepository.save(tx);
+        log.info("Saque {} ESTORNADO — disponível: {} -> {} (+{})", withdrawalRef, before, account.getBalance(), amount);
+    }
 }

@@ -70,6 +70,7 @@ public class DisputeService {
             dispute.getExternalId(), payment.getReferenceId(), reason, disputeAmount);
 
         webhookService.notifyMerchant(merchant, "DISPUTE_CREATED", disputePayload(dispute, "DISPUTE_CREATED"));
+        webhookService.notifyOrigin(merchant, "DISPUTE_CREATED", disputePayload(dispute, "DISPUTE_CREATED"));
         return dispute;
     }
 

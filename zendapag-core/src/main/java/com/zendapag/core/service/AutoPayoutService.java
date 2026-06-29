@@ -12,6 +12,7 @@ import com.zendapag.core.repository.AccountRepository;
 import com.zendapag.core.repository.PixWithdrawalRepository;
 import com.zendapag.core.repository.TransactionRepository;
 import com.zendapag.core.service.payout.PayoutProvider;
+import com.zendapag.core.util.WithdrawalPayloads;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class AutoPayoutService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final PayoutProvider payoutProvider;
+    private final WebhookService webhookService;
 
     /**
      * Dispara o auto-payout se habilitado. Não lança: qualquer bloqueio (sem
@@ -87,6 +89,8 @@ public class AutoPayoutService {
             w.markAsFailed(result.message());
             withdrawalRepository.save(w);
             log.warn("[AutoPayout] FALHOU ref={} merchant={}: {}", w.getReferenceId(), merchant.getId(), result.message());
+            webhookService.notifyMerchant(merchant, "WITHDRAWAL_FAILED", WithdrawalPayloads.of(w, "WITHDRAWAL_FAILED"));
+            webhookService.notifyOrigin(merchant, "WITHDRAWAL_FAILED", WithdrawalPayloads.of(w, "WITHDRAWAL_FAILED"));
             return;
         }
 
@@ -108,6 +112,10 @@ public class AutoPayoutService {
 
         log.info("[AutoPayout] OK ref={} valor={} merchant={} — saldo disponível {} -> {}",
             w.getReferenceId(), amount, merchant.getId(), balance, account.getBalance());
+
+        // Auto-payout vai direto a COMPLETED (provider síncrono) -> evento bate com o status
+        webhookService.notifyMerchant(merchant, "WITHDRAWAL_COMPLETED", WithdrawalPayloads.of(w, "WITHDRAWAL_COMPLETED"));
+        webhookService.notifyOrigin(merchant, "WITHDRAWAL_COMPLETED", WithdrawalPayloads.of(w, "WITHDRAWAL_COMPLETED"));
     }
 
     private String generateReferenceId() {

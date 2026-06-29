@@ -50,6 +50,7 @@ public class InboundWebhookService {
     private final PaymentRepository paymentRepository;
     private final PixWithdrawalRepository withdrawalRepository;
     private final PaymentEngineService paymentEngineService;
+    private final PixWithdrawalService pixWithdrawalService;
     private final Environment environment;
 
     public InboundWebhookService(List<InboundWebhookProvider> providerBeans,
@@ -57,6 +58,7 @@ public class InboundWebhookService {
                                  PaymentRepository paymentRepository,
                                  PixWithdrawalRepository withdrawalRepository,
                                  PaymentEngineService paymentEngineService,
+                                 PixWithdrawalService pixWithdrawalService,
                                  Environment environment) {
         this.providers = providerBeans.stream()
             .collect(Collectors.toMap(InboundWebhookProvider::providerKey, p -> p));
@@ -64,6 +66,7 @@ public class InboundWebhookService {
         this.paymentRepository = paymentRepository;
         this.withdrawalRepository = withdrawalRepository;
         this.paymentEngineService = paymentEngineService;
+        this.pixWithdrawalService = pixWithdrawalService;
         this.environment = environment;
     }
 
@@ -175,11 +178,9 @@ public class InboundWebhookService {
                     if (w.getStatus() == WithdrawalStatus.COMPLETED) {
                         return finish(rec, InboundWebhookStatus.DUPLICATE, "saque já concluído", "saque já concluído");
                     }
-                    if (w.getStatus() == WithdrawalStatus.PENDING) {
-                        w.startProcessing();
-                    }
-                    w.complete("PSP-" + (event.eventId() != null ? event.eventId() : "confirm"));
-                    withdrawalRepository.save(w);
+                    // Conclui pelo serviço: PROCESSING -> COMPLETED + dispara WITHDRAWAL_COMPLETED
+                    pixWithdrawalService.completeWithdrawalFromPsp(event.referenceId(),
+                        "PSP-" + (event.eventId() != null ? event.eventId() : "confirm"));
                     return finish(rec, InboundWebhookStatus.PROCESSED, null, "saque concluído");
                 }
                 default -> {

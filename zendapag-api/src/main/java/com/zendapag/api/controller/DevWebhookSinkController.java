@@ -50,6 +50,8 @@ public class DevWebhookSinkController {
     private final BalanceReleaseService balanceReleaseService;
     private final PayoutPolicyService payoutPolicyService;
     private final com.zendapag.core.repository.OriginRepository originRepository;
+    private final com.zendapag.core.repository.PixWithdrawalRepository pixWithdrawalRepository;
+    private final com.zendapag.core.repository.AccountRepository accountRepository;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/api/v1/webhooks/receive/dev-sink")
@@ -86,22 +88,34 @@ public class DevWebhookSinkController {
     public ResponseEntity<String> originSink(
             @RequestBody String body,
             @RequestHeader(value = "X-Zendapag-Signature", required = false) String signature,
-            @RequestHeader(value = "X-Zendapag-Event", required = false) String event) {
-        String verdict = "sem source";
+            @RequestHeader(value = "X-Zendapag-Event", required = false) String event,
+            @RequestHeader(value = "X-Zendapag-Webhook-Id", required = false) String webhookId) {
+        String verdict = "sem origem";
         try {
             JsonNode node = objectMapper.readTree(body);
             String source = node.path("source").asText(null);
             String merchantId = node.path("merchant_id").asText(null);
-            if (source != null) {
-                var origin = originRepository.findByCode(source).orElse(null);
-                if (origin != null && origin.getWebhookSecret() != null) {
-                    String expected = "sha256=" + HmacUtil.sha256Hex(origin.getWebhookSecret(), body);
-                    verdict = expected.equals(signature) ? "HMAC VALIDO" : "HMAC INVALIDO";
-                } else {
-                    verdict = "origem nao encontrada / sem secret";
-                }
+            // Resolve a origem: por "source" (PAYMENT) ou, na ausência, pelo merchant_id
+            // (WITHDRAWAL/DISPUTE não carregam source, como no contrato do gateway).
+            var origin = source != null ? originRepository.findByCode(source).orElse(null) : null;
+            if (origin == null && merchantId != null) {
+                try {
+                    var m = merchantRepository.findById(UUID.fromString(merchantId)).orElse(null);
+                    if (m != null) {
+                        source = m.getSource();
+                        origin = originRepository.findByCode(source).orElse(null);
+                    }
+                } catch (Exception ignore) { /* merchant_id inválido */ }
+            }
+            if (origin != null && origin.getWebhookSecret() != null) {
+                String expected = "sha256=" + HmacUtil.sha256Hex(origin.getWebhookSecret(), body);
+                verdict = expected.equals(signature) ? "HMAC VALIDO" : "HMAC INVALIDO";
+            } else {
+                verdict = "origem nao encontrada / sem secret";
             }
             log.warn("[DevOriginSink] evento={} source={} merchant={} -> {}", event, source, merchantId, verdict);
+            log.warn("[DevOriginSink] HEADERS sig={} | event={} | webhookId={}", signature, event, webhookId);
+            log.warn("[DevOriginSink] BODY {}", body);
         } catch (Exception e) {
             log.warn("[DevOriginSink] erro ao processar corpo: {}", e.getMessage());
         }
@@ -157,6 +171,33 @@ public class DevWebhookSinkController {
         body.put("id", p.getId().toString());
         body.put("referenceId", p.getReferenceId());
         body.put("status", p.getStatus().name());
+        return ResponseEntity.ok(body);
+    }
+
+    /** DEV: cria um saque PIX PENDING para um merchant (p/ testar approve -> webhook). */
+    @PostMapping("/api/v1/webhooks/receive/dev-create-withdrawal")
+    public ResponseEntity<Map<String, Object>> devCreateWithdrawal(
+            @RequestParam UUID merchantId,
+            @RequestParam String referenceId,
+            @RequestParam String amount) {
+        Merchant m = merchantRepository.findById(merchantId).orElse(null);
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (m == null) {
+            body.put("error", "merchant não encontrado");
+            return ResponseEntity.ok(body);
+        }
+        var account = accountRepository.findByMerchant(m).stream().findFirst().orElse(null);
+        if (account == null) {
+            body.put("error", "merchant sem conta");
+            return ResponseEntity.ok(body);
+        }
+        com.zendapag.core.entity.PixWithdrawal w = new com.zendapag.core.entity.PixWithdrawal(
+            referenceId, account, m, new java.math.BigDecimal(amount),
+            account.getPixKey() != null ? account.getPixKey() : m.getDocument(), "CNPJ");
+        w = pixWithdrawalRepository.save(w);
+        body.put("id", w.getId().toString());
+        body.put("referenceId", w.getReferenceId());
+        body.put("status", w.getStatus().name());
         return ResponseEntity.ok(body);
     }
 

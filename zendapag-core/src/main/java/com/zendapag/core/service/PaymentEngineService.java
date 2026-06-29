@@ -211,14 +211,16 @@ public class PaymentEngineService {
         Merchant merchant = payment.getMerchant();
         Map<String, Object> body = new HashMap<>();
         body.put("event", eventType);
-        body.put("source", merchant.getSource());
-        body.put("merchant_id", merchant.getId().toString());
-        body.put("external_id", merchant.getSourceExternalId());
+        body.put("payment_id", payment.getId().toString());
         body.put("reference_id", payment.getReferenceId());
         body.put("status", payment.getStatus().name());
         body.put("amount", payment.getAmount());
         body.put("fee", payment.getFeeAmount());
         body.put("net", payment.getNetAmount());
+        body.put("merchant_id", merchant.getId().toString());
+        // Extras (úteis ao gateway, fora dos campos obrigatórios): origem + id na origem
+        body.put("source", merchant.getSource());
+        body.put("external_id", merchant.getSourceExternalId());
         return body;
     }
 }
