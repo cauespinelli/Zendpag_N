@@ -47,6 +47,16 @@ class PaymentEngineServiceTest {
         merchant = new Merchant("Loja Teste", "12345678000190", "loja@teste.com");
         merchant.setId(UUID.randomUUID());
         merchant.setFeeRate(new BigDecimal("0.0199")); // 1,99%
+        // Config de taxa (normalmente @Value): cartão 3,49% + 0,40%/parcela; boleto R$3,49 fixo.
+        org.springframework.test.util.ReflectionTestUtils.setField(engine, "cardBaseRate", new BigDecimal("0.0349"));
+        org.springframework.test.util.ReflectionTestUtils.setField(engine, "cardInstallmentSurcharge", new BigDecimal("0.0040"));
+        org.springframework.test.util.ReflectionTestUtils.setField(engine, "boletoFlatFee", new BigDecimal("3.49"));
+    }
+
+    private Payment withMethod(Payment p, com.zendapag.core.entity.enums.PaymentMethodType type) {
+        com.zendapag.core.entity.PaymentMethod pm = new com.zendapag.core.entity.PaymentMethod(merchant, type);
+        p.setPaymentMethod(pm);
+        return p;
     }
 
     /** Pagamento PENDING pronto para aprovação, com risco LOW por padrão. */
@@ -178,5 +188,43 @@ class PaymentEngineServiceTest {
         assertThat(p.getStatus()).isEqualTo(PaymentStatus.PENDING); // permanece retido
         verify(ledgerService, never()).settleApprovedPayment(any(), any(), any(), any());
         verify(webhookService, never()).notifyMerchant(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("CARTÃO 1x: taxa base 3,49% sobre R$200,00 → R$6,98 (sem acréscimo de parcela)")
+    void cartaoAVista() {
+        Payment p = withMethod(pendingPayment(new BigDecimal("200.00")), com.zendapag.core.entity.enums.PaymentMethodType.CREDIT_CARD);
+        p.setInstallments(1);
+
+        Payment result = engine.approvePayment(p.getId());
+
+        // 200 * 3,49% = 6,98
+        assertThat(result.getFeeAmount()).isEqualByComparingTo("6.98");
+        assertThat(result.getNetAmount()).isEqualByComparingTo("193.02");
+    }
+
+    @Test
+    @DisplayName("CARTÃO 3x: taxa por parcela = 3,49% + 2×0,40% = 4,29% sobre R$300 → R$12,87")
+    void cartaoParcelado() {
+        Payment p = withMethod(pendingPayment(new BigDecimal("300.00")), com.zendapag.core.entity.enums.PaymentMethodType.CREDIT_CARD);
+        p.setInstallments(3);
+
+        Payment result = engine.approvePayment(p.getId());
+
+        // 300 * (0,0349 + 2*0,0040) = 300 * 0,0429 = 12,87
+        assertThat(result.getFeeAmount()).isEqualByComparingTo("12.87");
+        assertThat(result.getNetAmount()).isEqualByComparingTo("287.13");
+    }
+
+    @Test
+    @DisplayName("BOLETO: tarifa FIXA de R$3,49 (não percentual) sobre R$250 → líquido R$246,51")
+    void boletoTarifaFixa() {
+        Payment p = withMethod(pendingPayment(new BigDecimal("250.00")), com.zendapag.core.entity.enums.PaymentMethodType.BANK_SLIP);
+
+        Payment result = engine.approvePayment(p.getId());
+
+        assertThat(result.getFeeAmount()).isEqualByComparingTo("3.49");
+        assertThat(result.getNetAmount()).isEqualByComparingTo("246.51");
+        assertThat(result.getFeeRate()).isNull(); // tarifa fixa, sem percentual
     }
 }

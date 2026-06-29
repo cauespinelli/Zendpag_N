@@ -5,6 +5,8 @@ import com.zendapag.core.entity.Account;
 import com.zendapag.core.entity.Merchant;
 import com.zendapag.core.entity.Payment;
 import com.zendapag.core.entity.Transaction;
+import com.zendapag.core.entity.enums.PaymentMethodType;
+import com.zendapag.core.entity.enums.PayoutScope;
 import com.zendapag.core.entity.enums.TransactionType;
 import com.zendapag.core.repository.AccountRepository;
 import com.zendapag.core.repository.TransactionRepository;
@@ -38,8 +40,18 @@ class LedgerServiceTest {
 
     @Mock private AccountRepository accountRepository;
     @Mock private TransactionRepository transactionRepository;
+    @Mock private PayoutPolicyService payoutPolicyService;
+    @Mock private AutoPayoutService autoPayoutService;
 
     @InjectMocks private LedgerService ledger;
+
+    /** Regra sem retenção (PIX D+0): o líquido vai direto para o DISPONÍVEL. */
+    private void stubSemRetencao() {
+        when(payoutPolicyService.resolve(org.mockito.ArgumentMatchers.any(Merchant.class),
+                org.mockito.ArgumentMatchers.any(PaymentMethodType.class)))
+            .thenReturn(new PayoutPolicyService.EffectiveRule(
+                PaymentMethodType.PIX, false, 0, false, PayoutScope.GLOBAL));
+    }
 
     private Merchant merchant;
     private Account account;
@@ -63,6 +75,7 @@ class LedgerServiceTest {
     void creditaLiquidoNoSaldo() {
         when(accountRepository.findByMerchant(merchant)).thenReturn(List.of(account));
 
+        stubSemRetencao();
         ledger.settleApprovedPayment(payment,
             new BigDecimal("100.00"), new BigDecimal("1.99"), new BigDecimal("98.01"));
 
@@ -76,6 +89,7 @@ class LedgerServiceTest {
     void registraLancamentosPaymentEFee() {
         when(accountRepository.findByMerchant(merchant)).thenReturn(List.of(account));
 
+        stubSemRetencao();
         ledger.settleApprovedPayment(payment,
             new BigDecimal("100.00"), new BigDecimal("1.99"), new BigDecimal("98.01"));
 
@@ -117,6 +131,7 @@ class LedgerServiceTest {
         account.setBalance(null);
         when(accountRepository.findByMerchant(merchant)).thenReturn(List.of(account));
 
+        stubSemRetencao();
         ledger.settleApprovedPayment(payment,
             new BigDecimal("100.00"), new BigDecimal("1.99"), new BigDecimal("98.01"));
 
@@ -132,5 +147,34 @@ class LedgerServiceTest {
             new BigDecimal("100.00"), new BigDecimal("1.99"), new BigDecimal("98.01")))
             .isInstanceOf(BusinessException.class)
             .hasMessageContaining("sem conta");
+    }
+
+    @Test
+    @DisplayName("saque debita o DISPONÍVEL e registra lançamento WITHDRAWAL")
+    void debitoDeSaque() {
+        ledger.debitForWithdrawal(account, new BigDecimal("300.00"), "WD-1", "DIRETO");
+
+        assertThat(account.getBalance()).isEqualByComparingTo("700.00"); // 1000 - 300
+        ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepository).save(captor.capture());
+        assertThat(captor.getValue().getType()).isEqualTo(TransactionType.WITHDRAWAL);
+    }
+
+    @Test
+    @DisplayName("proteção dupla-saque: debitar mais que o disponível → BusinessException (saldo intacto)")
+    void debitoBloqueiaSaldoInsuficiente() {
+        assertThatThrownBy(() -> ledger.debitForWithdrawal(account, new BigDecimal("5000.00"), "WD-2", "DIRETO"))
+            .isInstanceOf(BusinessException.class)
+            .hasMessageContaining("insuficiente");
+        assertThat(account.getBalance()).isEqualByComparingTo("1000.00"); // não debitou
+    }
+
+    @Test
+    @DisplayName("estorno de saque falho credita o disponível de volta")
+    void estornoDeSaque() {
+        ledger.reverseWithdrawal(account, new BigDecimal("300.00"), "WD-3", "DIRETO");
+
+        assertThat(account.getBalance()).isEqualByComparingTo("1300.00"); // 1000 + 300 de volta
+        verify(transactionRepository).save(org.mockito.ArgumentMatchers.any(Transaction.class));
     }
 }

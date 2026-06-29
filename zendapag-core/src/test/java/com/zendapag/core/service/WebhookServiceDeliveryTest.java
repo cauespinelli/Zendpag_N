@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpServer;
 import com.zendapag.core.entity.Merchant;
 import com.zendapag.core.entity.Webhook;
 import com.zendapag.core.entity.enums.WebhookStatus;
+import com.zendapag.core.repository.OriginRepository;
 import com.zendapag.core.repository.WebhookRepository;
 import com.zendapag.core.util.HmacUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -42,6 +43,7 @@ class WebhookServiceDeliveryTest {
     private static final String SECRET = "whsec_test_123";
 
     @Mock private WebhookRepository webhookRepository;
+    @Mock private OriginRepository originRepository;
 
     private WebhookService webhookService;
     private HttpServer server;
@@ -56,7 +58,7 @@ class WebhookServiceDeliveryTest {
     void setUp() throws Exception {
         lenient().when(webhookRepository.save(org.mockito.ArgumentMatchers.any(Webhook.class)))
             .thenAnswer(inv -> inv.getArgument(0));
-        webhookService = new WebhookService(webhookRepository, new ObjectMapper());
+        webhookService = new WebhookService(webhookRepository, originRepository, new ObjectMapper());
 
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/hook", exchange -> {
